@@ -1,24 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'secure_storage_service.dart';
 
 class AuthService {
   static const String baseUrl = 'https://libraguard-api.onrender.com/api';
 
+  final SecureStorageService _secureStorage = SecureStorageService();
+
   // Save JWT token
   Future<void> saveToken(String token) async {
+    await _secureStorage.saveToken(token);
+    // Optional: Keep in SharedPreferences for legacy if needed, 
+    // but better to move entirely to secure storage.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt_token', token);
   }
 
   // Get JWT token
   Future<String?> getToken() async {
+    // Try secure storage first
+    String? token = await _secureStorage.getToken();
+    if (token != null) return token;
+
+    // Fallback to SharedPreferences (migration path)
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('jwt_token');
+    token = prefs.getString('jwt_token');
+    if (token != null) {
+      // Migrate to secure storage
+      await _secureStorage.saveToken(token);
+    }
+    return token;
   }
 
   // Clear session
   Future<void> logout() async {
+    await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
     await prefs.remove('first_name');

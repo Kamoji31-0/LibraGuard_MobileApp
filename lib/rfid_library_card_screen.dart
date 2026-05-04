@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
 import 'profile_screen.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class RfidLibraryCardScreen extends StatefulWidget {
   const RfidLibraryCardScreen({super.key});
@@ -11,11 +12,11 @@ class RfidLibraryCardScreen extends StatefulWidget {
 }
 
 class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
-  int _selectedIndex = -1; // Not on main nav items
-
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
+  Color get _textColor =>
+      Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
   @override
@@ -39,7 +40,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
               Text(
                 'RFID Library Card',
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: _accentColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -167,7 +168,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
                             Navigator.pop(context);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: _accentColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 14),
@@ -188,100 +189,29 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
-  }
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home_filled, 'Home', 0),
-              _buildNavItem(Icons.menu_book, 'Books', 1),
-              _buildNavItem(Icons.computer, 'PC', 2),
-              _buildNavItem(Icons.person_outline, 'Profile', 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () {
-        if (index == _selectedIndex) return;
-
-        setState(() {
-          _selectedIndex = index;
-        });
-
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const BookListScreen()),
-          );
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const PcReservationRulesScreen()),
-          );
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? _primaryColor : _textColor.withOpacity(0.3),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? _primaryColor : _textColor.withOpacity(0.4),
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-          if (isSelected) ...[
-            const SizedBox(height: 4),
-            Container(
-              width: 16,
-              height: 3,
-              decoration: BoxDecoration(
-                color: _primaryColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 7),
-          ]
-        ],
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: -1, // Not on main nav items
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.popUntil(context, (route) => route.isFirst);
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const BookListScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PcReservationRulesScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          }
+        },
       ),
     );
   }
@@ -293,7 +223,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
         Text(
           number,
           style: TextStyle(
-            color: _primaryColor,
+            color: _accentColor,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -312,5 +242,4 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
       ],
     );
   }
-
 }

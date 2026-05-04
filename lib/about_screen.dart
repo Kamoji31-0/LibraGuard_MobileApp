@@ -9,6 +9,7 @@ class AboutScreen extends StatefulWidget {
 
 class _AboutScreenState extends State<AboutScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
@@ -92,7 +93,7 @@ class _AboutScreenState extends State<AboutScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: _primaryColor, size: 24),
+              Icon(icon, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 title,
@@ -139,7 +140,7 @@ class _AboutScreenState extends State<AboutScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.badge_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.badge_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Library Staff',
@@ -295,7 +296,7 @@ class _AboutScreenState extends State<AboutScreen> {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: _primaryColor,
+            backgroundColor: _accentColor,
             backgroundImage: imagePath != null ? AssetImage(imagePath) : null,
             child: imagePath == null
                 ? Text(
@@ -354,7 +355,7 @@ class _AboutScreenState extends State<AboutScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.access_time_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.access_time_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Library Hours',

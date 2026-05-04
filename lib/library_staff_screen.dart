@@ -9,6 +9,7 @@ class LibraryStaffScreen extends StatefulWidget {
 
 class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
@@ -36,7 +37,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
               Text(
                 'Library Staff',
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: _accentColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -84,7 +85,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.badge_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.badge_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Library Staff',
@@ -225,7 +226,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: _primaryColor,
+            backgroundColor: _accentColor,
             backgroundImage: imagePath != null ? AssetImage(imagePath) : null,
             child: imagePath == null
                 ? Text(
@@ -284,7 +285,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.access_time_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.access_time_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Library Hours',

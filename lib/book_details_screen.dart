@@ -28,6 +28,7 @@ class BookDetailsScreen extends StatefulWidget {
 
 class _BookDetailsScreenState extends State<BookDetailsScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
@@ -258,7 +259,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryColor,
+                        backgroundColor: _accentColor,
                         disabledBackgroundColor: Theme.of(context).disabledColor,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -304,7 +305,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: _primaryColor,
+                                color: _accentColor,
                               ),
                             )
                           : Icon(

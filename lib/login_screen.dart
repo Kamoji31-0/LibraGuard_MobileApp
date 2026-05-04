@@ -4,6 +4,7 @@ import 'home_screen.dart';
 import 'register_screen.dart';
 import 'services/auth_service.dart';
 import 'main.dart' show themeNotifier; // Import for theme synchronization
+import 'widgets/glow_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,14 +18,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _rememberMe = false;
   bool _isLoading = false;
   final AuthService _authService = AuthService();
 
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _cardColor => Theme.of(context).cardColor;
-  Color get _accentColor => Theme.of(context).primaryColor; // Maroon Button
+  Color get _accentColor => Theme.of(context).colorScheme.secondary; // Maroon in light, Primary 600 in dark
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
 
   @override
@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text(result['message']),
             backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
+                ? const Color(0xFFB21A2D) // Primary 700
                 : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -274,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email Field
                         _buildLabel('Email Address'),
                         const SizedBox(height: 12),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'scholar@libraguard.edu',
                           icon: Icons.email_outlined,
                           controller: _emailController,
@@ -295,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password Field
                         _buildLabel('Password'),
                         const SizedBox(height: 12),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'Enter your password...',
                           icon: Icons.lock_outline,
                           isPassword: true,
@@ -457,86 +457,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({
-    required String hint,
-    required IconData icon,
-    bool isPassword = false,
-    required TextEditingController controller,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword && _obscurePassword,
-      style: TextStyle(color: _textColor),
-      validator: validator,
-      decoration: InputDecoration(
-        fillColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white.withOpacity(0.05)
-            : const Color(0xFFF8FAFC), // Very light slate
-        filled: true,
-        hintText: hint,
-        hintStyle: TextStyle(color: _textColor.withOpacity(0.4)),
-        prefixIcon: Icon(icon, color: _textColor.withOpacity(0.5)),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: _textColor.withOpacity(0.5),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-              )
-            : null,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.1)
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.1)
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _accentColor, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
-                : Colors.redAccent,
-            width: 2,
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
-                : Colors.redAccent,
-            width: 2,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   void _showForgotPasswordSheet() {
     final TextEditingController forgotEmailController = TextEditingController();
@@ -630,8 +551,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? Colors.white.withOpacity(0.1)
                                     : const Color(0xFFE2E8F0))),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _accentColor, width: 2)),
-                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
-                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
+                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
+                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
                       ),
                     ),
                   ] else ...[
@@ -670,8 +591,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? Colors.white.withOpacity(0.1)
                                     : const Color(0xFFE2E8F0))),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _accentColor, width: 2)),
-                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
-                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
+                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
+                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -706,8 +627,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? Colors.white.withOpacity(0.1)
                                     : const Color(0xFFE2E8F0))),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: _accentColor, width: 2)),
-                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
-                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent, width: 2)),
+                        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
+                        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent, width: 2)),
                       ),
                     ),
                   ],
@@ -731,7 +652,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     if (res['success'] == true) {
                                       step = 2; // Transition without requiring token
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to send'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent));
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to send'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent));
                                     }
                                   });
                                 }
@@ -780,7 +701,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     );
                                   } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to reset password'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF800000) : Colors.redAccent));
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to reset password'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent));
                                   }
                                 }
                               }

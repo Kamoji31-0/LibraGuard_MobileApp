@@ -55,7 +55,7 @@ class MyApp extends StatelessWidget {
             cardColor: Colors.white,
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF800000),
-              secondary: Color(0xFFEF233C),
+              secondary: Color(0xFF800000), // Updated to Maroon
               surface: Colors.white,
             ),
             textTheme: const TextTheme(
@@ -74,13 +74,13 @@ class MyApp extends StatelessWidget {
           // Dark Theme — Premium Dark/Red Palette matching external image StyleGuide
           darkTheme: ThemeData(
             brightness: Brightness.dark,
-            primaryColor: const Color(0xFF800000), // Maroon Primary
+            primaryColor: const Color(0xFFB21A2D), // Primary 700
             scaffoldBackgroundColor:
                 const Color(0xFF131518), // Secondary 900 Background
             cardColor: const Color(0xFF272B30), // Secondary 500 Surface
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF800000),
-              secondary: Color(0xFF800000), // Keep maroon as accent
+              primary: Color(0xFFB21A2D), // Primary 700
+              secondary: Color(0xFFD72036), // Primary 600 Accent
               surface: Color(0xFF272B30),
               surfaceContainerHighest: Color(0xFF23272B), // Secondary 600
             ),
@@ -94,6 +94,32 @@ class MyApp extends StatelessWidget {
               surfaceTintColor: Colors.transparent,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.05),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFD72036), width: 2),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFB21A2D), width: 2),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFB21A2D), width: 2),
               ),
             ),
           ),

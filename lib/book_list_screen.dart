@@ -3,6 +3,7 @@ import 'book_details_screen.dart';
 import 'pc_reservation_rules_screen.dart';
 import 'profile_screen.dart';
 import 'services/book_service.dart';
+import 'widgets/app_bottom_nav.dart';
 import 'services/favorite_service.dart';
 
 // Screen
@@ -61,7 +62,6 @@ class _BookListScreenState extends State<BookListScreen> {
   // Pagination
   int _currentPage = 1;
   static const int _itemsPerPage = 10;
-  int _selectedIndex = 1;
   bool _isInitialLoading = true;
 
   final BookService _bookService = BookService();
@@ -772,7 +772,27 @@ class _BookListScreenState extends State<BookListScreen> {
                 ],
               ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: 1,
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.pop(context);
+          } else if (index == 1) {
+            // Already here
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PcReservationRulesScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -1036,92 +1056,4 @@ class _BookListScreenState extends State<BookListScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home_filled, 'Home', 0),
-              _buildNavItem(Icons.menu_book, 'Books', 1),
-              _buildNavItem(Icons.computer, 'PC', 2),
-              _buildNavItem(Icons.person_outline, 'Profile', 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () {
-        if (index == _selectedIndex) return;
-
-        setState(() {
-          _selectedIndex = index;
-        });
-
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const PcReservationRulesScreen()),
-          );
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? _primary : _textDark.withOpacity(0.3),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? _primary : _textDark.withOpacity(0.4),
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-          if (isSelected) ...[
-            const SizedBox(height: 4),
-            Container(
-              width: 16,
-              height: 3,
-              decoration: BoxDecoration(
-                color: _primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 7),
-          ]
-        ],
-      ),
-    );
-  }
 }

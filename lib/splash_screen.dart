@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'home_screen.dart';
+import 'services/auth_service.dart';
+import 'services/secure_storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -69,11 +72,29 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void _navigateToHome() {
+  Future<void> _navigateToHome() async {
+    final authService = AuthService();
+    final secureStorage = SecureStorageService();
+    
+    final bool hasToken = await secureStorage.hasToken();
+    String? firstName;
+    
+    if (hasToken) {
+      // Try to get cached first name
+      firstName = await authService.getFirstName();
+      
+      // Optionally, we could refresh the profile here, 
+      // but to keep splash fast, we'll rely on cache or let Home fetch it.
+    }
+
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
+            hasToken 
+                ? HomeScreen(firstName: firstName) 
+                : const LoginScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

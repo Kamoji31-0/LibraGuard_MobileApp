@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
 import 'profile_screen.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class LibraryServiceGuideScreen extends StatefulWidget {
   const LibraryServiceGuideScreen({super.key});
@@ -15,6 +16,7 @@ class LibraryServiceGuideScreen extends StatefulWidget {
 
 class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
@@ -424,7 +426,30 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: 0,
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.pop(context);
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const BookListScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PcReservationRulesScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -460,7 +485,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
           Text(
             'Library Services',
             style: TextStyle(
-              color: _primaryColor,
+              color: _accentColor,
               fontSize: 28,
               fontWeight: FontWeight.w900,
               height: 1.2,
@@ -527,7 +552,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                       Text(
                         '${item['id']} — ${item['category']}',
                         style: TextStyle(
-                          color: _primaryColor.withOpacity(0.8),
+                          color: _accentColor.withOpacity(0.8),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.0,
@@ -605,7 +630,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                     Text(
                       rule['number'],
                       style: TextStyle(
-                        color: _primaryColor,
+                        color: _accentColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -706,7 +731,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                       Text(
                         rule['number'],
                         style: TextStyle(
-                          color: _primaryColor,
+                          color: _accentColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -783,7 +808,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
+                backgroundColor: _accentColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -806,100 +831,6 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
-    );
-  }
-
-  // To match the UI look for bottom nav, since it was shown in the screenshot
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home_filled, 'Home', 0),
-              _buildNavItem(Icons.menu_book, 'Books', 1),
-              _buildNavItem(Icons.computer, 'PC', 2),
-              _buildNavItem(Icons.person_outline, 'Profile', 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected =
-        false; // Guide is usually opened from Home, so none are "selected" on this sub-page unless we want to highlight one.
-    return GestureDetector(
-      onTap: () {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-          return;
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const BookListScreen()),
-          );
-          return;
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const PcReservationRulesScreen()),
-          );
-          return;
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-          return;
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? _primaryColor : _textColor.withOpacity(0.3),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? _primaryColor : _textColor.withOpacity(0.4),
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-          if (isSelected) ...[
-            const SizedBox(height: 4),
-            Container(
-              width: 16,
-              height: 3,
-              decoration: BoxDecoration(
-                color: _primaryColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 7),
-          ]
-        ],
-      ),
     );
   }
 }

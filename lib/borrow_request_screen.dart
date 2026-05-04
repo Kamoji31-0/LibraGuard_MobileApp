@@ -19,6 +19,7 @@ class BorrowRequestScreen extends StatefulWidget {
 
 class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
@@ -80,7 +81,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
               Text(
                 _step == 2 ? 'Request Status' : 'Borrow Request',
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: _accentColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -195,7 +196,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
           Text(
             'Status: Pending Approval',
             style: TextStyle(
-              color: _primaryColor,
+              color: _accentColor,
               fontWeight: FontWeight.w700,
               fontSize: 14,
             ),
@@ -258,7 +259,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: _primaryColor.withOpacity(0.7)),
+          Icon(icon, size: 18, color: _accentColor.withOpacity(0.7)),
           const SizedBox(width: 10),
           Text(
             '$label:',
@@ -300,7 +301,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.rule, color: _primaryColor, size: 24),
+              Icon(Icons.rule, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               const Text(
                 'Library Rules',
@@ -330,7 +331,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Icon(Icons.info_outline, color: _primaryColor, size: 24),
+              Icon(Icons.info_outline, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               const Text(
                 'Notes',
@@ -368,7 +369,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                 setState(() => _step = 1);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryColor,
+                backgroundColor: _accentColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -421,7 +422,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.book, color: _primaryColor, size: 32),
+                Icon(Icons.book, color: _accentColor, size: 32),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -452,14 +453,14 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _primaryColor.withOpacity(0.04),
+              color: _accentColor.withOpacity(0.04),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _primaryColor.withOpacity(0.15)),
+              border: Border.all(color: _accentColor.withOpacity(0.15)),
             ),
             child: Row(
               children: [
                 Icon(Icons.calendar_today_outlined,
-                    color: _primaryColor, size: 16),
+                    color: _accentColor, size: 16),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -522,7 +523,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
+                    backgroundColor: _accentColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -579,7 +580,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                 return Container(
                   height: 3,
                   width: constraints.maxWidth * progress,
-                  color: _primaryColor,
+                  color: _accentColor,
                 );
               },
             ),
@@ -621,7 +622,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: _primaryColor.withOpacity(0.2),
+                      color: _accentColor.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     )
@@ -662,7 +663,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         Text(
           number,
           style: TextStyle(
-            color: _primaryColor,
+            color: _accentColor,
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),

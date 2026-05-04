@@ -14,6 +14,7 @@ import 'library_rules_screen.dart';
 import 'library_staff_screen.dart';
 import 'services/book_service.dart';
 import 'services/favorite_service.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? firstName;
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _firstName = 'Scholar'; // generic default
 
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
@@ -214,7 +216,37 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BookListScreen()),
+            ).then((_) {
+              if (mounted) setState(() => _selectedIndex = 0);
+            });
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PcReservationRulesScreen()),
+            ).then((_) {
+              if (mounted) setState(() => _selectedIndex = 0);
+            });
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            ).then((_) {
+              if (mounted) setState(() => _selectedIndex = 0);
+            });
+          }
+        },
+      ),
     );
   }
 
@@ -232,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 32,
                   height: 32,
                   errorBuilder: (context, error, stackTrace) =>
-                      Icon(Icons.shield, color: _primaryColor, size: 28),
+                      Icon(Icons.shield, color: _accentColor, size: 28),
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -294,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               child: CircleAvatar(
                 radius: 20,
-                backgroundColor: _primaryColor.withOpacity(0.1),
+                backgroundColor: _accentColor.withOpacity(0.1),
                 backgroundImage: _profileImageUrl != null
                     ? NetworkImage(_profileImageUrl!)
                     : null,
@@ -410,16 +442,16 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _primaryColor,
-            const Color(0xFF5E0000), // Deeper maroon shade
+            const Color(0xFF75111D), // Classic Dark Maroon (Top)
+            const Color(0xFF5D0D17), // Slightly Darker depth (Bottom)
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: _primaryColor.withOpacity(0.35),
+            color: _accentColor.withOpacity(0.35),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -428,17 +460,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          // Subtle Icon Watermark Background
-          Positioned(
-            right: -24,
-            bottom: -32,
-            child: Icon(
-              Icons.door_front_door,
-              size: 160,
-              color: Colors.white.withOpacity(0.04),
-            ),
-          ),
-          
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -956,6 +977,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBookCard(int index) {
     final book = _homeBooks[index];
+    final theme = Theme.of(context);
 
     return Container(
       width: 190,
@@ -1009,7 +1031,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         book.isFavorite
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: _primaryColor,
+                        color: theme.colorScheme.secondary, // Primary 600
                         size: 12,
                       ),
                     ),
@@ -1032,7 +1054,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             book.title,
             style: TextStyle(
-              color: _primaryColor,
+              color: theme.colorScheme.secondary, // Primary 600
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -1059,7 +1081,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: book.isAvailable
                       ? const Color(0xFF4ADE80)
-                      : _primaryColor,
+                      : theme.colorScheme.secondary, // Primary 600
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1096,11 +1118,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: _primaryColor, width: 1.2),
+                side: BorderSide(color: theme.colorScheme.secondary, width: 1.2), // 600
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                foregroundColor: _primaryColor,
+                foregroundColor: theme.colorScheme.secondary, // 600
                 padding: EdgeInsets.zero,
               ),
               child: const Text(
@@ -1167,6 +1189,7 @@ class _HomeScreenState extends State<HomeScreen> {
       required String subtitle,
       required IconData icon,
       required VoidCallback onTap}) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1191,7 +1214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _backgroundColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: _primaryColor),
+              child: Icon(icon, color: theme.colorScheme.secondary), // 600
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1292,7 +1315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style:
                                     TextStyle(color: _textColor, fontSize: 14)),
                             value: selected,
-                            activeColor: _primaryColor,
+                            activeColor: _accentColor,
                             onChanged: (val) {
                               setSheetState(() {
                                 if (val == true) {
@@ -1386,7 +1409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: _accentColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -1461,7 +1484,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         groupValue: tempSort,
                         title: Text(opt,
                             style: TextStyle(color: _textColor, fontSize: 14)),
-                        activeColor: _primaryColor,
+                        activeColor: _accentColor,
                         onChanged: (val) {
                           setSheetState(() => tempSort = val!);
                         },
@@ -1479,7 +1502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryColor,
+                        backgroundColor: _accentColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -1502,7 +1525,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildFilterTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, color: _primaryColor, size: 18),
+        Icon(icon, color: _accentColor, size: 18),
         const SizedBox(width: 8),
         Text(
           title,
@@ -1587,108 +1610,4 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home_filled, 'Home', 0),
-              _buildNavItem(Icons.menu_book, 'Books', 1),
-              _buildNavItem(Icons.computer, 'PC', 2),
-              _buildNavItem(Icons.person_outline, 'Profile', 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-        if (index == 1) {
-          // Books
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const BookListScreen()),
-          ).then((_) {
-            // reset nav when coming back
-            setState(() {
-              _selectedIndex = 0;
-            });
-          });
-        } else if (index == 2) {
-          // PC
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const PcReservationRulesScreen()),
-          ).then((_) {
-            setState(() {
-              _selectedIndex = 0;
-            });
-          });
-        } else if (index == 3) {
-          // Profile
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          ).then((_) {
-            setState(() {
-              _selectedIndex = 0;
-            });
-          });
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? _primaryColor : _textColor.withOpacity(0.3),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? _primaryColor : _textColor.withOpacity(0.4),
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-          if (isSelected) ...[
-            const SizedBox(height: 4),
-            Container(
-              width: 16,
-              height: 3,
-              decoration: BoxDecoration(
-                color: _primaryColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 7),
-          ]
-        ],
-      ),
-    );
-  }
 }

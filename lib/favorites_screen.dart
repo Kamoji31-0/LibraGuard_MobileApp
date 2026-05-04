@@ -12,6 +12,7 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
@@ -132,7 +133,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                 style:
                                     TextStyle(color: _textColor, fontSize: 14)),
                             value: selected,
-                            activeColor: _primaryColor,
+                            activeColor: _accentColor,
                             onChanged: (val) {
                               setSheetState(() {
                                 if (val == true) {
@@ -226,7 +227,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
+                            backgroundColor: _accentColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -301,7 +302,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         groupValue: tempSort,
                         title: Text(opt,
                             style: TextStyle(color: _textColor, fontSize: 14)),
-                        activeColor: _primaryColor,
+                        activeColor: _accentColor,
                         onChanged: (val) {
                           setSheetState(() => tempSort = val!);
                         },
@@ -319,7 +320,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryColor,
+                        backgroundColor: _accentColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -342,7 +343,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Widget _buildFilterTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, color: _primaryColor, size: 18),
+        Icon(icon, color: _accentColor, size: 18),
         const SizedBox(width: 8),
         Text(
           title,
@@ -479,7 +480,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 child: CircularProgressIndicator(color: Color(0xFF800000)))
             : RefreshIndicator(
                 onRefresh: _loadFavorites,
-                color: _primaryColor,
+                color: _accentColor,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -489,7 +490,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       Text(
                         'My Favorites',
                         style: TextStyle(
-                          color: _primaryColor,
+                          color: _accentColor,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -683,7 +684,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                         child: Icon(
                           Icons.favorite,
-                          color: _primaryColor,
+                          color: _accentColor,
                           size: 12,
                         ),
                       ),
@@ -705,7 +706,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             Text(
               book.title,
               style: TextStyle(
-                color: _primaryColor,
+                color: _accentColor,
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
@@ -769,7 +770,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: _primaryColor, width: 1.2),
+                  side: BorderSide(color: _accentColor, width: 1.2),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -778,7 +779,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 child: Text(
                   'BORROW',
                   style: TextStyle(
-                    color: _primaryColor,
+                    color: _accentColor,
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
                   ),

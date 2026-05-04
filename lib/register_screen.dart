@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'services/auth_service.dart';
+import 'widgets/glow_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,14 +21,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _yearController = TextEditingController();
   final _facultyCodeController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _isLoading = false;
   String _selectedRole = 'STUDENT';
   final AuthService _authService = AuthService();
 
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _cardColor => Theme.of(context).cardColor;
-  Color get _accentColor => Theme.of(context).primaryColor; // Maroon Button
+  Color get _accentColor => Theme.of(context).colorScheme.secondary; // Maroon in light, Primary 600 in dark
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
 
   @override
@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SnackBar(
             content: Text(result['message']),
             backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
+                ? const Color(0xFFB21A2D) // Primary 700
                 : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -255,7 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Full Name Field
                         _buildLabel('Full Name'),
                         const SizedBox(height: 8),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'Jane Doe',
                           icon: Icons.person_outline,
                           controller: _nameController,
@@ -274,7 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ? 'Student ID Number'
                               : 'Faculty ID Number'),
                           const SizedBox(height: 8),
-                          _buildTextField(
+                          GlowTextField(
                             hint: _selectedRole == 'STUDENT'
                                 ? '2023-00216'
                                 : 'FAC-001A',
@@ -293,7 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 24),
                           _buildLabel('Department'),
                           const SizedBox(height: 8),
-                          _buildTextField(
+                          GlowTextField(
                             hint: 'BSIT',
                             icon: Icons.account_balance_outlined,
                             controller: _deptController,
@@ -307,7 +307,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 24),
                           _buildLabel('Year Level'),
                           const SizedBox(height: 8),
-                          _buildTextField(
+                          GlowTextField(
                             hint: '3rd Year',
                             icon: Icons.history_edu_outlined,
                             controller: _yearController,
@@ -324,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 24),
                           _buildLabel('Faculty Access Code'),
                           const SizedBox(height: 8),
-                          _buildTextField(
+                          GlowTextField(
                             hint: 'Enter staff verification code...',
                             icon: Icons.vpn_key_outlined,
                             isPassword: true,
@@ -348,7 +348,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           const SizedBox(height: 24),
                           _buildLabel('Department'),
                           const SizedBox(height: 8),
-                          _buildTextField(
+                          GlowTextField(
                             hint: 'Computer Science',
                             icon: Icons.account_balance_outlined,
                             controller: _deptController,
@@ -366,7 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Email Field
                         _buildLabel('Email Address'),
                         const SizedBox(height: 8),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'scholar@libraguard.edu',
                           icon: Icons.email_outlined,
                           controller: _emailController,
@@ -387,7 +387,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Password Field
                         _buildLabel('Password'),
                         const SizedBox(height: 8),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'Create a strong password...',
                           icon: Icons.lock_outline,
                           isPassword: true,
@@ -407,7 +407,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Confirm Password Field
                         _buildLabel('Confirm Password'),
                         const SizedBox(height: 8),
-                        _buildTextField(
+                        GlowTextField(
                           hint: 'Confirm your password...',
                           icon: Icons.lock_outline,
                           isPassword: true,
@@ -558,85 +558,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         color: _textColor,
         fontSize: 14,
         fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required String hint,
-    required IconData icon,
-    bool isPassword = false,
-    required TextEditingController controller,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword && _obscurePassword,
-      style: TextStyle(color: _textColor),
-      validator: validator,
-      decoration: InputDecoration(
-        fillColor: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white.withOpacity(0.05)
-            : const Color(0xFFF8FAFC), // Light slate
-        filled: true,
-        hintText: hint,
-        hintStyle: TextStyle(color: _textColor.withOpacity(0.4)),
-        prefixIcon: Icon(icon, color: _textColor.withOpacity(0.5)),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: _textColor.withOpacity(0.5),
-                ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-              )
-            : null,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.1)
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.1)
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _accentColor, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
-                : Colors.redAccent,
-            width: 2,
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF800000)
-                : Colors.redAccent,
-            width: 2,
-          ),
-        ),
       ),
     );
   }

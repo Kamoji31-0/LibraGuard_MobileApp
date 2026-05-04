@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
 import 'profile_screen.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class LibraryRulesScreen extends StatefulWidget {
   const LibraryRulesScreen({super.key});
@@ -12,6 +13,7 @@ class LibraryRulesScreen extends StatefulWidget {
 
 class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
@@ -506,7 +508,30 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: 0,
+        onItemTapped: (index) {
+          if (index == 0) {
+            // Already "home" logic for rules
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const BookListScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PcReservationRulesScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -526,7 +551,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
           Text(
             'Rules & Regulations',
             style: TextStyle(
-              color: _primaryColor,
+              color: _accentColor,
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
@@ -573,7 +598,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
               ),
             ],
             border: isExpanded
-                ? Border.all(color: _primaryColor.withOpacity(0.1), width: 1.5)
+                ? Border.all(color: _accentColor.withOpacity(0.1), width: 1.5)
                 : null,
           ),
           child: Column(
@@ -590,7 +615,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                       ),
                       child: Icon(
                         item['icon'],
-                        color: _primaryColor,
+                        color: _accentColor,
                         size: 24,
                       ),
                     ),
@@ -602,7 +627,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                           Text(
                             item['category'],
                             style: TextStyle(
-                              color: _primaryColor.withOpacity(0.7),
+                              color: _accentColor.withOpacity(0.7),
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.2,
@@ -686,7 +711,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
               Text(
                 rule['number'],
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: _accentColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -742,7 +767,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                   children: [
                     Text("• ",
                         style: TextStyle(
-                            color: _primaryColor, fontWeight: FontWeight.bold)),
+                            color: _accentColor, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -796,7 +821,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                       Text(
                         rule['number'],
                         style: TextStyle(
-                          color: _primaryColor,
+                          color: _accentColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -845,7 +870,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
               Text(
                 'VIOLATION MATRIX',
                 style: TextStyle(
-                  color: _primaryColor,
+                  color: _accentColor,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
@@ -990,7 +1015,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
         Text(label,
             style: TextStyle(
                 fontSize: 10,
-                color: _primaryColor,
+                color: _accentColor,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
         Text(value,
@@ -1002,86 +1027,4 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home_filled, 'Home', 0),
-              _buildNavItem(Icons.menu_book, 'Books', 1),
-              _buildNavItem(Icons.computer, 'PC', 2),
-              _buildNavItem(Icons.person_outline, 'Profile', 3),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isSelected = false;
-    return GestureDetector(
-      onTap: () {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-          return;
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const BookListScreen()),
-          );
-          return;
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const PcReservationRulesScreen()),
-          );
-          return;
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-          return;
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            // ignore: dead_code
-            color: isSelected ? _primaryColor : _textColor.withOpacity(0.3),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              // ignore: dead_code
-              color: isSelected ? _primaryColor : _textColor.withOpacity(0.4),
-              fontSize: 11,
-              // ignore: dead_code
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 7),
-        ],
-      ),
-    );
-  }
 }

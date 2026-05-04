@@ -9,6 +9,7 @@ class HelpSupportScreen extends StatefulWidget {
 
 class _HelpSupportScreenState extends State<HelpSupportScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
@@ -110,7 +111,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.quiz_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.quiz_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Frequently Asked Questions',
@@ -198,7 +199,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           Row(
             children: [
               Icon(Icons.contact_support_outlined,
-                  color: _primaryColor, size: 24),
+                  color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Contact Information',
@@ -262,7 +263,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.access_time_outlined, color: _primaryColor, size: 24),
+              Icon(Icons.access_time_outlined, color: _accentColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Library Hours',

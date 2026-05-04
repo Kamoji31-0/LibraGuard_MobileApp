@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
 import 'profile_screen.dart';
+import 'widgets/app_bottom_nav.dart';
 
 class EntryLoginScreen extends StatelessWidget {
   const EntryLoginScreen({super.key});
@@ -192,81 +193,32 @@ class EntryLoginScreen extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: _BottomNav(),
-    );
-  }
-}
-
-// Standalone bottom nav for this screen (no state needed)
-class _BottomNav extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final cardColor = Theme.of(context).cardColor;
-    final textColor =
-        Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
-
-    Widget navItem(IconData icon, String label, VoidCallback onTap) {
-      return GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: textColor.withOpacity(0.3), size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: textColor.withOpacity(0.4),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 7),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              navItem(Icons.home_filled, 'Home',
-                  () => Navigator.popUntil(context, (r) => r.isFirst)),
-              navItem(
-                  Icons.menu_book,
-                  'Books',
-                  () => Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const BookListScreen()))),
-              navItem(
-                  Icons.computer,
-                  'PC',
-                  () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const PcReservationRulesScreen()))),
-              navItem(
-                  Icons.person_outline,
-                  'Profile',
-                  () => Navigator.pushReplacement(context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()))),
-            ],
-          ),
-        ),
+      bottomNavigationBar: AppBottomNavBar(
+        selectedIndex: -1,
+        onItemTapped: (index) {
+          if (index == 0) {
+            Navigator.popUntil(context, (r) => r.isFirst);
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const BookListScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const PcReservationRulesScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          }
+        },
       ),
     );
   }
 }
+
+

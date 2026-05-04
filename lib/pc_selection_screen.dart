@@ -10,6 +10,7 @@ class PcSelectionScreen extends StatefulWidget {
 
 class _PcSelectionScreenState extends State<PcSelectionScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
@@ -243,7 +244,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
                   Navigator.popUntil(context, (route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: _accentColor,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -291,7 +292,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
                     Text(
                       'Computer Reservation',
                       style: TextStyle(
-                        color: _primaryColor,
+                        color: _accentColor,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
@@ -455,7 +456,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: _primaryColor.withOpacity(0.15),
+                    color: _accentColor.withOpacity(0.15),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -540,14 +541,14 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.08),
+                    color: _accentColor.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _primaryColor.withOpacity(0.2)),
+                    border: Border.all(color: _accentColor.withOpacity(0.2)),
                   ),
                   child: Text(
                     _selectedComputer!.name,
                     style: TextStyle(
-                      color: _primaryColor,
+                      color: _accentColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -665,7 +666,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
                       ? null
                       : _submitReservation,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryColor,
+                    backgroundColor: _accentColor,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: _textColor.withOpacity(0.05),
                     disabledForegroundColor: _textColor.withOpacity(0.3),
