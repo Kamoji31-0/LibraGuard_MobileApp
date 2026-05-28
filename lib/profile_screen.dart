@@ -1799,7 +1799,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context: context,
                                 title: 'Filter Borrowing',
                                 options: {
-                                  'Status': ['All', 'Borrowed', 'Returned'],
+                                  'Status': ['All', 'Borrowed', 'Returned', 'Cancelled'],
                                   'Timeframe': [
                                     'All Time',
                                     'This Week',
@@ -1861,9 +1861,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Status Match
                           bool matchesStatus = true;
                           if (selectedStatus == 'Borrowed') {
-                            matchesStatus = tx.returnDate == null;
+                            matchesStatus = tx.returnDate == null && !tx.isCancelled;
                           } else if (selectedStatus == 'Returned') {
                             matchesStatus = tx.returnDate != null;
+                          } else if (selectedStatus == 'Cancelled') {
+                            matchesStatus = tx.isCancelled;
                           }
 
                           // Timeframe Match

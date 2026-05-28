@@ -55,6 +55,7 @@ class BorrowTransaction {
       status.toLowerCase().contains('checked out');
   bool get isReturned => status.toLowerCase().contains('returned');
   bool get isRejected => status.toLowerCase().contains('rejected');
+  bool get isCancelled => status.toLowerCase().contains('cancelled');
 }
 
 class BorrowService {
