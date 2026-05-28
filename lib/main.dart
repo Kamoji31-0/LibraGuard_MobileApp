@@ -111,15 +111,18 @@ class MyApp extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFD72036), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFD72036), width: 2),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFB21A2D), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFB21A2D), width: 2),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFB21A2D), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFB21A2D), width: 2),
               ),
             ),
           ),

@@ -16,7 +16,8 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
+  Color get _textColor =>
+      Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
   @override
@@ -65,7 +66,7 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                     'Computer Lab',
                     style: TextStyle(
                       color: _textColor.withOpacity(0.8),
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -91,8 +92,8 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            color: _textColor, size: 28),
+                        Icon(Icons.rule_rounded,
+                            color: _textColor.withOpacity(0.8), size: 24),
                         const SizedBox(width: 12),
                         Text(
                           'Usage Rules',
@@ -119,12 +120,12 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                     Row(
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            color: _textColor, size: 20),
+                            color: _textColor.withOpacity(0.8), size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          'Note',
+                          'Reminder',
                           style: TextStyle(
-                            color: _textColor,
+                            color: _textColor.withOpacity(0.8),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -245,7 +246,7 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
             text: TextSpan(
               style: TextStyle(
                 color: _textColor.withOpacity(0.7),
-                fontSize: 15,
+                fontSize: 14,
                 height: 1.4,
               ),
               children: [

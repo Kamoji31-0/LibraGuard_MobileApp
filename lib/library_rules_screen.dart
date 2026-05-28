@@ -5,7 +5,8 @@ import 'profile_screen.dart';
 import 'widgets/app_bottom_nav.dart';
 
 class LibraryRulesScreen extends StatefulWidget {
-  const LibraryRulesScreen({super.key});
+  final int? initialExpandedIndex;
+  const LibraryRulesScreen({super.key, this.initialExpandedIndex});
 
   @override
   State<LibraryRulesScreen> createState() => _LibraryRulesScreenState();
@@ -20,6 +21,12 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
   Color get _cardColor => Theme.of(context).cardColor;
 
   int? _expandedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandedIndex = widget.initialExpandedIndex;
+  }
 
   final List<Map<String, dynamic>> _rulesItems = [
     {
@@ -774,7 +781,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                         text,
                         style: TextStyle(
                           color: _textColor.withOpacity(0.8),
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -798,14 +805,14 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
               const Divider(height: 32, thickness: 1),
               Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Color(0xFFEAB308), size: 18),
+                  Icon(Icons.info_outline,
+                      color: _textColor.withOpacity(0.8), size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Take note',
+                    'Reminder',
                     style: TextStyle(
                       color: _textColor.withOpacity(0.8),
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -823,7 +830,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                         style: TextStyle(
                           color: _accentColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -832,7 +839,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                           text: TextSpan(
                             style: TextStyle(
                               color: _textColor.withOpacity(0.8),
-                              fontSize: 13,
+                              fontSize: 14,
                               height: 1.5,
                             ),
                             children: [
@@ -879,21 +886,32 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
               const SizedBox(height: 12),
               ...((item['violationMatrix'] as List).map((v) {
                 if (v['process'] != null) {
+                  final bool isDark =
+                      Theme.of(context).brightness == Brightness.dark;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50.withOpacity(0.5),
+                      color: isDark
+                          ? Colors.blue.withOpacity(0.12)
+                          : Colors.blue.shade50.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade100),
+                      border: Border.all(
+                          color: isDark
+                              ? Colors.blue.withOpacity(0.3)
+                              : Colors.blue.shade100),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           v['violation'],
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(
+                              color: isDark
+                                  ? Colors.blue.shade300
+                                  : Colors.blue.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13),
                         ),
                         const SizedBox(height: 8),
                         ...((v['process'] as List).map((p) => Padding(
@@ -901,12 +919,17 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                               child: Row(
                                 children: [
                                   Icon(Icons.arrow_forward_rounded,
-                                      size: 12, color: Colors.blue.shade700),
+                                      size: 12,
+                                      color: isDark
+                                          ? Colors.blue.shade300
+                                          : Colors.blue.shade700),
                                   const SizedBox(width: 8),
                                   Text(p,
                                       style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.blue.shade900)),
+                                          color: isDark
+                                              ? Colors.blue.shade100
+                                              : Colors.blue.shade900)),
                                 ],
                               ),
                             ))),
@@ -950,15 +973,21 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
 
     // Payment Policy
     if (item['paymentPolicy'] != null) {
+      final bool isDark = Theme.of(context).brightness == Brightness.dark;
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 16.0),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.green.shade50.withOpacity(0.5),
+              color: isDark
+                  ? Colors.green.withOpacity(0.12)
+                  : Colors.green.shade50.withOpacity(0.5),
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.green.shade100),
+              border: Border.all(
+                  color: isDark
+                      ? Colors.green.withOpacity(0.3)
+                      : Colors.green.shade100),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -966,12 +995,17 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                 Row(
                   children: [
                     Icon(Icons.account_balance,
-                        color: Colors.green.shade700, size: 18),
+                        color: isDark
+                            ? Colors.green.shade400
+                            : Colors.green.shade700,
+                        size: 18),
                     const SizedBox(width: 8),
                     Text(
                       'Payment Policy',
                       style: TextStyle(
-                        color: Colors.green.shade900,
+                        color: isDark
+                            ? Colors.green.shade300
+                            : Colors.green.shade900,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -985,13 +1019,18 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.check_circle,
-                              size: 14, color: Colors.green.shade600),
+                              size: 14,
+                              color: isDark
+                                  ? Colors.green.shade400
+                                  : Colors.green.shade600),
                           const SizedBox(width: 8),
                           Expanded(
                               child: Text(p,
                                   style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.green.shade900))),
+                                      color: isDark
+                                          ? Colors.green.shade100
+                                          : Colors.green.shade900))),
                         ],
                       ),
                     ))),
@@ -1026,5 +1065,4 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       ],
     );
   }
-
 }

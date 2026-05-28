@@ -423,6 +423,28 @@ class AuthService {
     }
   }
 
+  static const String _gateLogsCacheKey = 'cached_gate_logs';
+
+  /// Save gate logs to persistent storage
+  Future<void> _saveGateLogsToCache(List<dynamic> logs) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_gateLogsCacheKey, jsonEncode(logs));
+    } catch (_) {}
+  }
+
+  /// Get gate logs from persistent storage
+  Future<List<dynamic>> getCachedGateLogs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_gateLogsCacheKey);
+      if (data != null) {
+        return jsonDecode(data);
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // Get Gate Logs (Synchronized with web system)
   Future<List<dynamic>> getGateLogs() async {
     final token = await getToken();
@@ -435,7 +457,7 @@ class AuthService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -443,7 +465,7 @@ class AuthService {
             body is List ? body : (body['data'] ?? body['logs'] ?? []);
 
         // Map data to match the UI expectations in profile_screen.dart
-        return list.map((log) {
+        final results = list.map((log) {
           final timeIn = log['timeIn']?.toString() ?? '';
           final timeOut = log['timeOut']?.toString() ?? 'Active';
           final lane = log['lane']?.toString() ?? 'N/A';
@@ -459,10 +481,18 @@ class AuthService {
                     : 'Completed',
           };
         }).toList();
+
+        // Persist to disk
+        _saveGateLogsToCache(results);
+
+        return results;
       }
-      return [];
+      
+      // Fallback to cache if non-200
+      return await getCachedGateLogs();
     } catch (e) {
-      return [];
+      // Fallback to cache if network error
+      return await getCachedGateLogs();
     }
   }
 

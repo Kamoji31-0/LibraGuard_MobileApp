@@ -30,21 +30,29 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   String _selectedSort = 'A – Z';
 
   static const List<String> _allGenres = [
-    'Technology',
-    'Science',
-    'Fiction',
-    'History',
+    'Arts',
+    'Business & Management',
+    'Criminology',
+    'Culinary Arts',
     'Education',
-    'Children',
-    'Sci-Fi',
-    'Self-Help'
+    'Engineering',
+    'Fiction',
+    'Filipino Studies',
+    'History',
+    'Hospitality Management',
+    'IT & Programming',
+    'Law, Govt & Social',
+    'Mathematics',
+    'Nursing & Health',
+    'Psychology',
+    'Science',
+    'Others',
   ];
 
   static const List<String> _sortOptions = [
     'A – Z',
     'Z – A',
     'New Arrivals',
-    'Popular'
   ];
 
   @override
@@ -54,8 +62,23 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _loadFavorites() async {
-    setState(() => _isLoading = true);
+    // 1. Load from Persistent Cache instantly (if available)
     final ids = await _favoriteService.getFavoriteIds();
+    final cached = await _bookService.getPersistentCachedBooks();
+    
+    // Filter favorites from the cached full book list
+    final cachedFavorites = cached.where((b) => ids.contains(b.id)).toList();
+    
+    if (cachedFavorites.isNotEmpty && mounted) {
+      setState(() {
+        _favoriteBooks = cachedFavorites;
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = true);
+    }
+
+    // 2. Refresh from network (by IDs specifically or full refresh)
     final books = await _bookService.fetchBooksByIds(ids);
 
     if (mounted) {
@@ -434,7 +457,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     List<BookItem> filteredBooks = _favoriteBooks.where((book) {
       // Genre filter
       final matchGenre =
-          _selectedGenres.isEmpty || _selectedGenres.contains(book.genre);
+          _selectedGenres.isEmpty || _selectedGenres.contains(book.displayGenre);
 
       // Availability filter
       final matchAvail = _availabilityFilter == 'All' ||
@@ -454,10 +477,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         break;
       case 'New Arrivals':
         filteredBooks.sort((a, b) => b.id.compareTo(a.id));
-        break;
-      case 'Popular':
-        filteredBooks
-            .sort((a, b) => (a.id.hashCode % 10).compareTo(b.id.hashCode % 10));
         break;
     }
 
@@ -595,7 +614,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             mainAxisSpacing: 16,
                             crossAxisSpacing: 16,
                             childAspectRatio:
-                                0.58, // ✅ FIXED: Increased height to prevent overflow
+                                0.51, // Decreased to allow more vertical space
                           ),
                           itemCount: filteredBooks.length,
                           itemBuilder: (context, index) {
@@ -632,6 +651,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               isAvailable: book.isAvailable,
               description: book.description,
               imageUrl: book.imageUrl,
+              publishedIn: book.publishedIn,
+              isbn: book.isbn,
             ),
           ),
         );
@@ -662,11 +683,26 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: Stack(
                 children: [
                   Center(
-                    child: Icon(
-                      Icons.menu_book,
-                      color: Colors.white.withOpacity(0.2),
-                      size: 32,
-                    ),
+                    child: book.imageUrl != null && book.imageUrl!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              book.imageUrl!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.menu_book,
+                                color: Colors.white.withOpacity(0.2),
+                                size: 32,
+                              ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.menu_book,
+                            color: Colors.white.withOpacity(0.2),
+                            size: 32,
+                          ),
                   ),
                   Positioned(
                     top: 6,
@@ -695,7 +731,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              book.genre.toUpperCase(),
+              book.displayGenre.toUpperCase(),
               style: TextStyle(
                 color: _textColor.withOpacity(0.5),
                 fontSize: 8,
@@ -765,6 +801,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         isAvailable: book.isAvailable,
                         description: book.description,
                         imageUrl: book.imageUrl,
+                        publishedIn: book.publishedIn,
+                        isbn: book.isbn,
                       ),
                     ),
                   );

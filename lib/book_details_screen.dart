@@ -9,7 +9,9 @@ class BookDetailsScreen extends StatefulWidget {
   final String category;
   final bool isAvailable;
   final String? description;
-  final String? imageUrl;
+   final String? imageUrl;
+  final String publishedIn;
+  final String isbn;
 
   const BookDetailsScreen({
     super.key,
@@ -20,6 +22,8 @@ class BookDetailsScreen extends StatefulWidget {
     this.isAvailable = true,
     this.description,
     this.imageUrl,
+    this.publishedIn = 'Unknown Origins',
+    this.isbn = 'Not Available',
   });
 
   @override
@@ -30,7 +34,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
+  Color get _textColor =>
+      Theme.of(context).textTheme.bodyLarge?.color ??
+      (Theme.of(context).brightness == Brightness.dark
+          ? Colors.white
+          : const Color(0xFF1D2939));
   Color get _cardColor => Theme.of(context).cardColor;
 
   final FavoriteService _favoriteService = FavoriteService();
@@ -47,10 +55,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     // 1. Fast load from local storage
     final localStatus = await _favoriteService.isFavorited(widget.bookId);
     if (mounted) setState(() => _isFavorite = localStatus);
-    
+
     // 2. Background sync with cloud
     final syncedIds = await _favoriteService.getFavoriteIds();
-    if (mounted) setState(() => _isFavorite = syncedIds.contains(widget.bookId));
+    if (mounted)
+      setState(() => _isFavorite = syncedIds.contains(widget.bookId));
   }
 
   Future<void> _toggleFavorite() async {
@@ -102,12 +111,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ── Book Cover ──────────────────────────────────────────────────
-            Container(
+             Container(
               width: 180,
               height: 250,
               decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(8),
+                color: const Color(0xFF0F172A), // Consistent dark navy
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _cardColor, width: 6),
                 boxShadow: [
                   BoxShadow(
@@ -117,16 +126,16 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                 ],
               ),
-              child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
+                    ? Image.network(
                         widget.imageUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _coverPlaceholder(),
-                      ),
-                    )
-                  : _coverPlaceholder(),
+                      )
+                    : _coverPlaceholder(),
+              ),
             ),
             const SizedBox(height: 48),
 
@@ -161,7 +170,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                           const SizedBox(width: 6),
                           Text(
                             widget.isAvailable
-                                ? 'READY FOR CHECKOUT'
+                                ? 'READY FOR PICKUP'
                                 : 'BORROWED',
                             style: TextStyle(
                               color: widget.isAvailable
@@ -227,13 +236,23 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   const SizedBox(height: 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildMetaInfo('ISBN', '978-0201633610'),
-                      _buildMetaInfo('PUBLISHED IN', 'Unknown Origins'),
-                      _buildMetaInfo(
-                          'LIBRARY UNITS',
-                          widget.isAvailable ? '1 left' : 'Borrowed'),
+                      SizedBox(
+                        width: 110,
+                        child: _buildMetaInfo('ISBN', widget.isbn),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: _buildMetaInfo('PUBLISHED IN', widget.publishedIn),
+                      ),
+                      const SizedBox(width: 24),
+                      SizedBox(
+                        width: 100,
+                        child: _buildMetaInfo('LIBRARY UNITS',
+                            widget.isAvailable ? '1 left' : 'Borrowed'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -260,7 +279,8 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentColor,
-                        disabledBackgroundColor: Theme.of(context).disabledColor,
+                        disabledBackgroundColor:
+                            Theme.of(context).disabledColor,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
@@ -269,7 +289,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                       icon: const Icon(Icons.phone_android,
                           color: Colors.white, size: 20),
                       label: Text(
-                        widget.isAvailable ? 'CHECKOUT BOOK' : 'BORROWED',
+                        widget.isAvailable ? 'BORROW BOOK' : 'BORROWED',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -312,12 +332,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                               _isFavorite
                                   ? Icons.favorite
                                   : Icons.favorite_border,
-                              color: _isFavorite ? _primaryColor : _textColor.withOpacity(0.6),
+                              color: _isFavorite
+                                  ? _primaryColor
+                                  : _textColor.withOpacity(0.6),
                             ),
                       label: Text(
-                        _isFavorite
-                            ? 'SAVED TO FAVORITES'
-                            : 'ADD TO FAVORITES',
+                        _isFavorite ? 'SAVED TO FAVORITES' : 'ADD TO FAVORITES',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -343,8 +363,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.menu_book,
-              color: _textColor.withOpacity(0.2), size: 40),
+          Icon(Icons.menu_book, color: Colors.white.withOpacity(0.2), size: 40),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),

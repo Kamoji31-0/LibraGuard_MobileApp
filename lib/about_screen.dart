@@ -196,20 +196,6 @@ class _AboutScreenState extends State<AboutScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildStaffMember(
-                        context, 'IE', 'Imelda S. Esquejo', 'Library Staff',
-                        imagePath: 'assets/images/Esquejo.jpg'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Centered last item
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 96) /
-                        2, // Adjusted for card padding
-                    child: _buildStaffMember(
                         context, 'RP', 'Reianne Joy Pascua', 'Library Staff',
                         imagePath: 'assets/images/Pascua.jpg'),
                   ),

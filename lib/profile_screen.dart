@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
+import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
 import 'services/borrow_service.dart';
 import 'services/pc_service.dart';
+import 'services/book_service.dart';
 import 'login_screen.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
@@ -12,6 +16,7 @@ import 'help_support_screen.dart';
 import 'about_screen.dart';
 import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
+import 'library_service_guide_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,22 +27,26 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
-  Color get _accentColor => Theme.of(context).colorScheme.secondary; // Maroon in light, Primary 600 in dark
+  Color get _accentColor => Theme.of(context)
+      .colorScheme
+      .secondary; // Maroon in light, Primary 600 in dark
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _textColor =>
-      Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
+  Color get _textColor {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Theme.of(context).textTheme.bodyLarge?.color ??
+        (isDark ? Colors.white : const Color(0xFF1D2939));
+  }
+
   Color get _cardColor => Theme.of(context).cardColor;
 
   Map<String, dynamic>? _userProfile;
-  List<dynamic> _gateLogs = []; // Added missing variable
   bool _isLoading = true;
+  List<BorrowTransaction> _cachedTransactions = [];
+  List<Map<String, dynamic>> _cachedGateLogs = [];
+  List<PcSession> _cachedSessions = [];
+  List<LibraryComputer> _cachedComputers = [];
   String? _profileImageUrl;
   String? _base64Image;
-  int _occupancyCount = 0;
-  int _maxCapacity = 100;
-  Timer? _occupancyTimer;
-
-  int _activeUtilityIndex = -1;
   bool _obscurePassword = true;
 
   String _selectedGender = 'Unspecified';
@@ -66,102 +75,294 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadInitialData();
   }
 
-  Future<void> _loadProfile() async {
-    final auth = AuthService();
-    final res = await auth.getProfile();
-    final logs = await auth.getGateLogs();
+  Future<void> _loadInitialData() async {
+    // 1. Load ALL cached data in one shot for instant UI
+    final results = await Future.wait([
+      BorrowService().getPersistentCachedTransactions(),
+      AuthService().getCachedGateLogs(),
+      PcService().getPersistentCachedSessions(),
+      AuthService().getCachedProfile(),
+    ]);
 
     if (mounted) {
       setState(() {
-        if (res['success'] == true) {
-          _userProfile = res['data'];
-          _nameController.text =
-              _userProfile?['name'] ?? _userProfile?['fullName'] ?? '';
-          _emailController.text =
-              _userProfile?['email'] ?? _userProfile?['emailAddress'] ?? '';
-          _idController.text = _userProfile?['idNumber'] ?? '';
-          _contactController.text =
-              _userProfile?['contact'] ?? _userProfile?['phone'] ?? '';
-          _deptController.text =
-              _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
-          _yearController.text =
-              _userProfile?['year'] ?? _userProfile?['yearLevel'] ?? 'N/A';
-          _selectedGender = _userProfile?['gender'] ?? 'Unspecified';
-          if (!_genderOptions.contains(_selectedGender)) {
-            _selectedGender = 'Unspecified';
-          }
+        _cachedTransactions =
+            (results[0] as List<dynamic>).cast<BorrowTransaction>();
+        _cachedGateLogs =
+            (results[1] as List<dynamic>).cast<Map<String, dynamic>>();
+        _cachedSessions = (results[2] as List<dynamic>).cast<PcSession>();
 
-          // Handle base64 image or URL
-          final imgData = _userProfile?['image'] ??
-              _userProfile?['profilePictureUrl'] ??
-              _userProfile?['avatar'];
-          if (imgData != null && imgData.toString().startsWith('data:image')) {
-            _base64Image = imgData.toString().split(',').last;
-          } else if (imgData != null) {
-            String url = imgData.toString();
-            // Prepend relative paths uploaded from the web dashboard
-            if (url.startsWith('/')) {
-              url = AuthService.baseUrl.replaceAll('/api', '') + url;
-            }
-            _profileImageUrl = url;
-            _base64Image = null; // Clear stale local cache
-          }
+        final cachedProfile = results[3] as Map<String, dynamic>?;
+        if (cachedProfile != null) {
+          _userProfile = cachedProfile;
+          _updateControllers(cachedProfile);
         }
-
-        _gateLogs = logs;
         _isLoading = false;
+      });
+    }
+
+    // 2. Silently fetch fresh data in background
+    _refreshProfileData();
+  }
+
+  void _updateControllers(Map<String, dynamic> profile) {
+    _nameController.text = profile['name'] ?? profile['fullName'] ?? '';
+    _emailController.text = profile['email'] ?? profile['emailAddress'] ?? '';
+    _idController.text = profile['idNumber'] ?? '';
+    _contactController.text = profile['contact'] ?? profile['phone'] ?? '';
+    _deptController.text = profile['dept'] ?? profile['department'] ?? 'N/A';
+    _yearController.text = profile['year'] ?? profile['yearLevel'] ?? 'N/A';
+    _selectedGender = profile['gender'] ?? 'Unspecified';
+    if (!_genderOptions.contains(_selectedGender)) {
+      _selectedGender = 'Unspecified';
+    }
+
+    final imgData =
+        profile['image'] ?? profile['profilePictureUrl'] ?? profile['avatar'];
+    if (imgData != null && imgData.toString().startsWith('data:image')) {
+      _base64Image = imgData.toString().split(',').last;
+    } else if (imgData != null) {
+      String url = imgData.toString();
+      if (url.startsWith('/')) {
+        url = AuthService.baseUrl.replaceAll('/api', '') + url;
+      }
+      _profileImageUrl = url;
+      _base64Image = null;
+    }
+  }
+
+  Future<void> _refreshProfileData() async {
+    final res = await AuthService().getProfile();
+    if (res['success'] == true && mounted) {
+      setState(() {
+        _userProfile = res['data'];
+        _updateControllers(_userProfile!);
       });
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50, // Optimize for base64
-    );
+  Future<String?> _showResizeDialog(Uint8List imageBytes) async {
+    final GlobalKey boundaryKey = GlobalKey();
+    final TransformationController transformController =
+        TransformationController();
+    double currentZoom = 1.0;
 
-    if (image != null && mounted) {
-      final bytes = await image.readAsBytes();
-      final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+    return await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: _cardColor,
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Cropping Area
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // RepaintBoundary to capture the final view
+                        RepaintBoundary(
+                          key: boundaryKey,
+                          child: Container(
+                            width: 300,
+                            height: 300,
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ClipRect(
+                              child: InteractiveViewer(
+                                transformationController: transformController,
+                                clipBehavior: Clip.none,
+                                minScale: 0.1,
+                                maxScale: 5.0,
+                                boundaryMargin: const EdgeInsets.all(200),
+                                onInteractionUpdate: (details) {
+                                  setDialogState(() {
+                                    currentZoom = transformController.value
+                                        .getMaxScaleOnAxis();
+                                  });
+                                },
+                                child: Image.memory(
+                                  imageBytes,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Circular Overlay (using a hole in a stack)
+                        IgnorePointer(
+                          child: SizedBox(
+                            width: 300,
+                            height: 300,
+                            child: ColorFiltered(
+                              colorFilter: ColorFilter.mode(
+                                Colors.black.withOpacity(0.5),
+                                BlendMode.srcOut,
+                              ),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black,
+                                      backgroundBlendMode: BlendMode.dstOut,
+                                    ),
+                                  ),
+                                  Center(
+                                    child: Container(
+                                      width: 250,
+                                      height: 250,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Helper Text
+                        Positioned(
+                          top: 20,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.open_with,
+                                    color: Colors.white, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Drag or use arrow keys to reposition image",
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-      setState(() => _isSaving = true);
+                  // Zoom Slider
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 20),
+                    child: Row(
+                      children: [
+                        Icon(Icons.remove,
+                            color: _textColor.withOpacity(0.54), size: 20),
+                        Expanded(
+                          child: Slider(
+                            value: currentZoom.clamp(0.5, 3.0),
+                            min: 0.5,
+                            max: 3.0,
+                            activeColor: _accentColor,
+                            inactiveColor: _textColor.withOpacity(0.12),
+                            onChanged: (val) {
+                              setDialogState(() {
+                                currentZoom = val;
+                                // Update scale while keeping center
+                                final translation =
+                                    transformController.value.getTranslation();
+                                transformController.value = Matrix4.identity()
+                                  ..translate(translation.x, translation.y)
+                                  ..scale(val);
+                              });
+                            },
+                          ),
+                        ),
+                        Icon(Icons.add,
+                            color: _textColor.withOpacity(0.54), size: 20),
+                      ],
+                    ),
+                  ),
 
-      final res = await AuthService().updateProfile(
-        name: _nameController.text,
-        idNumber: _idController.text,
-        contact: _contactController.text,
-        gender: _selectedGender,
-        dept: _deptController.text,
-        year: _yearController.text,
-        imageBase64: base64String,
-      );
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      "Reminder: Please use a proper image for your profile.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: _textColor.withOpacity(0.4), fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Divider(color: Colors.white12),
 
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-          if (res['success'] == true) {
-            _userProfile = res['data'];
-            // Sync base64 immediately for UI feedback
-            _base64Image = base64String.split(',').last;
-            _profileImageUrl = null;
-            _showSuccessDialog('Profile picture updated successfully!');
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(res['message'] ?? 'Failed to update image'),
-                  backgroundColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF800000)
-                          : Colors.red),
+                  // Buttons
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text("Cancel",
+                              style: TextStyle(
+                                  color: _textColor.withOpacity(0.7))),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              // Capture the RepaintBoundary as an image
+                              final RenderRepaintBoundary boundary =
+                                  boundaryKey.currentContext!.findRenderObject()
+                                      as RenderRepaintBoundary;
+                              final ui.Image image =
+                                  await boundary.toImage(pixelRatio: 2.0);
+                              final ByteData? byteData = await image.toByteData(
+                                  format: ui.ImageByteFormat.png);
+                              final Uint8List pngBytes =
+                                  byteData!.buffer.asUint8List();
+                              final String base64String =
+                                  'data:image/png;base64,${base64Encode(pngBytes)}';
+                              Navigator.pop(context, base64String);
+                            } catch (e) {
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _accentColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: const Text("Save",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             );
-          }
-        });
-      }
-    }
+          },
+        );
+      },
+    );
   }
 
   Future<void> _saveProfileChanges() async {
@@ -176,11 +377,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       gender: _selectedGender,
       dept: _deptController.text,
       year: _yearController.text,
+      imageBase64:
+          _base64Image != null ? 'data:image/png;base64,$_base64Image' : null,
     );
 
     if (!mounted) return;
-
-    setState(() => _isSaving = false);
 
     if (res['success'] == true) {
       final updatedUser = res['data'] as Map<String, dynamic>?;
@@ -188,21 +389,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (updatedUser != null) {
           _userProfile = updatedUser;
         } else {
-          // Manually patch local cache so UI reflects instantly
           _userProfile = {
             ...?_userProfile,
             'name': _nameController.text,
             'idNumber': _idController.text,
             'contact': _contactController.text,
             'gender': _selectedGender,
-            'dept': _deptController.text, // Updated to keep local cache sync
+            'dept': _deptController.text,
             'year': _yearController.text,
           };
         }
+        _isSaving = false;
       });
-      Navigator.of(context).pop(); // Close modal AFTER setState
-      _showSuccessDialog('Profile updated successfully!');
+
+      // Close modal first
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Show success dialog with a very small delay to ensure modal is out of the way
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _showSuccessDialog('Profile updated successfully!');
+      });
     } else {
+      setState(() => _isSaving = false);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(res['message'] ?? 'Failed to update'),
@@ -216,6 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
+      useRootNavigator: true,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
@@ -390,7 +602,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               _buildSettingsTile(
                                 icon: Icons.door_front_door_outlined,
-                                title: 'Library Gate Logs',
+                                title: 'Entry & Exit Gate Logs',
                                 onTap: () => _showGateLogs(),
                               ),
                               _buildSettingsTile(
@@ -496,12 +708,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _pickImage(
+      {bool instantSave = true, Function? onImageSelected}) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50, // Optimize for base64
+    );
+
+    if (image != null && mounted) {
+      // Show Resize Dialog before uploading
+      final Uint8List bytes = await image.readAsBytes();
+      final String? resizedBase64 = await _showResizeDialog(bytes);
+
+      if (resizedBase64 != null && mounted) {
+        if (instantSave) {
+          setState(() => _isSaving = true);
+
+          final res = await AuthService().updateProfile(
+            name: _nameController.text,
+            idNumber: _idController.text,
+            contact: _contactController.text,
+            gender: _selectedGender,
+            dept: _deptController.text,
+            year: _yearController.text,
+            imageBase64: resizedBase64,
+          );
+
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+              if (res['success'] == true) {
+                _userProfile = res['data'];
+                // Sync base64 immediately for UI feedback
+                _base64Image = resizedBase64.split(',').last;
+                _profileImageUrl = null;
+                _showSuccessDialog('Profile picture updated!');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text(res['message'] ?? 'Failed to update image'),
+                      backgroundColor:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF800000)
+                              : Colors.red),
+                );
+              }
+            });
+          }
+        } else {
+          // Deferred save (e.g. from Manage Profile modal)
+          setState(() {
+            _base64Image = resizedBase64.split(',').last;
+            _profileImageUrl = null;
+          });
+          if (onImageSelected != null) onImageSelected();
+        }
+      }
+    }
+  }
+
   Widget _buildProfileBanner() {
     final fullName =
         _userProfile?['name'] ?? _userProfile?['fullName'] ?? 'LibraGuard User';
     final role = _userProfile?['role'] ?? 'Member';
     final email = _userProfile?['email'] ?? 'user@libraguard.edu';
-    final department = _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
+    final department =
+        _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
     final year = _userProfile?['year'] ?? _userProfile?['yearLevel'] ?? 'N/A';
 
     return Container(
@@ -530,8 +803,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: _cardColor, // White border effect
-                    borderRadius:
-                        BorderRadius.circular(28), // Squircle shape like image
+                    borderRadius: BorderRadius.circular(16), // Squircle shape
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.06),
@@ -541,7 +813,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: 85,
                       height: 85,
@@ -571,11 +843,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   bottom: -4,
                   right: -4,
                   child: GestureDetector(
-                    onTap: _pickImage,
+                    onTap: () => _pickImage(),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary, // Maroon in light, Primary 600 in dark
+                        color: Theme.of(context)
+                            .colorScheme
+                            .secondary, // Maroon in light, Primary 600 in dark
                         shape: BoxShape.circle,
                         border: Border.all(color: _cardColor, width: 2),
                       ),
@@ -650,7 +924,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileBadge(IconData icon, String value, String label) {
     final theme = Theme.of(context);
-    final accentColor = theme.colorScheme.secondary; // Maroon in light, Primary 600 in dark
+    final accentColor =
+        theme.colorScheme.secondary; // Maroon in light, Primary 600 in dark
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -683,38 +958,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildClickableTile({
-    required int index,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    final bool isActive = _activeUtilityIndex == index;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      title: AnimatedDefaultTextStyle(
-        duration: const Duration(milliseconds: 200),
-        style: TextStyle(
-          color: isActive ? _primaryColor : _textColor.withOpacity(0.8),
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
-        child: Text(title),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: isActive ? _primaryColor : _textColor.withOpacity(0.4),
-        size: 20,
-      ),
-      onTap: () {
-        setState(() => _activeUtilityIndex = index);
-        onTap();
-      },
-    );
-  }
-
   void _showSecuritySheet() async {
-    setState(() => _activeUtilityIndex = 0);
-
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -908,8 +1152,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
-
-    if (mounted) setState(() => _activeUtilityIndex = -1);
   }
 
   Widget _buildTextField(String label, String hint,
@@ -1333,791 +1575,1786 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showBorrowingSheet() async {
-    setState(() => _activeUtilityIndex = 1);
+  void _showFilterOptions({
+    required BuildContext context,
+    required String title,
+    required Map<String, List<String>> options,
+    required Map<String, String> currentValues,
+    required Function(Map<String, String>) onApply,
+  }) {
+    final Map<String, String> localValues = Map.from(currentValues);
 
-    // Fetch typed transactions on demand
-    final List<BorrowTransaction> transactions =
-        await BorrowService().fetchMyTransactions();
-
-    if (!mounted) return;
-
-    await showModalBottomSheet(
+    showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.65,
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 20),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setFilterState) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Borrowing Records',
+                    title,
                     style: TextStyle(
-                      color: _textColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: _textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                    color: _textColor.withOpacity(0.4),
+                  TextButton(
+                    onPressed: () {
+                      onApply(localValues);
+                      Navigator.pop(context);
+                    },
+                    child: Text('Apply',
+                        style: TextStyle(
+                            color: _primaryColor, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: transactions.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.menu_book_outlined,
-                              size: 48, color: _textColor.withOpacity(0.2)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No borrowing records yet.',
-                            style: TextStyle(
-                                color: _textColor.withOpacity(0.4),
-                                fontSize: 14),
-                          ),
-                        ],
+              const SizedBox(height: 16),
+              ...options.entries.map((entry) {
+                final category = entry.key;
+                final values = entry.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        category,
+                        style: TextStyle(
+                            color: _textColor.withOpacity(0.5),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 8),
-                      itemCount: transactions.length,
-                      separatorBuilder: (_, __) => Divider(
-                          height: 1, color: Colors.black.withOpacity(0.06)),
-                      itemBuilder: (context, index) {
-                        final tx = transactions[index];
-
-                        // Status badge colour
-                        Color statusColor;
-                        if (tx.isPending) {
-                          statusColor = const Color(0xFFF59E0B);
-                        } else if (tx.isApproved) {
-                          statusColor = const Color(0xFF16A34A);
-                        } else if (tx.isRejected) {
-                          statusColor = Colors.redAccent;
-                        } else {
-                          statusColor = Colors.grey;
-                        }
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: _accentColor.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(Icons.menu_book,
-                                    color: _accentColor, size: 18),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      tx.bookTitle,
-                                      style: TextStyle(
-                                          color: _textColor,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      tx.dueDate.isNotEmpty
-                                          ? 'Due: ${tx.dueDate}'
-                                          : 'Borrow: ${tx.borrowDate}',
-                                      style: TextStyle(
-                                          color: _textColor.withOpacity(0.5),
-                                          fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  tx.status,
-                                  style: TextStyle(
-                                      color: statusColor,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
+                    ),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: values.map((val) {
+                        final bool isSelected = localValues[category] == val;
+                        return ChoiceChip(
+                          label: Text(val),
+                          selected: isSelected,
+                          checkmarkColor: _primaryColor,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setFilterState(() => localValues[category] = val);
+                            }
+                          },
+                          backgroundColor: _textColor.withOpacity(0.05),
+                          selectedColor: _primaryColor.withOpacity(0.1),
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? _primaryColor
+                                : _textColor.withOpacity(0.6),
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? _primaryColor.withOpacity(0.2)
+                                  : Colors.transparent,
+                            ),
                           ),
                         );
-                      },
+                      }).toList(),
                     ),
-            ),
-            const SizedBox(height: 24),
-          ],
+                    const SizedBox(height: 20),
+                  ],
+                );
+              }).toList(),
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
     );
-
-    if (mounted) setState(() => _activeUtilityIndex = -1);
   }
 
-  Future<void> _fetchOccupancy(
-      void Function(void Function()) setSheetState) async {
-    final data = await AuthService().getLibraryOccupancy();
-    if (mounted) {
-      setSheetState(() {
-        _occupancyCount = data['count'] as int? ?? 0;
-        _maxCapacity = (data['maxCapacity'] as int? ?? 100);
-        if (_maxCapacity <= 0) _maxCapacity = 100;
-      });
-    }
-  }
-
-  void _showGateLogs() async {
-    setState(() => _activeUtilityIndex = 2);
-
-    // Initial occupancy fetch
-    final initialOccupancy = await AuthService().getLibraryOccupancy();
-    if (mounted) {
-      setState(() {
-        _occupancyCount = initialOccupancy['count'] as int? ?? 0;
-        _maxCapacity = (initialOccupancy['maxCapacity'] as int? ?? 100);
-        if (_maxCapacity <= 0) _maxCapacity = 100;
-      });
-    }
-
-    await showModalBottomSheet(
+  void _showBorrowingSheet() {
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          // Start polling timer when sheet opens
-          _occupancyTimer?.cancel();
-          _occupancyTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-            _fetchOccupancy(setSheetState);
-          });
+      builder: (context) {
+        String searchQuery = '';
+        String selectedStatus = 'All';
+        String selectedTimeframe = 'All Time';
+        String selectedSort = 'Newest First';
 
-          final double ratio = _occupancyCount / _maxCapacity;
-          final Color barColor = ratio < 0.6
-              ? const Color(0xFF22C55E)
-              : ratio < 0.85
-                  ? const Color(0xFFF59E0B)
-                  : const Color(0xFFEF4444);
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 20),
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Borrowing Records',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                          color: _textColor.withOpacity(0.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Search and Filter Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: _textColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextField(
+                              onChanged: (val) =>
+                                  setSheetState(() => searchQuery = val),
+                              style: TextStyle(color: _textColor, fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: 'Search books or authors...',
+                                hintStyle: TextStyle(
+                                    color: _textColor.withOpacity(0.3),
+                                    fontSize: 14),
+                                prefixIcon: Icon(Icons.search,
+                                    color: _textColor.withOpacity(0.3),
+                                    size: 20),
+                                border: InputBorder.none,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          height: 44,
+                          width: 44,
+                          decoration: BoxDecoration(
+                            color: selectedStatus != 'All' ||
+                                    selectedTimeframe != 'All Time' ||
+                                    selectedSort != 'Newest First'
+                                ? _primaryColor.withOpacity(0.1)
+                                : _textColor.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.filter_list,
+                                color: selectedStatus != 'All' ||
+                                        selectedTimeframe != 'All Time' ||
+                                        selectedSort != 'Newest First'
+                                    ? _primaryColor
+                                    : _textColor.withOpacity(0.6),
+                                size: 20),
+                            onPressed: () {
+                              _showFilterOptions(
+                                context: context,
+                                title: 'Filter Borrowing',
+                                options: {
+                                  'Status': ['All', 'Borrowed', 'Returned'],
+                                  'Timeframe': [
+                                    'All Time',
+                                    'This Week',
+                                    'This Month'
+                                  ],
+                                  'Sort By': [
+                                    'Newest First',
+                                    'Oldest First',
+                                    'Book Title (A-Z)'
+                                  ],
+                                },
+                                currentValues: {
+                                  'Status': selectedStatus,
+                                  'Timeframe': selectedTimeframe,
+                                  'Sort By': selectedSort,
+                                },
+                                onApply: (newValues) {
+                                  setSheetState(() {
+                                    selectedStatus = newValues['Status']!;
+                                    selectedTimeframe = newValues['Timeframe']!;
+                                    selectedSort = newValues['Sort By']!;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: FutureBuilder<List<BorrowTransaction>>(
+                      future: BorrowService().fetchMyTransactions(),
+                      initialData: _cachedTransactions,
+                      builder: (context, snapshot) {
+                        final transactions =
+                            snapshot.data ?? _cachedTransactions;
 
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.80,
-            decoration: BoxDecoration(
-              color: _cardColor,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            transactions.isEmpty) {
+                          return Center(
+                              child: CircularProgressIndicator(
+                                  color: _primaryColor));
+                        }
+
+                        // Apply Search & Advanced Filtering
+                        List<BorrowTransaction> filtered =
+                            transactions.where((tx) {
+                          final query = searchQuery.toLowerCase();
+                          final bookTitle = tx.bookTitle.toLowerCase();
+                          final borrower = tx.borrowerName.toLowerCase();
+
+                          // Search Match
+                          bool matchesSearch = bookTitle.contains(query) ||
+                              borrower.contains(query);
+
+                          // Status Match
+                          bool matchesStatus = true;
+                          if (selectedStatus == 'Borrowed') {
+                            matchesStatus = tx.returnDate == null;
+                          } else if (selectedStatus == 'Returned') {
+                            matchesStatus = tx.returnDate != null;
+                          }
+
+                          // Timeframe Match
+                          bool matchesTime = true;
+                          if (selectedTimeframe != 'All Time') {
+                            try {
+                              final borrowDate = DateTime.parse(tx.borrowDate);
+                              final now = DateTime.now();
+                              if (selectedTimeframe == 'This Week') {
+                                matchesTime =
+                                    now.difference(borrowDate).inDays <= 7;
+                              } else if (selectedTimeframe == 'This Month') {
+                                matchesTime = now.month == borrowDate.month &&
+                                    now.year == borrowDate.year;
+                              }
+                            } catch (_) {}
+                          }
+
+                          return matchesSearch && matchesStatus && matchesTime;
+                        }).toList();
+
+                        // Apply Sorting
+                        if (selectedSort == 'Newest First') {
+                          filtered.sort(
+                              (a, b) => b.borrowDate.compareTo(a.borrowDate));
+                        } else if (selectedSort == 'Oldest First') {
+                          filtered.sort(
+                              (a, b) => a.borrowDate.compareTo(b.borrowDate));
+                        } else if (selectedSort == 'Book Title (A-Z)') {
+                          filtered.sort((a, b) => a.bookTitle
+                              .toLowerCase()
+                              .compareTo(b.bookTitle.toLowerCase()));
+                        }
+
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.search_off_rounded,
+                                    size: 48,
+                                    color: _textColor.withOpacity(0.2)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No matching records found',
+                                  style: TextStyle(
+                                      color: _textColor.withOpacity(0.4),
+                                      fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return _buildBorrowingCardList(context, filtered);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {});
+  }
+
+  Widget _buildBorrowingCardList(
+      BuildContext context, List<BorrowTransaction> transactions) {
+    final active = transactions
+        .where((tx) => !tx.status.toLowerCase().contains('archived'))
+        .toList();
+
+    if (active.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.menu_book_outlined,
+                size: 48, color: _textColor.withOpacity(0.2)),
+            const SizedBox(height: 12),
+            Text(
+              'No borrowing records yet.',
+              style:
+                  TextStyle(color: _textColor.withOpacity(0.4), fontSize: 14),
             ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      itemCount: active.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _buildBorrowCard(context, active[index]),
+    );
+  }
+
+  Widget _buildBorrowCard(BuildContext context, BorrowTransaction tx) {
+    Color statusColor;
+    if (tx.isPending) {
+      statusColor = const Color(0xFFF59E0B);
+    } else if (tx.isApproved) {
+      statusColor = const Color(0xFF16A34A);
+    } else if (tx.isReturned) {
+      statusColor = Colors.blue;
+    } else if (tx.isRejected) {
+      statusColor = Colors.redAccent;
+    } else {
+      statusColor = Colors.grey;
+    }
+
+    String formattedDate = tx.borrowDate;
+    try {
+      final dt = DateTime.parse(tx.borrowDate).toLocal();
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      formattedDate = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    } catch (_) {}
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _textColor.withOpacity(0.07)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 72,
+            decoration: BoxDecoration(
+              color: _accentColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.menu_book_rounded,
+                color: _accentColor.withOpacity(0.6), size: 28),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 16),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: _textColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                // Header row
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Library Gate Logs',
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        tx.bookTitle,
                         style: TextStyle(
                           color: _textColor,
-                          fontSize: 20,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        tx.status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Requested on',
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.5),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          formattedDate,
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.5),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _showBorrowDetailDialog(context, tx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accentColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "View Details",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPcSessionCardList(
+      BuildContext context, List<PcSession> sessions) {
+    if (sessions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.computer_outlined,
+                size: 48, color: _textColor.withOpacity(0.2)),
+            const SizedBox(height: 12),
+            Text(
+              'No computer sessions yet.',
+              style:
+                  TextStyle(color: _textColor.withOpacity(0.4), fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      itemCount: sessions.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) =>
+          _buildPcSessionCard(context, sessions[index]),
+    );
+  }
+
+  Widget _buildPcSessionCard(BuildContext context, PcSession sess) {
+    Color statusColor;
+    if (sess.isPending) {
+      statusColor = const Color(0xFFF59E0B);
+    } else if (sess.isActive) {
+      statusColor = Colors.blue;
+    } else if (sess.isCompleted) {
+      statusColor = const Color(0xFF16A34A);
+    } else {
+      statusColor = Colors.grey;
+    }
+
+    String dateStr = '---';
+    if (sess.createdAt != null && sess.createdAt!.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(sess.createdAt!).toLocal();
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
+        dateStr = '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+      } catch (_) {}
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _textColor.withOpacity(0.07)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: _accentColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.computer_rounded,
+                color: _accentColor.withOpacity(0.6), size: 28),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        sess.computerName,
+                        style: TextStyle(
+                          color: _textColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        sess.status.toUpperCase(),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Text(
+                      'Duration: ${sess.duration}',
+                      style: TextStyle(
+                        color: _textColor.withOpacity(0.6),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (sess.reference != null)
+                      Text(
+                        'Ref: ${sess.reference}',
+                        style: TextStyle(
+                          color: _textColor.withOpacity(0.4),
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  dateStr,
+                  style: TextStyle(
+                    color: _textColor.withOpacity(0.4),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBorrowDetailDialog(BuildContext context, BorrowTransaction tx) {
+    Color statusColor;
+    if (tx.isPending) {
+      statusColor = const Color(0xFFF59E0B);
+    } else if (tx.isApproved) {
+      statusColor = const Color(0xFF16A34A);
+    } else if (tx.isReturned) {
+      statusColor = Colors.blue;
+    } else if (tx.isRejected) {
+      statusColor = Colors.redAccent;
+    } else {
+      statusColor = Colors.grey;
+    }
+
+    String fmtDate(String raw) {
+      try {
+        final dt = DateTime.parse(raw).toLocal();
+        return "${dt.month}/${dt.day}/${dt.year}";
+      } catch (_) {
+        return raw.isNotEmpty ? raw : '---';
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Scaffold(
+            backgroundColor: _cardColor,
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Borrowing Summary',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                       IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                        color: _textColor.withOpacity(0.4),
+                        icon: Icon(Icons.close,
+                            color: _textColor.withOpacity(0.5)),
+                        onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
-
-                // ── Real-Time Capacity Card ──────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _primaryColor.withOpacity(0.08),
-                          _primaryColor.withOpacity(0.03),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: _accentColor.withOpacity(0.14),
-                      ),
-                    ),
+                Divider(color: _textColor.withOpacity(0.07), height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: [
-                            // Pulsing live dot
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: barColor,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: barColor.withOpacity(0.5),
-                                    blurRadius: 6,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'LIVE · Library Occupancy',
-                              style: TextStyle(
-                                color: _textColor.withOpacity(0.55),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () => _fetchOccupancy(setSheetState),
-                              child: Icon(
-                                Icons.refresh_rounded,
-                                size: 18,
-                                color: _accentColor.withOpacity(0.6),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '$_occupancyCount',
+                              'Status',
                               style: TextStyle(
-                                color: barColor,
-                                fontSize: 42,
+                                color: _textColor.withOpacity(0.5),
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                height: 1,
                               ),
                             ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: 6, left: 4),
-                              child: Text(
-                                '/ $_maxCapacity',
-                                style: TextStyle(
-                                  color: _textColor.withOpacity(0.45),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                                  horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
-                                color: barColor.withOpacity(0.12),
+                                color: statusColor.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                ratio < 0.6
-                                    ? 'Available'
-                                    : ratio < 0.85
-                                        ? 'Filling Up'
-                                        : 'Near Full',
+                                tx.status,
                                 style: TextStyle(
-                                  color: barColor,
-                                  fontSize: 11,
+                                  color: statusColor,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 32),
+
+                        // Section 1: Borrower's Details
+                        _buildDialogSection(
+                          title: "Borrower's Details",
+                          showIcon: false,
+                          hasOutline: true,
+                          children: [
+                            _buildDialogRow(
+                                'Name',
+                                _nameController.text.isNotEmpty
+                                    ? _nameController.text
+                                    : tx.borrowerName),
+                            _buildDialogRow(
+                                'Role',
+                                (_userProfile?['role'] ?? 'STUDENT')
+                                    .toString()
+                                    .toUpperCase()),
+                            _buildDialogRow('Department', _deptController.text),
+                            _buildDialogRow('Year', _yearController.text),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section 2: Book Details
+                        FutureBuilder<BookItem?>(
+                          future: BookService().fetchBookById(tx.bookId),
+                          builder: (context, snapshot) {
+                            final book = snapshot.data;
+                            final isLoading = snapshot.connectionState ==
+                                ConnectionState.waiting;
+
+                            return _buildDialogSection(
+                              title: 'BOOK DETAILS',
+                              showIcon: false,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: _textColor.withOpacity(0.03),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                        color: _textColor.withOpacity(0.05)),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 80,
+                                        height: 100,
+                                        decoration: BoxDecoration(
+                                          color: _accentColor.withOpacity(0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: isLoading
+                                            ? Center(
+                                                child: SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: _accentColor,
+                                                  ),
+                                                ),
+                                              )
+                                            : Icon(Icons.menu_book_rounded,
+                                                size: 40, color: _accentColor),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (book != null)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: _accentColor
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  book.displayGenre
+                                                      .toUpperCase(),
+                                                  style: TextStyle(
+                                                    color: _accentColor,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              tx.bookTitle,
+                                              style: TextStyle(
+                                                color: _textColor,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                height: 1.3,
+                                              ),
+                                            ),
+                                            if (book != null) ...[
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                'by ${book.author}',
+                                                style: TextStyle(
+                                                  color: _textColor
+                                                      .withOpacity(0.5),
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ],
+                                            if (isLoading)
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                    top: 8),
+                                                child: Text(
+                                                  'Loading details...',
+                                                  style: TextStyle(
+                                                    color: _textColor
+                                                        .withOpacity(0.3),
+                                                    fontSize: 11,
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Section 3: Schedule
+                        _buildDialogSection(
+                          title: 'SCHEDULE',
+                          showIcon: false,
+                          children: [
+                            _buildDialogRow(
+                                'Requested On', fmtDate(tx.borrowDate)),
+                            _buildDialogRow(
+                                'Pickup Deadline',
+                                tx.pickupDeadline.isNotEmpty
+                                    ? fmtDate(tx.pickupDeadline)
+                                    : '---',
+                                valueColor: const Color(0xFFF59E0B)),
+                            _buildDialogRow(
+                                'Return By',
+                                tx.dueDate.isNotEmpty
+                                    ? fmtDate(tx.dueDate)
+                                    : '---',
+                                valueColor: const Color(0xFF16A34A)),
+                            if (tx.returnDate != null &&
+                                tx.returnDate!.isNotEmpty)
+                              _buildDialogRow(
+                                  'Returned On', fmtDate(tx.returnDate!)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Section 4: Penalty if any
+                        if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
+                          _buildDialogSection(
+                            title: 'PENALTY',
+                            showIcon: false,
+                            children: [
+                              _buildDialogRow('Amount', tx.penalty,
+                                  valueColor: Colors.redAccent),
+                            ],
+                          ),
+                        ],
+
+                        const SizedBox(height: 3), // Section 5: Reminders
+                        _buildDialogSection(
+                          title: 'Reminders',
+                          showIcon: false,
+                          titleColor: _accentColor,
+                          children: [
+                            _buildReminderItem(
+                                'Pick up within 3 working days.'),
+                            _buildReminderItem(
+                                'Bring your RFID card for pickup.'),
+                            _buildReminderItem(
+                                'Return the book on or before the due date.'),
+                            _buildReminderItem(
+                                'Library Hours: 8:00 AM – 5:00 PM (Mon – Sat).'),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1, thickness: 0.5),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LibraryServiceGuideScreen(
+                                      initialExpandedIndex: 2, // Return Books
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(Icons.menu_book_rounded,
+                                      size: 18, color: _accentColor),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Returning Process Guide',
+                                    style: TextStyle(
+                                      color: _accentColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReminderItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Icon(Icons.circle, size: 6, color: Colors.orange.shade800),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: _textColor.withOpacity(0.7),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogSection({
+    IconData? icon,
+    required String title,
+    required List<Widget> children,
+    bool showIcon = true,
+    bool hasOutline = false,
+    Color? titleColor,
+  }) {
+    final sectionContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (showIcon && icon != null) ...[
+              Icon(icon, size: 18, color: _accentColor),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              title,
+              style: TextStyle(
+                color: titleColor ?? _textColor.withOpacity(0.5),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...children,
+        if (!hasOutline) ...[
+          const SizedBox(height: 12),
+          Divider(color: _textColor.withOpacity(0.12), height: 1, thickness: 1),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+
+    if (hasOutline) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _textColor.withOpacity(0.1)),
+        ),
+        child: sectionContent,
+      );
+    }
+
+    return sectionContent;
+  }
+
+  Widget _buildDialogRow(String label, String value, {Color? valueColor}) {
+    final bool isLong = value.length > 25;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: isLong
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: _textColor.withOpacity(0.5),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: valueColor ?? _textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: _textColor.withOpacity(0.6),
+                    fontSize: 13,
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: valueColor ?? _textColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  void _showGateLogs() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        String searchQuery = '';
+        String selectedPresence = 'All';
+        String selectedLane = 'All';
+        String selectedTimeframe = 'All Time';
+        bool _refreshStarted = false;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            if (!_refreshStarted) {
+              _refreshStarted = true;
+              AuthService().getGateLogs().then((fresh) {
+                if (mounted && fresh.isNotEmpty) {
+                  setState(() =>
+                      _cachedGateLogs = fresh.cast<Map<String, dynamic>>());
+                  setSheetState(() {});
+                }
+              });
+            }
+
+            final localLogs = _cachedGateLogs;
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 20),
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _textColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Text(
-                          'students currently inside',
+                          'Library Gate Logs',
                           style: TextStyle(
-                            color: _textColor.withOpacity(0.4),
-                            fontSize: 12,
+                            color: _textColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        // Progress bar
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: ratio.clamp(0.0, 1.0),
-                            minHeight: 10,
-                            backgroundColor: _textColor.withOpacity(0.08),
-                            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                          color: _textColor.withOpacity(0.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Search and Filter Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: _textColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextField(
+                              onChanged: (val) =>
+                                  setSheetState(() => searchQuery = val),
+                              style: TextStyle(color: _textColor, fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: 'Search by date or lane...',
+                                hintStyle: TextStyle(
+                                    color: _textColor.withOpacity(0.3),
+                                    fontSize: 14),
+                                prefixIcon: Icon(Icons.search,
+                                    color: _textColor.withOpacity(0.3),
+                                    size: 20),
+                                border: InputBorder.none,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Updates every 30 seconds',
-                          style: TextStyle(
-                            color: _textColor.withOpacity(0.3),
-                            fontSize: 10,
+                        const SizedBox(width: 12),
+                        Container(
+                          height: 44,
+                          width: 44,
+                          decoration: BoxDecoration(
+                            color: selectedPresence != 'All' ||
+                                    selectedLane != 'All' ||
+                                    selectedTimeframe != 'All Time'
+                                ? _primaryColor.withOpacity(0.1)
+                                : _textColor.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.filter_list,
+                                color: selectedPresence != 'All' ||
+                                        selectedLane != 'All' ||
+                                        selectedTimeframe != 'All Time'
+                                    ? _primaryColor
+                                    : _textColor.withOpacity(0.6),
+                                size: 20),
+                            onPressed: () {
+                              _showFilterOptions(
+                                context: context,
+                                title: 'Filter Gate Logs',
+                                options: {
+                                  'Presence': [
+                                    'All',
+                                    'Still Inside',
+                                    'Checked Out'
+                                  ],
+                                  'Lane': ['All', 'Lane 1', 'Lane 2'],
+                                  'Timeframe': [
+                                    'All Time',
+                                    'This Week',
+                                    'This Month'
+                                  ],
+                                },
+                                currentValues: {
+                                  'Presence': selectedPresence,
+                                  'Lane': selectedLane,
+                                  'Timeframe': selectedTimeframe,
+                                },
+                                onApply: (newValues) {
+                                  setSheetState(() {
+                                    selectedPresence = newValues['Presence']!;
+                                    selectedLane = newValues['Lane']!;
+                                    selectedTimeframe = newValues['Timeframe']!;
+                                  });
+                                },
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                // ────────────────────────────────────────────────────────
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        // Apply filtering to localLogs
+                        final filtered = localLogs.where((log) {
+                          final query = searchQuery.toLowerCase();
+                          final timeIn =
+                              log['timeIn']?.toString().toLowerCase() ?? '';
+                          final laneVal =
+                              log['lane']?.toString().toLowerCase() ?? '';
 
-                const SizedBox(height: 12),
-                // Column headers
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _accentColor.withOpacity(0.07),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text('Date',
-                            style: TextStyle(
-                                color: _accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5)),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text('Time In',
-                            style: TextStyle(
-                                color: _accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5)),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text('Time Out',
-                            style: TextStyle(
-                                color: _accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5)),
-                      ),
-                      SizedBox(
-                        width: 46,
-                        child: Text('Lane',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: _accentColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5)),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Log entries
-                Expanded(
-                  child: _gateLogs.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.door_front_door_outlined,
-                                  size: 48, color: _textColor.withOpacity(0.2)),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No entry logs recorded.',
-                                style: TextStyle(
-                                    color: _textColor.withOpacity(0.4),
-                                    fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 4),
-                          itemCount: _gateLogs.length,
-                          separatorBuilder: (_, __) => Divider(
-                              height: 1, color: _textColor.withOpacity(0.05)),
-                          itemBuilder: (context, index) {
-                            final log = _gateLogs[index];
-                            String dateStr = 'N/A';
-                            String timeInStr = 'N/A';
-                            String timeOutStr = '--';
-                            final rawTimeIn = log['timeIn']?.toString() ?? '';
-                            final rawTimeOut = log['timeOut']?.toString() ?? '';
-                            final lane = log['lane']?.toString() ?? 'N/A';
-                            final bool isActive = rawTimeOut.isEmpty ||
-                                rawTimeOut == 'null' ||
-                                log['timeOut'] == null;
+                          // Search Match
+                          bool matchesSearch =
+                              timeIn.contains(query) || laneVal.contains(query);
 
+                          // Presence Match
+                          bool matchesPresence = true;
+                          final bool isAtLibrary = log['timeOut'] == null ||
+                              log['timeOut'].toString().isEmpty ||
+                              log['timeOut'].toString() == 'null';
+                          if (selectedPresence == 'Still Inside') {
+                            matchesPresence = isAtLibrary;
+                          } else if (selectedPresence == 'Checked Out') {
+                            matchesPresence = !isAtLibrary;
+                          }
+
+                          // Lane Match
+                          bool matchesLane = true;
+                          if (selectedLane != 'All') {
+                            matchesLane =
+                                laneVal.contains(selectedLane.toLowerCase());
+                          }
+
+                          // Timeframe Match
+                          bool matchesTime = true;
+                          if (selectedTimeframe != 'All Time') {
                             try {
-                              if (rawTimeIn.isNotEmpty && rawTimeIn != 'null') {
-                                final dt = DateTime.parse(rawTimeIn).toLocal();
-                                const months = [
-                                  'Jan',
-                                  'Feb',
-                                  'Mar',
-                                  'Apr',
-                                  'May',
-                                  'Jun',
-                                  'Jul',
-                                  'Aug',
-                                  'Sep',
-                                  'Oct',
-                                  'Nov',
-                                  'Dec'
-                                ];
-                                dateStr =
-                                    '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-                                final hour =
-                                    dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-                                final minute =
-                                    dt.minute.toString().padLeft(2, '0');
-                                final period = dt.hour >= 12 ? 'PM' : 'AM';
-                                timeInStr = '$hour:$minute $period';
+                              final timeInStr = log['timeIn']?.toString() ?? '';
+                              final logDate = DateTime.parse(timeInStr);
+                              final now = DateTime.now();
+                              if (selectedTimeframe == 'This Week') {
+                                matchesTime =
+                                    now.difference(logDate).inDays <= 7;
+                              } else if (selectedTimeframe == 'This Month') {
+                                matchesTime = now.month == logDate.month &&
+                                    now.year == logDate.year;
                               }
                             } catch (_) {}
+                          }
 
-                            try {
-                              if (!isActive) {
-                                final dtOut =
-                                    DateTime.parse(rawTimeOut).toLocal();
-                                final hour =
-                                    dtOut.hour % 12 == 0 ? 12 : dtOut.hour % 12;
-                                final minute =
-                                    dtOut.minute.toString().padLeft(2, '0');
-                                final period = dtOut.hour >= 12 ? 'PM' : 'AM';
-                                timeOutStr = '$hour:$minute $period';
-                              }
-                            } catch (_) {}
+                          return matchesSearch &&
+                              matchesPresence &&
+                              matchesLane &&
+                              matchesTime;
+                        }).toList();
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(
-                                      dateStr,
-                                      style: TextStyle(
-                                          color: _textColor,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      timeInStr,
-                                      style: TextStyle(
-                                          color: _textColor.withOpacity(0.75),
-                                          fontSize: 12),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: isActive
-                                        ? Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 7, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green
-                                                  .withOpacity(0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                            ),
-                                            child: const Text(
-                                              'Active',
-                                              style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                          )
-                                        : Text(
-                                            timeOutStr,
-                                            style: TextStyle(
-                                                color: _textColor
-                                                    .withOpacity(0.75),
-                                                fontSize: 12),
-                                          ),
-                                  ),
-                                  SizedBox(
-                                    width: 46,
-                                    child: Center(
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: _accentColor.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          lane,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                              color: _accentColor,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-
-    // Stop polling when sheet closes
-    _occupancyTimer?.cancel();
-    _occupancyTimer = null;
-
-    if (mounted) setState(() => _activeUtilityIndex = -1);
-  }
-
-  void _showSessions() async {
-    setState(() => _activeUtilityIndex = 3);
-
-    // Fetch typed sessions on demand
-    final List<PcSession> sessions = await PcService().fetchMySessions();
-
-    if (!mounted) return;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.65,
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 20),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Computer Sessions',
-                    style: TextStyle(
-                      color: _textColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                    color: _textColor.withOpacity(0.4),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: sessions.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.computer_outlined,
-                              size: 48, color: _textColor.withOpacity(0.2)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No computer sessions yet.',
-                            style: TextStyle(
-                                color: _textColor.withOpacity(0.4),
-                                fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 8),
-                      itemCount: sessions.length,
-                      separatorBuilder: (_, __) => Divider(
-                          height: 1, color: Colors.black.withOpacity(0.06)),
-                      itemBuilder: (context, index) {
-                        final sess = sessions[index];
-
-                        // Status badge colour
-                        Color statusColor;
-                        if (sess.isPending) {
-                          statusColor = const Color(0xFFF59E0B);
-                        } else if (sess.isActive) {
-                          statusColor = Colors.blue;
-                        } else if (sess.isCompleted) {
-                          statusColor = const Color(0xFF16A34A);
-                        } else {
-                          statusColor = Colors.grey;
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.door_sliding_outlined,
+                                    size: 48,
+                                    color: _textColor.withOpacity(0.2)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No matching logs found.',
+                                  style: TextStyle(
+                                      color: _textColor.withOpacity(0.4),
+                                      fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
                         }
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Row(
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 8),
+                          child: Table(
+                            columnWidths: const {
+                              0: FlexColumnWidth(1.2),
+                              1: FlexColumnWidth(1),
+                              2: FlexColumnWidth(1),
+                              3: FlexColumnWidth(0.5),
+                            },
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: _accentColor.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(Icons.computer,
-                                    color: _accentColor, size: 18),
+                              TableRow(
+                                children: [
+                                  _buildTableHeader('Date'),
+                                  _buildTableHeader('Time In'),
+                                  _buildTableHeader('Time Out'),
+                                  _buildTableHeader('Lane'),
+                                ],
                               ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              ...filtered.map((log) {
+                                String dateStr = 'N/A';
+                                String timeInStr = 'N/A';
+                                String timeOutStr = '--';
+                                final rawTimeIn =
+                                    log['timeIn']?.toString() ?? '';
+                                final rawTimeOut =
+                                    log['timeOut']?.toString() ?? '';
+                                final laneVal =
+                                    log['lane']?.toString() ?? 'N/A';
+                                final bool isActive = rawTimeOut.isEmpty ||
+                                    rawTimeOut == 'null' ||
+                                    log['timeOut'] == null;
+
+                                try {
+                                  if (rawTimeIn.isNotEmpty &&
+                                      rawTimeIn != 'null') {
+                                    final dt =
+                                        DateTime.parse(rawTimeIn).toLocal();
+                                    const months = [
+                                      'Jan',
+                                      'Feb',
+                                      'Mar',
+                                      'Apr',
+                                      'May',
+                                      'Jun',
+                                      'Jul',
+                                      'Aug',
+                                      'Sep',
+                                      'Oct',
+                                      'Nov',
+                                      'Dec'
+                                    ];
+                                    dateStr =
+                                        '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+                                    final hour =
+                                        dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+                                    final minute =
+                                        dt.minute.toString().padLeft(2, '0');
+                                    final period = dt.hour >= 12 ? 'PM' : 'AM';
+                                    timeInStr = '$hour:$minute $period';
+                                  }
+                                } catch (_) {}
+
+                                try {
+                                  if (!isActive) {
+                                    final dtOut =
+                                        DateTime.parse(rawTimeOut).toLocal();
+                                    final hour = dtOut.hour % 12 == 0
+                                        ? 12
+                                        : dtOut.hour % 12;
+                                    final minute =
+                                        dtOut.minute.toString().padLeft(2, '0');
+                                    final period =
+                                        dtOut.hour >= 12 ? 'PM' : 'AM';
+                                    timeOutStr = '$hour:$minute $period';
+                                  }
+                                } catch (_) {}
+
+                                return TableRow(
                                   children: [
-                                    Text(
-                                      sess.computerName,
-                                      style: TextStyle(
-                                          color: _textColor,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      'Duration: ${sess.duration}',
-                                      style: TextStyle(
-                                          color: _textColor.withOpacity(0.5),
-                                          fontSize: 11),
-                                    ),
+                                    _buildTableCell(dateStr),
+                                    _buildTableCell(timeInStr),
+                                    isActive
+                                        ? _buildStatusCell(
+                                            'Active', Colors.green)
+                                        : _buildTableCell(timeOutStr),
+                                    _buildTableCell(laneVal),
                                   ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  sess.status.toUpperCase(),
-                                  style: TextStyle(
-                                      color: statusColor,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
+                                );
+                              }).toList(),
                             ],
                           ),
                         );
                       },
                     ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {});
+  }
 
-    if (mounted) setState(() => _activeUtilityIndex = -1);
+  void _showSessions() {
+    // Pre-hook to pre-fetch computers for the filter
+    PcService().fetchComputers().then((pcs) {
+      if (mounted && pcs.isNotEmpty) {
+        setState(() => _cachedComputers = pcs);
+      }
+    });
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        String searchQuery = '';
+        String selectedStatus = 'All';
+        String selectedDuration = 'All';
+        String selectedPc = 'All';
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 20),
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Computer Sessions',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                          color: _textColor.withOpacity(0.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Search and Filter Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: _textColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextField(
+                              onChanged: (val) =>
+                                  setSheetState(() => searchQuery = val),
+                              style: TextStyle(color: _textColor, fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: 'Search PC or reference...',
+                                hintStyle: TextStyle(
+                                    color: _textColor.withOpacity(0.3),
+                                    fontSize: 14),
+                                prefixIcon: Icon(Icons.search,
+                                    color: _textColor.withOpacity(0.3),
+                                    size: 20),
+                                border: InputBorder.none,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          height: 44,
+                          width: 44,
+                          decoration: BoxDecoration(
+                            color: selectedStatus != 'All' ||
+                                    selectedDuration != 'All' ||
+                                    selectedPc != 'All'
+                                ? _primaryColor.withOpacity(0.1)
+                                : _textColor.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.filter_list,
+                                color: selectedStatus != 'All' ||
+                                        selectedDuration != 'All' ||
+                                        selectedPc != 'All'
+                                    ? _primaryColor
+                                    : _textColor.withOpacity(0.6),
+                                size: 20),
+                            onPressed: () {
+                              // Get unique PC names from history AND the full computer list
+                              final historyPcs = _cachedSessions
+                                  .map((s) => s.computerName)
+                                  .toSet();
+                              final fullPcs =
+                                  _cachedComputers.map((pc) => pc.name).toSet();
+                              final allPcs =
+                                  {...historyPcs, ...fullPcs}.toList()..sort();
+
+                              _showFilterOptions(
+                                context: context,
+                                title: 'Filter Sessions',
+                                options: {
+                                  'Status': [
+                                    'All',
+                                    'Pending',
+                                    'Active',
+                                    'Completed',
+                                    'Rejected'
+                                  ],
+                                  'Duration': [
+                                    'All',
+                                    '15 mins',
+                                    '30 mins',
+                                    '1 hr',
+                                    '2 hr'
+                                  ],
+                                  'PC Number': ['All', ...allPcs],
+                                },
+                                currentValues: {
+                                  'Status': selectedStatus,
+                                  'Duration': selectedDuration,
+                                  'PC Number': selectedPc,
+                                },
+                                onApply: (newValues) {
+                                  setSheetState(() {
+                                    selectedStatus = newValues['Status']!;
+                                    selectedDuration = newValues['Duration']!;
+                                    selectedPc = newValues['PC Number']!;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: FutureBuilder<List<PcSession>>(
+                      future: PcService().fetchMySessions(),
+                      initialData: _cachedSessions,
+                      builder: (context, snapshot) {
+                        final sessions = snapshot.data ?? _cachedSessions;
+
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            sessions.isEmpty) {
+                          return Center(
+                              child: CircularProgressIndicator(
+                                  color: _primaryColor));
+                        }
+
+                        // Apply Search & Advanced Filtering
+                        final filtered = sessions.where((s) {
+                          final query = searchQuery.toLowerCase();
+                          final pcName = s.computerName.toLowerCase();
+                          final ref = s.reference?.toLowerCase() ?? '';
+
+                          // Search Match
+                          bool matchesSearch =
+                              pcName.contains(query) || ref.contains(query);
+
+                          // Status Match
+                          bool matchesStatus = true;
+                          if (selectedStatus != 'All') {
+                            matchesStatus = s.status.toLowerCase() ==
+                                selectedStatus.toLowerCase();
+                          }
+
+                          // Duration Match
+                          bool matchesDuration = true;
+                          if (selectedDuration != 'All') {
+                            matchesDuration = s.duration
+                                .toLowerCase()
+                                .contains(selectedDuration.toLowerCase());
+                          }
+
+                          // PC Match
+                          bool matchesPc = true;
+                          if (selectedPc != 'All') {
+                            matchesPc = s.computerName == selectedPc;
+                          }
+
+                          return matchesSearch &&
+                              matchesStatus &&
+                              matchesDuration &&
+                              matchesPc;
+                        }).toList();
+
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.search_off_rounded,
+                                    size: 48,
+                                    color: _textColor.withOpacity(0.2)),
+                                const SizedBox(height: 12),
+                                Text(
+                                  sessions.isEmpty
+                                      ? 'No computer sessions found.'
+                                      : 'No matching sessions found.',
+                                  style: TextStyle(
+                                      color: _textColor.withOpacity(0.4),
+                                      fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return _buildPcSessionCardList(context, filtered);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {});
   }
 
   void _showEditProfileModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
@@ -2163,24 +3400,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Center(
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.pop(context); // Close modal
-                        _pickImage(); // Open picker
+                        _pickImage(
+                          instantSave: false,
+                          onImageSelected: () => setModalState(() {}),
+                        );
                       },
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 40,
-                            backgroundColor: _accentColor.withOpacity(0.1),
-                            backgroundImage: _profileImageUrl != null
-                                ? NetworkImage(_profileImageUrl!)
-                                : null,
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: _accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              image: _profileImageUrl != null
+                                  ? DecorationImage(
+                                      image: NetworkImage(_profileImageUrl!),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                            ),
                             child: _base64Image != null
-                                ? ClipOval(
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
                                     child: Image.memory(
-                                        base64Decode(_base64Image!),
-                                        fit: BoxFit.cover,
-                                        width: 80,
-                                        height: 80))
+                                      base64Decode(_base64Image!),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
                                 : (_profileImageUrl == null
                                     ? Icon(Icons.person,
                                         color: _accentColor, size: 40)
@@ -2267,7 +3514,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: Colors.white, strokeWidth: 2),
                             )
                           : const Text(
-                              'Save Changes',
+                              'Update Profile',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -2327,6 +3574,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTableHeader(String label, {bool forceWhite = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: forceWhite ? Colors.white : _textColor.withOpacity(0.5),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableCell(String value,
+      {String? subtitle, bool forceWhite = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: forceWhite ? Colors.white : _textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: forceWhite
+                    ? Colors.white.withOpacity(0.7)
+                    : _textColor.withOpacity(0.4),
+                fontSize: 10,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCell(String status, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

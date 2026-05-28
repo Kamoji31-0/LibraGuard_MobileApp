@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
 /// A single computer from the library lab.
@@ -40,6 +41,7 @@ class PcSession {
   final String? startTime;
   final String? endTime;
   final String? createdAt;
+  final String? reference;
 
   PcSession({
     required this.id,
@@ -51,6 +53,7 @@ class PcSession {
     this.startTime,
     this.endTime,
     this.createdAt,
+    this.reference,
   });
 
   bool get isPending => status.toLowerCase().contains('pending');
@@ -64,16 +67,82 @@ class PcSession {
         json['computerName']?.toString() ??
         'Unknown PC';
 
-    // Duration: handle int (minutes) or string
+    // Duration: handle int (minutes), double (hours), or string
     String dur = 'N/A';
-    final rawDur = json['duration'] ?? json['requestedDuration'];
+    final rawDur = json['duration'] ?? 
+                   json['requestedDuration'] ?? 
+                   json['hours'] ?? 
+                   json['sessionHours'] ??
+                   json['requestedHours'] ??
+                   json['sessionDuration'] ??
+                   json['session_hours'] ??
+                   json['session_duration'] ??
+                   json['timeLimit'] ??
+                   json['limit'] ??
+                   json['allottedTime'] ??
+                   json['usage_hours'] ??
+                   json['usageHours'] ??
+                   json['session_length'] ??
+                   json['length'] ??
+                   json['hours_requested'] ??
+                   json['requested_hours'];
+
     if (rawDur != null) {
       if (rawDur is int) {
         final h = rawDur ~/ 60;
         final m = rawDur % 60;
-        dur = h > 0 ? '$h Hour${h > 1 ? 's' : ''} $m Min' : '$m Min';
+        dur = h > 0 ? '$h Hour${h > 1 ? 's' : ''} ${m > 0 ? '$m Min' : ''}'.trim() : '$m Min';
+      } else if (rawDur is double || rawDur is num) {
+        double hours = double.parse(rawDur.toString());
+        if (hours >= 1.0) {
+          int h = hours.floor();
+          int m = ((hours - h) * 60).round();
+          dur = m > 0 ? '$h Hour${h > 1 ? 's' : ''} $m Min' : '$h Hour${h > 1 ? 's' : ''}';
+        } else {
+          int m = (hours * 60).round();
+          dur = '$m Min';
+        }
       } else {
         dur = rawDur.toString();
+        final parsed = double.tryParse(dur);
+        if (parsed != null) {
+          if (parsed >= 1.0) {
+            int h = parsed.floor();
+            int m = ((parsed - h) * 60).round();
+            dur = m > 0 ? '$h Hour${h > 1 ? 's' : ''} $m Min' : '$h Hour${h > 1 ? 's' : ''}';
+          } else {
+            int m = (parsed * 60).round();
+            dur = '$m Min';
+          }
+        }
+      }
+    }
+
+    // NEW: Calculate duration from startTime and endTime if dur is still 'N/A'
+    if (dur == 'N/A' && json['startTime'] != null && json['endTime'] != null) {
+      try {
+        final start = DateTime.parse(json['startTime'].toString());
+        final end = DateTime.parse(json['endTime'].toString());
+        final diff = end.difference(start);
+        final h = diff.inHours;
+        final m = diff.inMinutes % 60;
+        if (h > 0) {
+          dur = '$h Hour${h > 1 ? 's' : ''}${m > 0 ? ' $m Min' : ''}';
+        } else {
+          dur = '$m Min';
+        }
+      } catch (_) {}
+    }
+
+    // Derive reference from startTime (YYYYMMDD) in LOCAL time
+    String? ref = json['reference']?.toString() ?? json['sessionReference']?.toString();
+    if (ref == null) {
+      final rawStart = json['startTime'] ?? json['start_time'] ?? json['reservationDate'] ?? json['date'];
+      if (rawStart != null) {
+        try {
+          final dt = DateTime.parse(rawStart.toString()).toLocal();
+          ref = '${dt.year}${dt.month.toString().padLeft(2, '0')}${dt.day.toString().padLeft(2, '0')}';
+        } catch (_) {}
       }
     }
 
@@ -87,13 +156,78 @@ class PcSession {
       duration: dur,
       startTime: json['startTime']?.toString(),
       endTime: json['endTime']?.toString(),
-      createdAt: json['createdAt']?.toString(),
+      reference: ref,
+      createdAt: json['createdAt']?.toString() ?? 
+                 json['created_at']?.toString() ??
+                 json['date']?.toString() ?? 
+                 json['reservationDate']?.toString() ?? 
+                 json['reservation_date']?.toString() ??
+                 json['startTime']?.toString() ??
+                 json['start_time']?.toString(),
     );
   }
 }
 
 class PcService {
   static const String _baseUrl = 'https://libraguard-api.onrender.com/api';
+  static const String _sessionCacheKey = 'cached_pc_sessions';
+  static const String _pcListCacheKey = 'cached_pc_list';
+
+  /// Helper to save sessions to persistent storage
+  Future<void> _saveSessionsToCache(List<PcSession> sessions) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> rawList = sessions.map((s) => {
+        'id': s.id,
+        'userId': s.userId,
+        'computerId': s.computerId,
+        'computerName': s.computerName,
+        'status': s.status,
+        'duration': s.duration,
+        'startTime': s.startTime,
+        'endTime': s.endTime,
+        'reference': s.reference,
+        'createdAt': s.createdAt,
+      }).toList();
+      await prefs.setString(_sessionCacheKey, jsonEncode(rawList));
+    } catch (_) {}
+  }
+
+  /// Helper to save computers list to persistent storage
+  Future<void> _saveComputersToCache(List<dynamic> rawJson) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_pcListCacheKey, jsonEncode(rawJson));
+    } catch (_) {}
+  }
+
+  /// Get computers from persistent storage
+  Future<List<LibraryComputer>> getPersistentCachedComputers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_pcListCacheKey);
+      if (data != null) {
+        final List<dynamic> list = jsonDecode(data);
+        return list
+            .map((e) => LibraryComputer.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Get sessions from persistent storage
+  Future<List<PcSession>> getPersistentCachedSessions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_sessionCacheKey);
+      if (data != null) {
+        final List<dynamic> list = jsonDecode(data);
+        return list.map((e) => PcSession.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return [];
+  }
 
   /// Fetch all library computers with their availability.
   Future<List<LibraryComputer>> fetchComputers() async {
@@ -108,19 +242,23 @@ class PcService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['computers'] ?? []);
+            
+        // Persist to disk
+        _saveComputersToCache(list);
+        
         return list
             .map((e) => LibraryComputer.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-      return [];
+      return await getPersistentCachedComputers();
     } catch (e) {
-      return [];
+      return await getPersistentCachedComputers();
     }
   }
 
@@ -203,7 +341,7 @@ class PcService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -215,15 +353,19 @@ class PcService {
             .toList();
 
         // Enforce user-specific filtering down to the ID level rigidly, fallback to empty list instead of global scope.
-        if (currentUserId.isNotEmpty) {
-          return allSessions.where((s) => s.userId == currentUserId).toList();
+        final result = currentUserId.isNotEmpty 
+            ? allSessions.where((s) => s.userId == currentUserId).toList()
+            : <PcSession>[];
+            
+        if (result.isNotEmpty) {
+          _saveSessionsToCache(result);
         }
         
-        return []; // RIGID FALLBACK: IF NO ACTIVE USER, SHOW NOTHING!
+        return result;
       }
-      return [];
+      return await getPersistentCachedSessions();
     } catch (e) {
-      return [];
+      return await getPersistentCachedSessions();
     }
   }
 }

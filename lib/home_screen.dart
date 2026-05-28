@@ -45,28 +45,38 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
   bool _isSearching = false;
+  bool _isSearchLoading = false;
+  List<BookItem> _searchResults = [];
 
   // Search filter/sort state
   Set<String> _selectedGenres = {};
   String _availabilityFilter = 'All';
   String _selectedSort = 'A – Z';
 
-  static const List<String> _allGenres = [
-    'Technology',
-    'Science',
-    'Fiction',
-    'History',
+  final List<String> _allGenres = [
+    'Arts',
+    'Business & Management',
+    'Criminology',
+    'Culinary Arts',
     'Education',
-    'Children',
-    'Sci-Fi',
-    'Self-Help'
+    'Engineering',
+    'Fiction',
+    'Filipino Studies',
+    'History',
+    'Hospitality Management',
+    'IT & Programming',
+    'Law, Govt & Social',
+    'Mathematics',
+    'Nursing & Health',
+    'Psychology',
+    'Science',
+    'Others',
   ];
 
   static const List<String> _sortOptions = [
     'A – Z',
     'Z – A',
     'New Arrivals',
-    'Popular'
   ];
 
   String? _profileImageUrl;
@@ -97,17 +107,54 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadHomeBooks() async {
+    // 1. Load from Persistent Cache instantly
+    final cached = await _bookService.getPersistentCachedBooks();
+    if (cached.isNotEmpty && mounted) {
+      setState(() => _homeBooks = cached);
+    }
+
+    // 2. Refresh from Network in background
     final books = await _bookService.fetchBooks();
     final favoriteIds = await _favoriteService.getFavoriteIds();
 
     if (mounted) {
       setState(() {
-        _homeBooks = books.take(8).toList(); // Show first 8 books on home
+        _homeBooks = books; // Load all books into homeBooks but take 8 for main view
         for (var b in _homeBooks) {
           if (favoriteIds.contains(b.id)) {
             b.isFavorite = true;
           }
         }
+      });
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _isSearching = false;
+        _searchResults = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _isSearchLoading = true;
+    });
+
+    final results = await _bookService.searchBooks(query);
+    final favoriteIds = await _favoriteService.getFavoriteIds();
+
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        for (var b in _searchResults) {
+          if (favoriteIds.contains(b.id)) {
+            b.isFavorite = true;
+          }
+        }
+        _isSearchLoading = false;
       });
     }
   }
@@ -138,28 +185,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserProfile() async {
+    // 1. Try local cache first for instant UI
+    final cached = await AuthService().getCachedProfile();
+    if (cached != null && mounted) {
+      _applyProfileData(cached);
+    }
+
+    // 2. Fetch live data
     final res = await AuthService().getProfile();
     if (res['success'] == true && mounted) {
-      setState(() {
-        _userProfile = res['data'];
-
-        // Handle base64 image or URL
-        final imgData = _userProfile?['image'] ??
-            _userProfile?['profilePictureUrl'] ??
-            _userProfile?['avatar'];
-        if (imgData != null && imgData.toString().startsWith('data:image')) {
-          _base64Image = imgData.toString().split(',').last;
-        } else {
-          _profileImageUrl = imgData;
-        }
-
-        if (_userProfile?['name'] != null) {
-          _firstName = _userProfile!['name'].toString().split(' ').first;
-        } else if (_userProfile?['fullName'] != null) {
-          _firstName = _userProfile!['fullName'].toString().split(' ').first;
-        }
-      });
-    } else {
+      _applyProfileData(res['data']);
+    } else if (cached == null) {
       // Fallback to mock image if API fails
       if (mounted) {
         setState(() {
@@ -168,6 +204,29 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     }
+  }
+
+  void _applyProfileData(Map<String, dynamic> data) {
+    if (!mounted) return;
+    setState(() {
+      _userProfile = data;
+
+      // Handle base64 image or URL
+      final imgData = _userProfile?['image'] ??
+          _userProfile?['profilePictureUrl'] ??
+          _userProfile?['avatar'];
+      if (imgData != null && imgData.toString().startsWith('data:image')) {
+        _base64Image = imgData.toString().split(',').last;
+      } else {
+        _profileImageUrl = imgData;
+      }
+
+      if (_userProfile?['name'] != null) {
+        _firstName = _userProfile!['name'].toString().split(' ').first;
+      } else if (_userProfile?['fullName'] != null) {
+        _firstName = _userProfile!['fullName'].toString().split(' ').first;
+      }
+    });
   }
 
   @override
@@ -242,7 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(builder: (context) => const ProfileScreen()),
             ).then((_) {
-              if (mounted) setState(() => _selectedIndex = 0);
+              if (mounted) {
+                setState(() => _selectedIndex = 0);
+                _loadUserProfile(); // Re-fetch profile to sync image
+              }
             });
           }
         },
@@ -315,7 +377,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 10),
-
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -337,12 +398,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           fit: BoxFit.cover,
                           width: 40,
                           height: 40,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Icon(Icons.person, color: _primaryColor),
                         ),
                       )
                     : (_profileImageUrl == null
-                        ? Icon(Icons.person, color: _primaryColor)
+                        ? Icon(Icons.person, color: _accentColor, size: 24)
                         : null),
               ),
             ),
@@ -386,21 +445,15 @@ class _HomeScreenState extends State<HomeScreen> {
             focusNode: _searchFocusNode,
             textInputAction: TextInputAction.search,
             onSubmitted: (value) {
-              final query = value.trim();
-              if (query.isNotEmpty) {
-                setState(() {
-                  _searchQuery = query;
-                  _isSearching = true;
-                });
-              }
+              _performSearch(value.trim());
             },
             onChanged: (value) {
-              setState(() {
-                _searchQuery = value.trim();
-                if (_searchQuery.isEmpty) {
-                  _isSearching = false;
-                }
-              });
+              setState(() {}); // Trigger rebuild to show/hide clear icon
+              if (value.trim().isEmpty) {
+                setState(() => _isSearching = false);
+              } else {
+                _performSearch(value.trim());
+              }
             },
             decoration: InputDecoration(
               hintText: 'Search for books, guides...',
@@ -408,16 +461,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextStyle(color: _textColor.withOpacity(0.4), fontSize: 13),
               prefixIcon:
                   Icon(Icons.search, color: _textColor.withOpacity(0.4)),
-              suffixIcon: _searchQuery.isNotEmpty
+              suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: Icon(Icons.close,
                           color: _textColor.withOpacity(0.4), size: 18),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                          _isSearching = false;
-                        });
+                        _performSearch('');
+                        setState(() {});
                       },
                     )
                   : null,
@@ -791,9 +842,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchResults() {
-    // Apply all filters & sorting
-    List<BookItem> filtered = _homeBooks.where((book) {
-      // Search query
+    // Apply all filters & sorting to searchable results
+    List<BookItem> filtered = _searchResults.where((book) {
       final q = _searchQuery.toLowerCase();
       final matchSearch = q.isEmpty ||
           book.title.toLowerCase().contains(q) ||
@@ -801,8 +851,8 @@ class _HomeScreenState extends State<HomeScreen> {
           book.genre.toLowerCase().contains(q);
 
       // Genre filter
-      final matchGenre =
-          _selectedGenres.isEmpty || _selectedGenres.contains(book.genre);
+      final matchGenre = _selectedGenres.isEmpty || 
+          _selectedGenres.contains(book.displayGenre);
 
       // Availability filter
       final matchAvail = _availabilityFilter == 'All' ||
@@ -822,10 +872,6 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case 'New Arrivals':
         filtered.sort((a, b) => b.id.compareTo(a.id));
-        break;
-      case 'Popular':
-        filtered
-            .sort((a, b) => (a.id.hashCode % 10).compareTo(b.id.hashCode % 10));
         break;
     }
 
@@ -913,7 +959,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          if (filtered.isEmpty)
+          if (_isSearchLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (filtered.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 32),
@@ -941,14 +989,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.58, // Taller cards to prevent overflow
+                childAspectRatio: 0.55, // Taller cards to prevent overflow
               ),
               itemCount: filtered.length,
               itemBuilder: (context, index) {
-                // Find the index in _homeBooks to reuse _buildBookCard
                 final book = filtered[index];
-                final originalIndex = _homeBooks.indexOf(book);
-                return _buildBookCard(originalIndex);
+                return _buildBookCard(book);
               },
             ),
         ],
@@ -968,20 +1014,18 @@ class _HomeScreenState extends State<HomeScreen> {
           return Container(
             width: 160,
             margin: const EdgeInsets.only(right: 16),
-            child: _buildBookCard(index),
+            child: _buildBookCard(_homeBooks[index]),
           );
         },
       ),
     );
   }
 
-  Widget _buildBookCard(int index) {
-    final book = _homeBooks[index];
-    final theme = Theme.of(context);
 
+  Widget _buildBookCard(BookItem book) {
+    final theme = Theme.of(context);
     return Container(
-      width: 190,
-      height: 260, // ✅ FIXED (was 400 ❌)
+      height: 280,
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -999,7 +1043,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Container(
             height: 115,
-            width: double.infinity, // ✅ FIXED
+            width: double.infinity,
             decoration: BoxDecoration(
               color: const Color(0xFF0F172A),
               borderRadius: BorderRadius.circular(12),
@@ -1007,8 +1051,20 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Stack(
               children: [
                 Center(
-                  child: Icon(Icons.book,
-                      color: Colors.white.withOpacity(0.2), size: 32),
+                  child: book.imageUrl != null && book.imageUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            book.imageUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.book,
+                                color: Colors.white.withOpacity(0.2), size: 32),
+                          ),
+                        )
+                      : Icon(Icons.book,
+                          color: Colors.white.withOpacity(0.2), size: 32),
                 ),
                 Positioned(
                   top: 6,
@@ -1031,7 +1087,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         book.isFavorite
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: theme.colorScheme.secondary, // Primary 600
+                        color: theme.colorScheme.secondary,
                         size: 12,
                       ),
                     ),
@@ -1042,7 +1098,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            book.genre.toUpperCase(),
+            book.displayGenre.toUpperCase(),
             style: TextStyle(
               color: _textColor.withOpacity(0.5),
               fontSize: 8,
@@ -1054,7 +1110,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             book.title,
             style: TextStyle(
-              color: theme.colorScheme.secondary, // Primary 600
+              color: theme.colorScheme.secondary,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -1081,7 +1137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: book.isAvailable
                       ? const Color(0xFF4ADE80)
-                      : theme.colorScheme.secondary, // Primary 600
+                      : theme.colorScheme.secondary,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1096,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 28,
@@ -1113,16 +1169,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       isAvailable: book.isAvailable,
                       description: book.description,
                       imageUrl: book.imageUrl,
+                      publishedIn: book.publishedIn,
+                      isbn: book.isbn,
                     ),
                   ),
                 );
               },
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: theme.colorScheme.secondary, width: 1.2), // 600
+                side: BorderSide(color: theme.colorScheme.secondary, width: 1.2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                foregroundColor: theme.colorScheme.secondary, // 600
+                foregroundColor: theme.colorScheme.secondary,
                 padding: EdgeInsets.zero,
               ),
               child: const Text(

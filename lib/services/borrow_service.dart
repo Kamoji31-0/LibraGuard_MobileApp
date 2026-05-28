@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
 /// Model representing one borrow transaction from the API.
@@ -35,7 +36,9 @@ class BorrowTransaction {
       id: json['id']?.toString() ?? '',
       userId: json['userId']?.toString() ?? json['studentId']?.toString() ?? '',
       bookId: json['bookId']?.toString() ?? '',
-      bookTitle: json['book']?.toString() ?? json['bookTitle']?.toString() ?? 'Unknown Book',
+      bookTitle: json['book']?.toString() ??
+          json['bookTitle']?.toString() ??
+          'Unknown Book',
       borrowerName: json['name']?.toString() ?? '',
       borrowDate: json['borrowDate']?.toString() ?? '',
       dueDate: json['dueDate']?.toString() ?? '',
@@ -56,6 +59,80 @@ class BorrowTransaction {
 
 class BorrowService {
   static const String _baseUrl = 'https://libraguard-api.onrender.com/api';
+  static const String _cacheKey = 'cached_transactions_list';
+
+  static List<BorrowTransaction>? _cachedTransactions;
+  static DateTime? _lastFetchTime;
+
+  /// Helper to save transactions to persistent storage
+  Future<void> _saveToPersistentCache(List<dynamic> rawJson) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(rawJson));
+    } catch (_) {}
+  }
+
+  /// Get transactions from persistent storage
+  Future<List<BorrowTransaction>> getPersistentCachedTransactions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_cacheKey);
+      if (data != null) {
+        final List<dynamic> list = jsonDecode(data);
+        return list
+            .map((e) => BorrowTransaction.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Fetch all borrow transactions for the currently logged-in user.
+  Future<List<BorrowTransaction>> fetchMyTransactions({bool forceRefresh = false}) async {
+    // Return cache if it's fresh (less than 5 minutes old)
+    if (!forceRefresh &&
+        _cachedTransactions != null &&
+        _lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!) < const Duration(minutes: 5)) {
+      return _cachedTransactions!;
+    }
+
+    final authService = AuthService();
+    final token = await authService.getToken();
+    if (token == null) return [];
+
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/transactions'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10)); // Add timeout
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final List<dynamic> list =
+            body is List ? body : (body['data'] ?? body['transactions'] ?? []);
+        
+        // Persist to disk
+        _saveToPersistentCache(list);
+        
+        final results = list
+            .map((e) => BorrowTransaction.fromJson(e as Map<String, dynamic>))
+            .toList();
+            
+        // Update cache
+        _cachedTransactions = results;
+        _lastFetchTime = DateTime.now();
+        
+        return results;
+      }
+      return _cachedTransactions ?? [];
+    } catch (e) {
+      return _cachedTransactions ?? [];
+    }
+  }
 
   /// Submit a new borrow request for [bookId].
   /// The [dueDate] defaults to 7 days from now if not provided.
@@ -115,36 +192,6 @@ class BorrowService {
       }
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  /// Fetch all borrow transactions for the currently logged-in user.
-  Future<List<BorrowTransaction>> fetchMyTransactions() async {
-    final authService = AuthService();
-    final token = await authService.getToken();
-    if (token == null) return [];
-
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/transactions'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        // Handle { data: [...] } or plain list
-        final List<dynamic> list =
-            body is List ? body : (body['data'] ?? body['transactions'] ?? []);
-        return list
-            .map((e) => BorrowTransaction.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      return [];
     }
   }
 }

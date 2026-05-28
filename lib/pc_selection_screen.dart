@@ -36,18 +36,28 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
   }
 
   Future<void> _loadComputers() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // 1. Load from cache first for instant UI
+    final cached = await _pcService.getPersistentCachedComputers();
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _computers = cached;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
+    // 2. Fetch fresh data silenty
     final computers = await _pcService.fetchComputers();
 
     if (!mounted) return;
     setState(() {
       _isLoading = false;
-      if (computers.isEmpty) {
-        // Fallback: build a static list so the screen is never empty
+      if (computers.isEmpty && _computers.isEmpty) {
+        // Fallback: build a static list only if we have NO data at all
         _computers = List.generate(
           8,
           (i) => LibraryComputer(
@@ -57,8 +67,9 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
           ),
         );
         _errorMessage = 'Could not load live data. Showing local list.';
-      } else {
+      } else if (computers.isNotEmpty) {
         _computers = computers;
+        _errorMessage = null;
       }
     });
   }

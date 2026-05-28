@@ -7,7 +7,8 @@ import 'profile_screen.dart';
 import 'widgets/app_bottom_nav.dart';
 
 class LibraryServiceGuideScreen extends StatefulWidget {
-  const LibraryServiceGuideScreen({super.key});
+  final int? initialExpandedIndex;
+  const LibraryServiceGuideScreen({super.key, this.initialExpandedIndex});
 
   @override
   State<LibraryServiceGuideScreen> createState() =>
@@ -24,6 +25,12 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
 
   // Track open state for dropdown
   int? _expandedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandedIndex = widget.initialExpandedIndex;
+  }
 
   final List<Map<String, dynamic>> _guideItems = [
     {
@@ -124,22 +131,40 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       'rules': [
         {
           'number': '01.',
-          'text':
-              'Present your valid RFID Card at the circulation desk. Card is ',
-          'bold': 'non-transferable',
-          'text2': ' and must be used only by the registered owner.',
+          'text': 'Select your desired book from the catalog.'
         },
         {
           'number': '02.',
-          'text':
-              'Proceed to the circulation desk and inform the librarian of the ',
+          'text': 'Tap the ',
+          'bold': 'Borrow Book',
+          'text2': ' button to initiate the request.'
+        },
+        {
+          'number': '03.',
+          'text': 'Review the book pickup process and reminders.'
+        },
+        {
+          'number': '04.',
+          'text': 'Submit your request for librarian approval.'
+        },
+      ],
+      'pickupRules': [
+        {
+          'number': '01.',
+          'text': 'Present your valid ',
+          'bold': 'RFID Card',
+          'text2': ' at the circulation desk.',
+        },
+        {
+          'number': '02.',
+          'text': 'Inform the librarian of the ',
           'bold': 'book title',
           'text2': ' you wish to borrow.',
         },
         {
           'number': '03.',
           'text': 'Tap your RFID card at the reader for ',
-          'bold': 'official checkout',
+          'bold': 'official pickup',
           'text2': ' after the librarian identifies the book.',
         },
       ],
@@ -159,18 +184,36 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
         },
         {
           'number': '03.',
+          'text': 'Borrowed books must be picked up within ',
+          'bold': '3 working days',
+          'text2': ' from approval.',
+        },
+        {
+          'number': '04.',
+          'text': 'Due Date: ',
+          'bold': '7 days',
+          'text2': ' return period for general collection books.',
+        },
+        {
+          'number': '05.',
+          'text': 'Library Hours: ',
+          'bold': '8:00 AM – 5:00 PM',
+          'text2': ' (Monday – Saturday).',
+        },
+        {
+          'number': '06.',
           'text': 'Reference books and periodicals are for ',
           'bold': 'library use only',
           'text2': ' and cannot be borrowed.',
         },
         {
-          'number': '04.',
+          'number': '07.',
           'text': 'Books must be returned on or before the ',
           'bold': 'due date',
           'text2': ' to avoid fines.',
         },
         {
-          'number': '05.',
+          'number': '08.',
           'text': 'Visiting researchers must register at the ',
           'bold': 'LibraGuard App',
           'text2': ' and present a valid institutional ID.',
@@ -608,10 +651,10 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
             Row(
               children: [
                 Icon(item['detailIcon'] ?? Icons.info_outline,
-                    color: Colors.black, size: 20),
+                    color: _textColor, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  item['detailTitle'] ?? 'Rules',
+                  item['id'] == '02' ? 'How to Borrow in App' : (item['detailTitle'] ?? 'Rules'),
                   style: TextStyle(
                     color: _textColor,
                     fontSize: 16,
@@ -632,7 +675,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                       style: TextStyle(
                         color: _accentColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -641,7 +684,75 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
                         text: TextSpan(
                           style: TextStyle(
                             color: _textColor.withOpacity(0.8),
-                            fontSize: 13,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                          children: [
+                            TextSpan(text: rule['text'] ?? ''),
+                            if (rule['bold'] != null)
+                              TextSpan(
+                                text: rule['bold'],
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            if (rule['text2'] != null)
+                              TextSpan(text: rule['text2']),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList()),
+          ],
+        ),
+      );
+    }
+
+    // Pickup Rules section (Special for Borrowing)
+    if (item.containsKey('pickupRules')) {
+      children.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.back_hand_outlined, color: _textColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Book Pickup Process',
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...((item['pickupRules'] as List).map((rule) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      rule['number'],
+                      style: TextStyle(
+                        color: _accentColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.8),
+                            fontSize: 14,
                             height: 1.5,
                           ),
                           children: [
@@ -673,7 +784,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
             item['details'] ?? '',
             style: TextStyle(
               color: _textColor.withOpacity(0.6),
-              fontSize: 13,
+              fontSize: 14,
               height: 1.5,
             ),
           ),
@@ -683,12 +794,13 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
 
     // Divider and Note section
     if (item.containsKey('note')) {
-      if (children.isNotEmpty) {
-        children.add(const Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.0),
-          child: Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+        children.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0),
+          child: Divider(
+              height: 1,
+              thickness: 1,
+              color: _textColor.withOpacity(0.08)),
         ));
-      }
 
       children.add(
         Column(
@@ -696,10 +808,11 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, color: Colors.black, size: 20),
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange.shade700, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Note',
+                  'Reminder',
                   style: TextStyle(
                     color: _textColor,
                     fontSize: 16,
@@ -709,118 +822,97 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (item['note'] is String)
-              Padding(
-                padding: const EdgeInsets.only(left: 32.0),
-                child: Text(
-                  item['note'],
-                  style: TextStyle(
-                    color: _textColor.withOpacity(0.7),
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-              )
-            else if (item['note'] is List)
-              ...((item['note'] as List).map((rule) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        rule['number'],
-                        style: TextStyle(
-                          color: _accentColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
+            ...((item['note'] as List).map((note) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      note['number'],
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: TextStyle(
-                              color: _textColor.withOpacity(0.8),
-                              fontSize: 13,
-                              height: 1.5,
-                            ),
-                            children: [
-                              TextSpan(text: rule['text'] ?? ''),
-                              if (rule['bold'] != null)
-                                TextSpan(
-                                  text: rule['bold'],
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              if (rule['text2'] != null)
-                                TextSpan(text: rule['text2']),
-                            ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.8),
+                            fontSize: 14,
+                            height: 1.5,
                           ),
+                          children: [
+                            TextSpan(text: note['text'] ?? ''),
+                            if (note['bold'] != null)
+                              TextSpan(
+                                text: note['bold'],
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            if (note['text2'] != null)
+                              TextSpan(text: note['text2']),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                );
-              }).toList()),
+                    ),
+                  ],
+                ),
+              );
+            }).toList()),
           ],
         ),
       );
     }
 
-    // Button section
-    if (item['buttonText'] != null) {
+    // Custom button if specified
+    if (item.containsKey('buttonText')) {
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                if (item['buttonText'] == 'Explore Books') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BookListScreen(),
-                    ),
-                  );
-                } else if (item['buttonText'] == 'Reserve Computer') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PcReservationRulesScreen(),
-                    ),
-                  );
-                } else if (item['buttonText'] == 'View My Books') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
-                } else if (item['buttonText'] == 'View My Entry') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accentColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: Text(
-                item['buttonText'],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+          child: ElevatedButton(
+            onPressed: () {
+              if (item['id'] == '01') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const BookListScreen()),
+                );
+              } else if (item['id'] == '02') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const BookListScreen()),
+                );
+              } else if (item['id'] == '04') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const PcReservationRulesScreen()),
+                );
+              } else if (item['id'] == '05') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ProfileScreen()),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentColor,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: Text(
+              item['buttonText'],
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -828,9 +920,6 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
+    return Column(children: children);
   }
 }

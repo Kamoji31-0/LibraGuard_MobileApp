@@ -132,7 +132,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
                             color: _textColor, size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          'Note',
+                          'Reminder',
                           style: TextStyle(
                             color: _textColor,
                             fontSize: 16,
@@ -224,7 +224,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
           number,
           style: TextStyle(
             color: _accentColor,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -234,7 +234,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
             text,
             style: TextStyle(
               color: _textColor.withOpacity(0.8),
-              fontSize: 16,
+              fontSize: 14,
               height: 1.4,
             ),
           ),

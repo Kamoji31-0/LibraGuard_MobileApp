@@ -11,7 +11,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
+  Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? (Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1D2939));
   Color get _cardColor => Theme.of(context).cardColor;
 
   @override
@@ -129,20 +129,8 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
                       imagePath: 'assets/images/Acosta.jpg'),
                   const SizedBox(width: 16),
                   _buildStaffMember(
-                      context, 'IE', 'Imelda S. Esquejo', 'Library Staff',
-                      imagePath: 'assets/images/Esquejo.jpg'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: (MediaQuery.of(context).size.width - 96) / 2,
-                    child: _buildStaffMember(
-                        context, 'RP', 'Reianne Joy Pascua', 'Library Staff',
-                        imagePath: 'assets/images/Pascua.jpg'),
-                  ),
+                      context, 'RP', 'Reianne Joy Pascua', 'Library Staff',
+                      imagePath: 'assets/images/Pascua.jpg'),
                 ],
               ),
             ],
@@ -170,14 +158,14 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: const Color(0xFF344054),
+                    backgroundColor: _accentColor.withOpacity(0.1),
                     backgroundImage:
                         imagePath != null ? AssetImage(imagePath) : null,
                     child: imagePath == null
                         ? Text(
                             initials,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: _accentColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -337,7 +325,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
           style: TextStyle(
           color: isClosed
               ? (Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF800000)
+                  ? const Color(0xFFFF4D4D) // Lighter red for dark mode
                   : Colors.red.shade700)
               : _primaryColor,
             fontSize: 14,

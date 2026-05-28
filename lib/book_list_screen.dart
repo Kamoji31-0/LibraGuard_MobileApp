@@ -24,16 +24,25 @@ class _BookListScreenState extends State<BookListScreen> {
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
-  // All genres for filter
-  static const List<String> _allGenres = [
-    'Technology',
-    'Science',
-    'Fiction',
-    'History',
+  // All genres for filter (Standardized)
+  final List<String> _allGenres = [
+    'Arts',
+    'Business & Management',
+    'Criminology',
+    'Culinary Arts',
     'Education',
-    'Children',
-    'Sci-Fi',
-    'Self-Help',
+    'Engineering',
+    'Fiction',
+    'Filipino Studies',
+    'History',
+    'Hospitality Management',
+    'IT & Programming',
+    'Law, Govt & Social',
+    'Mathematics',
+    'Nursing & Health',
+    'Psychology',
+    'Science',
+    'Others',
   ];
 
   // Sort options
@@ -41,7 +50,6 @@ class _BookListScreenState extends State<BookListScreen> {
     'A – Z',
     'Z – A',
     'New Arrivals',
-    'Popular',
   ];
 
   // State
@@ -78,7 +86,19 @@ class _BookListScreenState extends State<BookListScreen> {
   }
 
   Future<void> _loadBooks() async {
-    setState(() => _isInitialLoading = true);
+    // 1. Load from Persistent Cache instantly
+    final cached = await _bookService.getPersistentCachedBooks();
+    if (cached.isNotEmpty && mounted) {
+      setState(() {
+        _allBooks = cached;
+        _isInitialLoading = false;
+        _applyAll();
+      });
+    } else {
+      setState(() => _isInitialLoading = true);
+    }
+
+    // 2. Refresh from Network in background
     final books = await _bookService.fetchBooks();
     final favoriteIds = await _favoriteService.getFavoriteIds();
 
@@ -103,8 +123,6 @@ class _BookListScreenState extends State<BookListScreen> {
     super.dispose();
   }
 
-  //Filter + Sort logic
-
   void _applyAll() {
     List<BookItem> result = _allBooks.where((b) {
       // Search
@@ -114,9 +132,17 @@ class _BookListScreenState extends State<BookListScreen> {
           b.author.toLowerCase().contains(q) ||
           b.genre.toLowerCase().contains(q);
 
-      // Genre
-      final matchGenre =
-          _selectedGenres.isEmpty || _selectedGenres.contains(b.genre);
+      // Genre filter logic
+      bool matchesGenre = _selectedGenres.isEmpty;
+      if (!matchesGenre) {
+        for (final selectedGenre in _selectedGenres) {
+          if (b.displayGenre.toLowerCase() == selectedGenre.toLowerCase()) {
+            matchesGenre = true;
+            break;
+          }
+        }
+      }
+      final matchGenre = matchesGenre;
 
       // Availability
       final matchAvail = _availabilityFilter == 'All' ||
@@ -136,10 +162,6 @@ class _BookListScreenState extends State<BookListScreen> {
         break;
       case 'New Arrivals':
         result.sort((a, b) => b.id.compareTo(a.id));
-        break;
-      case 'Popular':
-        result
-            .sort((a, b) => (a.id.hashCode % 10).compareTo(b.id.hashCode % 10));
         break;
     }
 
@@ -283,8 +305,7 @@ class _BookListScreenState extends State<BookListScreen> {
                         ),
                         const SizedBox(height: 10),
                         Row(
-                          children:
-                              ['All', 'Available', 'Borrowed'].map((opt) {
+                          children: ['All', 'Available', 'Borrowed'].map((opt) {
                             final sel = tempAvail == opt;
                             return Expanded(
                               child: GestureDetector(
@@ -724,7 +745,8 @@ class _BookListScreenState extends State<BookListScreen> {
                                       crossAxisCount: 2,
                                       crossAxisSpacing: 16,
                                       mainAxisSpacing: 16,
-                                      childAspectRatio: 0.55,
+                                      childAspectRatio:
+                                          0.51, // Decreased to allow more vertical space
                                     ),
                                     itemCount: _pageBooks.length,
                                     itemBuilder: (ctx, i) =>
@@ -922,8 +944,20 @@ class _BookListScreenState extends State<BookListScreen> {
             child: Stack(
               children: [
                 Center(
-                  child: Icon(Icons.book,
-                      color: Colors.white.withOpacity(0.2), size: 36),
+                  child: book.imageUrl != null && book.imageUrl!.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            book.imageUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.book,
+                                color: Colors.white.withOpacity(0.2), size: 36),
+                          ),
+                        )
+                      : Icon(Icons.book,
+                          color: Colors.white.withOpacity(0.2), size: 36),
                 ),
                 Positioned(
                   top: 6,
@@ -956,7 +990,7 @@ class _BookListScreenState extends State<BookListScreen> {
           const SizedBox(height: 8),
           // Category
           Text(
-            book.genre.toUpperCase(),
+            book.displayGenre.toUpperCase(),
             style: TextStyle(
               color: _textDark.withOpacity(0.5),
               fontSize: 9,
@@ -1012,7 +1046,7 @@ class _BookListScreenState extends State<BookListScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12), // Reduced from 20
           // Outlined Maroon Button
           SizedBox(
             width: double.infinity,
@@ -1030,6 +1064,8 @@ class _BookListScreenState extends State<BookListScreen> {
                       isAvailable: book.isAvailable,
                       description: book.description,
                       imageUrl: book.imageUrl,
+                      publishedIn: book.publishedIn,
+                      isbn: book.isbn,
                     ),
                   ),
                 );
@@ -1055,5 +1091,4 @@ class _BookListScreenState extends State<BookListScreen> {
       ),
     );
   }
-
 }
