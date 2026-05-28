@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
@@ -42,10 +43,15 @@ class FavoriteService {
             await prefs.setStringList(storageKey, serverFavorites);
             return serverFavorites;
           }
+        } else if (response.statusCode == 404) {
+          // Silent fallback: server doesn't support favorites yet
+          debugPrint('Favorites sync skipped: Endpoint not found (404)');
+        } else {
+          debugPrint('Favorites sync failed: Status ${response.statusCode}');
         }
       }
     } catch (e) {
-      print('Error syncing favorites from server: $e');
+      debugPrint('Error syncing favorites from server: $e');
     }
 
     // 2. Fallback to local storage if API is not yet implemented or offline
@@ -76,7 +82,7 @@ class FavoriteService {
       final authService = AuthService();
       final token = await authService.getToken();
       if (token != null) {
-        await http.post(
+        final response = await http.post(
           Uri.parse('$baseUrl/users/favorites/toggle'),
           headers: {
             'Authorization': 'Bearer $token',
@@ -84,9 +90,12 @@ class FavoriteService {
           },
           body: jsonEncode({'bookId': bookId}),
         );
+        if (response.statusCode != 200 && response.statusCode != 201) {
+          debugPrint('Favorite toggle sync failed: Status ${response.statusCode}');
+        }
       }
     } catch (e) {
-      print('Error syncing favorite toggle with server: $e');
+      debugPrint('Error syncing favorite toggle with server: $e');
     }
 
     return isFavorited;
