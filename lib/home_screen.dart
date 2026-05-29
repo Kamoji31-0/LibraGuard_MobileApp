@@ -119,7 +119,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (mounted) {
       setState(() {
-        _homeBooks = books; // Load all books into homeBooks but take 8 for main view
+        // Randomize and limit to 10 books for the home view
+        _homeBooks = books..shuffle();
+        if (_homeBooks.length > 10) {
+          _homeBooks = _homeBooks.take(10).toList();
+        }
+
         for (var b in _homeBooks) {
           if (favoriteIds.contains(b.id)) {
             b.isFavorite = true;
