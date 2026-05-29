@@ -434,23 +434,31 @@ class AuthService {
   }
 
   /// Get gate logs from persistent storage
-  Future<List<dynamic>> getCachedGateLogs() async {
+  Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_gateLogsCacheKey);
       if (data != null) {
-        return jsonDecode(data);
+        final List<dynamic> list = jsonDecode(data);
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     } catch (_) {}
     return [];
   }
 
   // Get Gate Logs (Synchronized with web system)
-  Future<List<dynamic>> getGateLogs() async {
+  Future<List<Map<String, dynamic>>> getGateLogs() async {
     final token = await getToken();
     if (token == null) return [];
 
     try {
+      // Safety constraint: strictly enforce the active userId
+      final profileRes = await getProfile();
+      final String currentUserId = profileRes['data']?['id']?.toString() ??
+          profileRes['data']?['_id']?.toString() ??
+          profileRes['data']?['studentId']?.toString() ??
+          '';
+
       final response = await http.get(
         Uri.parse('$baseUrl/rfid/my-logs'),
         headers: {
@@ -464,19 +472,33 @@ class AuthService {
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['logs'] ?? []);
 
-        // Map data to match the UI expectations in profile_screen.dart
-        final results = list.map((log) {
-          final timeIn = log['timeIn']?.toString() ?? '';
-          final timeOut = log['timeOut']?.toString() ?? 'Active';
-          final lane = log['lane']?.toString() ?? 'N/A';
-          final date = log['date']?.toString() ?? '';
+        // Enforce user-specific filtering down to the ID level rigidly
+        final filteredList = currentUserId.isNotEmpty
+            ? list.where((log) {
+                final logMap = log is Map ? log : {};
+                final logUid = (logMap['userId'] ??
+                        logMap['studentId'] ??
+                        logMap['user']?['id'] ??
+                        logMap['user']?['_id'])
+                    ?.toString();
+                return logUid == currentUserId;
+              }).toList()
+            : [];
 
-          return {
-            ...log,
+        // Map data to match the UI expectations in profile_screen.dart
+        final results = filteredList.map((log) {
+          final logMap = Map<String, dynamic>.from(log as Map);
+          final timeIn = logMap['timeIn']?.toString() ?? '';
+          final timeOut = logMap['timeOut']?.toString() ?? 'Active';
+          final lane = logMap['lane']?.toString() ?? 'N/A';
+          final date = logMap['date']?.toString() ?? '';
+
+          return <String, dynamic>{
+            ...logMap,
             'action': 'Gate entry/exit (Lane $lane)',
             'createdAt': date.isNotEmpty ? date : timeIn,
             'status':
-                timeOut == 'null' || timeOut.isEmpty || log['timeOut'] == null
+                timeOut == 'null' || timeOut.isEmpty || logMap['timeOut'] == null
                     ? 'Active'
                     : 'Completed',
           };

@@ -103,6 +103,13 @@ class BorrowService {
     if (token == null) return [];
 
     try {
+      // Safety constraint: strictly enforce the active userId
+      final profileRes = await authService.getProfile();
+      final String currentUserId = profileRes['data']?['id']?.toString() ??
+          profileRes['data']?['_id']?.toString() ??
+          profileRes['data']?['studentId']?.toString() ??
+          '';
+
       final response = await http.get(
         Uri.parse('$_baseUrl/transactions'),
         headers: {
@@ -115,18 +122,37 @@ class BorrowService {
         final body = jsonDecode(response.body);
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['transactions'] ?? []);
-        
-        // Persist to disk
-        _saveToPersistentCache(list);
-        
-        final results = list
+
+        final allTransactions = list
             .map((e) => BorrowTransaction.fromJson(e as Map<String, dynamic>))
             .toList();
-            
+
+        // Enforce user-specific filtering down to the ID level rigidly
+        final results = currentUserId.isNotEmpty
+            ? allTransactions.where((tx) => tx.userId == currentUserId).toList()
+            : <BorrowTransaction>[];
+
+        if (results.isNotEmpty) {
+          // Persist to disk
+          _saveToPersistentCache(results.map((e) => {
+            'id': e.id,
+            'userId': e.userId,
+            'bookId': e.bookId,
+            'bookTitle': e.bookTitle,
+            'borrowerName': e.borrowerName,
+            'borrowDate': e.borrowDate,
+            'dueDate': e.dueDate,
+            'pickupDeadline': e.pickupDeadline,
+            'returnDate': e.returnDate,
+            'status': e.status,
+            'penalty': e.penalty,
+          }).toList());
+        }
+
         // Update cache
         _cachedTransactions = results;
         _lastFetchTime = DateTime.now();
-        
+
         return results;
       }
       return _cachedTransactions ?? [];

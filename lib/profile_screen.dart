@@ -90,10 +90,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _cachedTransactions =
-            (results[0] as List<dynamic>).cast<BorrowTransaction>();
-        _cachedGateLogs =
-            (results[1] as List<dynamic>).cast<Map<String, dynamic>>();
-        _cachedSessions = (results[2] as List<dynamic>).cast<PcSession>();
+            (results[0] as List).cast<BorrowTransaction>();
+        _cachedGateLogs = (results[1] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _cachedSessions = (results[2] as List).cast<PcSession>();
 
         final cachedProfile = results[3] as Map<String, dynamic>?;
         if (cachedProfile != null) {
@@ -150,7 +151,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Pre-fetch other history items as well to update local cache
       BorrowService().fetchMyTransactions(),
       PcService().fetchMySessions(),
-      AuthService().getGateLogs(),
+      AuthService().getGateLogs().then((res) {
+        if (mounted) {
+          setState(() {
+            _cachedGateLogs = res;
+          });
+        }
+      }),
     ]);
     if (mounted) setState(() {});
   }
@@ -2793,8 +2800,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _refreshStarted = true;
               AuthService().getGateLogs().then((fresh) {
                 if (mounted && fresh.isNotEmpty) {
-                  setState(() =>
-                      _cachedGateLogs = fresh.cast<Map<String, dynamic>>());
+                  setState(() => _cachedGateLogs = fresh);
                   setSheetState(() {});
                 }
               });
@@ -2962,8 +2968,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Lane Match
                           bool matchesLane = true;
                           if (selectedLane != 'All') {
-                            matchesLane =
-                                laneVal.contains(selectedLane.toLowerCase());
+                            matchesLane = selectedLane
+                                .toLowerCase()
+                                .contains(laneVal.toLowerCase());
                           }
 
                           // Timeframe Match
@@ -3308,22 +3315,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Status Match
                           bool matchesStatus = true;
                           if (selectedStatus != 'All') {
-                            matchesStatus = s.status.toLowerCase() ==
-                                selectedStatus.toLowerCase();
+                            final sStatus = s.status.toLowerCase();
+                            final selSt = selectedStatus.toLowerCase();
+                            if (selSt == 'active') {
+                              matchesStatus =
+                                  sStatus == 'active' || sStatus == 'approved';
+                            } else {
+                              matchesStatus = sStatus == selSt;
+                            }
                           }
 
                           // Duration Match
                           bool matchesDuration = true;
                           if (selectedDuration != 'All') {
-                            matchesDuration = s.duration
-                                .toLowerCase()
-                                .contains(selectedDuration.toLowerCase());
+                            final dur = s.duration.toLowerCase();
+                            final sel = selectedDuration.toLowerCase();
+                            // Match "1 Hour" with "1 Hour", "1 hr", "60 min" etc.
+                            if (sel == '1 hour') {
+                              matchesDuration = dur.contains('1 hour') ||
+                                  dur.contains('1 hr') ||
+                                  dur.contains('60 min');
+                            } else if (sel == '2 hours') {
+                              matchesDuration = dur.contains('2 hour') ||
+                                  dur.contains('2 hr') ||
+                                  dur.contains('120 min');
+                            } else {
+                              matchesDuration = dur.contains(sel);
+                            }
                           }
 
                           // PC Match
                           bool matchesPc = true;
                           if (selectedPc != 'All') {
-                            matchesPc = s.computerName == selectedPc;
+                            matchesPc = s.computerName
+                                .toLowerCase()
+                                .contains(selectedPc.toLowerCase());
                           }
 
                           return matchesSearch &&
