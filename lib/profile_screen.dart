@@ -144,6 +144,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _refreshAllData() async {
+    await Future.wait([
+      _refreshProfileData(),
+      // Pre-fetch other history items as well to update local cache
+      BorrowService().fetchMyTransactions(),
+      PcService().fetchMySessions(),
+      AuthService().getGateLogs(),
+    ]);
+    if (mounted) setState(() {});
+  }
+
   Future<String?> _showResizeDialog(Uint8List imageBytes) async {
     final GlobalKey boundaryKey = GlobalKey();
     final TransformationController transformController =
@@ -503,7 +514,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: _backgroundColor,
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: _primaryColor))
-          : SingleChildScrollView(
+          : RefreshIndicator(
+              onRefresh: _refreshAllData,
+              color: _primaryColor,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
               child: Stack(
                 children: [
                   // Maroon Background behind the profile card, scrolling with the view
@@ -640,6 +655,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+          ),
       bottomNavigationBar: AppBottomNavBar(
         selectedIndex: 3,
         onItemTapped: (index) {
@@ -3237,10 +3253,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ],
                                   'Duration': [
                                     'All',
-                                    '15 mins',
-                                    '30 mins',
-                                    '1 hr',
-                                    '2 hr'
+                                    '15 Min',
+                                    '30 Min',
+                                    '1 Hour',
+                                    '2 Hours'
                                   ],
                                   'PC Number': ['All', ...allPcs],
                                 },

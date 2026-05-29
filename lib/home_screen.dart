@@ -229,48 +229,61 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      _loadUserProfile(),
+      _loadHomeBooks(),
+      _fetchOccupancy(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 24),
-                _buildSearchBar(),
-                const SizedBox(height: 24),
-                if (_isSearching)
-                  _buildSearchResults()
-                else ...[
-                  _buildCapacityCard(),
-                  const SizedBox(height: 32),
-                  _buildQuickActions(),
-                  const SizedBox(height: 32),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const BookListScreen()),
-                      );
-                    },
-                    child: _buildSectionHeader('BOOKS', 'View all >'),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildBookList(),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: _primaryColor,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
                   const SizedBox(height: 24),
-                  _buildSectionHeader('LIBRARY GUIDES', ''),
-                  const SizedBox(height: 16),
-                  _buildGuidesList(),
+                  _buildSearchBar(),
                   const SizedBox(height: 24),
+                  if (_isSearching)
+                    _buildSearchResults()
+                  else ...[
+                    _buildCapacityCard(),
+                    const SizedBox(height: 32),
+                    _buildQuickActions(),
+                    const SizedBox(height: 32),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const BookListScreen()),
+                        );
+                      },
+                      child: _buildSectionHeader('BOOKS', 'View all >'),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildBookList(),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader('LIBRARY GUIDES', ''),
+                    const SizedBox(height: 16),
+                    _buildGuidesList(),
+                    const SizedBox(height: 24),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
