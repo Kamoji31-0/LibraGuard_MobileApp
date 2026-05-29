@@ -37,9 +37,17 @@ class AuthService {
   Future<void> logout() async {
     await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
+    
+    // Clear Core Auth
     await prefs.remove('jwt_token');
     await prefs.remove('first_name');
     await prefs.remove('user_profile');
+    
+    // Clear History & Services Caches
+    await prefs.remove('cached_gate_logs');
+    await prefs.remove('cached_pc_sessions');
+    await prefs.remove('cached_pc_list');
+    await prefs.remove('cached_transactions_list');
   }
 
   // Save first name
