@@ -117,12 +117,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    // Load 2FA status
+    // Load 2FA status and pre-fetch setup details if needed
     final _is2faEnabledLocal = await AuthService().is2FAEnabled();
     if (mounted) {
       setState(() {
         _is2FAEnabled = _is2faEnabledLocal;
       });
+
+      // Optimization: Pre-fetch setup details so expansion is instant
+      if (!_is2faEnabledLocal) {
+        AuthService().get2FASetup().then((setup) {
+          if (mounted) {
+            setState(() {
+              _2faQrCodeUrl = setup['qrCodeUrl'];
+              _2faManualKey = setup['manualKey'];
+              _2faSecret = setup['secret'];
+            });
+          }
+        }).catchError((e) {
+          // Silent fail for pre-fetch
+        });
+      }
     }
 
     // 2. Silently fetch fresh data in background
