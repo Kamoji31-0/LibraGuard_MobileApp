@@ -617,14 +617,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openAuthenticatorApp() async {
+    // 1. Try launching the full otpauth URI if available (Automatic Import)
+    if (_2faSecret != null) {
+      final String fullUriString = _2faOtpauthUri ??
+          'otpauth://totp/LibraGuard:${_emailController.text}?secret=$_2faSecret&issuer=LibraGuard';
+      final Uri fullUri = Uri.parse(fullUriString);
+
+      try {
+        if (await canLaunchUrl(fullUri)) {
+          await launchUrl(fullUri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (e) {
+        print('Error launching full URI: $e');
+      }
+    }
+
+    // 2. Fallback to just opening the apps if they exist
     final Uri otpauthUri = Uri.parse('otpauth://');
     final Uri googleAuthUri = Uri.parse('googleauthenticator://');
 
     try {
       if (await canLaunchUrl(otpauthUri)) {
-        await launchUrl(otpauthUri);
+        await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
       } else if (await canLaunchUrl(googleAuthUri)) {
-        await launchUrl(googleAuthUri);
+        await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
