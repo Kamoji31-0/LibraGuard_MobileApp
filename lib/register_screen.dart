@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _deptController = TextEditingController();
   final _yearController = TextEditingController();
   final _facultyCodeController = TextEditingController();
+  String? _selectedYearLevel;
 
   bool _isLoading = false;
   String _selectedRole = 'STUDENT';
@@ -263,6 +264,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter your full name';
                             }
+                            if (value.trim().length < 2) {
+                              return 'Name must be at least 2 characters';
+                            }
+                            if (!RegExp(r"^[a-zA-Z\s]+$").hasMatch(value.trim())) {
+                              return 'Name must contain letters only (no numbers or special characters)';
+                            }
                             return null;
                           },
                         ),
@@ -284,6 +291,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please enter your ID number';
                               }
+                              if (!RegExp(r'^\d{4}-\d{5}$').hasMatch(value.trim())) {
+                                return 'Student ID must follow the format: 2023-00216';
+                              }
                               return null;
                             },
                           ),
@@ -301,23 +311,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please enter your department';
                               }
+                              if (value.trim().length < 2) {
+                                return 'Department must be at least 2 characters';
+                              }
+                              if (!RegExp(r"^[a-zA-Z\s/&]+$").hasMatch(value.trim())) {
+                                return 'Department must contain letters only';
+                              }
                               return null;
                             },
                           ),
                           const SizedBox(height: 24),
                           _buildLabel('Year Level'),
                           const SizedBox(height: 8),
-                          GlowTextField(
-                            hint: '3rd Year',
-                            icon: Icons.history_edu_outlined,
-                            controller: _yearController,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter your year level';
-                              }
-                              return null;
-                            },
-                          ),
+                          _buildYearLevelDropdown(),
                         ],
 
                         if (_selectedRole == 'FACULTY') ...[
@@ -332,6 +338,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please enter the authorization key';
+                              }
+                              if (value.trim().length < 6) {
+                                return 'Authorization key must be at least 6 characters';
                               }
                               return null;
                             },
@@ -356,6 +365,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (value == null || value.trim().isEmpty) {
                                 return 'Please enter your department';
                               }
+                              if (value.trim().length < 2) {
+                                return 'Department must be at least 2 characters';
+                              }
+                              if (!RegExp(r"^[a-zA-Z\s/&]+$").hasMatch(value.trim())) {
+                                return 'Department must contain letters only';
+                              }
                               return null;
                             },
                           ),
@@ -375,8 +390,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Please enter your email address';
                             }
                             if (!RegExp(
-                                    r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-                                .hasMatch(value)) {
+                                    r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
+                                .hasMatch(value.trim())) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -396,8 +411,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter a password';
                             }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
+                            if (value.length < 8) {
+                              return 'Password must be at least 8 characters';
+                            }
+                            if (!value.contains(RegExp(r'[A-Z]'))) {
+                              return 'Password must contain at least one uppercase letter';
+                            }
+                            if (!value.contains(RegExp(r'[a-z]'))) {
+                              return 'Password must contain at least one lowercase letter';
+                            }
+                            if (!value.contains(RegExp(r'[0-9]'))) {
+                              return 'Password must contain at least one number';
                             }
                             return null;
                           },
@@ -507,6 +531,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildYearLevelDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DropdownButtonFormField<String>(
+      value: _selectedYearLevel,
+      decoration: InputDecoration(
+        fillColor: isDark
+            ? Colors.white.withOpacity(0.05)
+            : const Color(0xFFF8FAFC),
+        filled: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        prefixIcon: Icon(
+          Icons.history_edu_outlined,
+          color: _textColor.withOpacity(0.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: isDark
+                ? Colors.white.withOpacity(0.1)
+                : const Color(0xFFE2E8F0),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: _accentColor, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
+            width: 2,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
+            width: 2,
+          ),
+        ),
+      ),
+      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      hint: Text(
+        'Select year level',
+        style: TextStyle(color: _textColor.withOpacity(0.4)),
+      ),
+      style: TextStyle(color: _textColor, fontSize: 16),
+      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _textColor.withOpacity(0.5)),
+      borderRadius: BorderRadius.circular(16),
+      items: const [
+        DropdownMenuItem(value: '1st Year', child: Text('1st Year')),
+        DropdownMenuItem(value: '2nd Year', child: Text('2nd Year')),
+        DropdownMenuItem(value: '3rd Year', child: Text('3rd Year')),
+        DropdownMenuItem(value: '4th Year', child: Text('4th Year')),
+      ],
+      onChanged: (val) {
+        setState(() {
+          _selectedYearLevel = val;
+          if (val != null) _yearController.text = val;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select your year level';
+        }
+        return null;
+      },
     );
   }
 

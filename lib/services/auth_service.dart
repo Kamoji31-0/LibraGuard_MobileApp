@@ -10,25 +10,35 @@ class AuthService {
 
   // Save JWT token
   Future<void> saveToken(String token) async {
+    print('DEBUG: Attempting to save token: ${token.substring(0, 10)}...');
     await _secureStorage.saveToken(token);
-    // Optional: Keep in SharedPreferences for legacy if needed, 
-    // but better to move entirely to secure storage.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt_token', token);
+    print('DEBUG: Token saved successfully to both storage layers');
   }
 
   // Get JWT token
   Future<String?> getToken() async {
     // Try secure storage first
-    String? token = await _secureStorage.getToken();
-    if (token != null) return token;
+    try {
+      String? token = await _secureStorage.getToken();
+      if (token != null && token.isNotEmpty) {
+        print('DEBUG: Token found in SecureStorage');
+        return token;
+      }
+    } catch (e) {
+      print('DEBUG: SecureStorage error: $e');
+    }
 
     // Fallback to SharedPreferences (migration path)
     final prefs = await SharedPreferences.getInstance();
-    token = prefs.getString('jwt_token');
-    if (token != null) {
+    String? token = prefs.getString('jwt_token');
+    if (token != null && token.isNotEmpty) {
+      print('DEBUG: Token found in SharedPreferences');
       // Migrate to secure storage
       await _secureStorage.saveToken(token);
+    } else {
+      print('DEBUG: No token found in SharedPreferences either');
     }
     return token;
   }
@@ -37,12 +47,12 @@ class AuthService {
   Future<void> logout() async {
     await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Clear Core Auth
     await prefs.remove('jwt_token');
     await prefs.remove('first_name');
     await prefs.remove('user_profile');
-    
+
     // Clear History & Services Caches
     await prefs.remove('cached_gate_logs');
     await prefs.remove('cached_pc_sessions');
@@ -123,11 +133,46 @@ class AuthService {
 
       final data = jsonDecode(response.body);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (data['token'] != null) {
-          await saveToken(data['token']);
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
+        // Check for 2FA requirement in response body
+        final String msg = data['message']?.toString().toLowerCase() ?? '';
+        final bool msgMentions2FA = msg.contains('2fa') ||
+            msg.contains('mfa') ||
+            msg.contains('verification') ||
+            msg.contains('two-factor') ||
+            msg.contains('two factor') ||
+            msg.contains('challenge');
+
+        final bool serverRequires2FA = data['require2fa'] == true ||
+            data['requires2FA'] == true ||
+            data['twoFactorRequired'] == true ||
+            data['mfa_required'] == true ||
+            data['status'] == '2fa_required' ||
+            msgMentions2FA ||
+            (data['user'] != null && data['user']['is2faEnabled'] == true);
+
+        if (serverRequires2FA) {
+          await set2FAEnabled(true);
+          return {
+            'success': true,
+            'require2fa': true,
+            'tempToken': data['tempToken'],
+            'data': data
+          };
+        }
+
+        // Robust token extraction
+        final String? token = data['token'] ??
+            data['accessToken'] ??
+            data['data']?['token'] ??
+            data['user']?['token'];
+
+        if (token != null) {
+          await saveToken(token);
           // Apply any pending dept/year saved during registration
-          await _applyPendingStudentFields(data['token']);
+          await _applyPendingStudentFields(token);
         }
         // Persist first name and full profile
         final user = data['user'] ?? data['data'] ?? data;
@@ -141,6 +186,23 @@ class AuthService {
         }
         return {'success': true, 'data': data};
       } else {
+        // Special case: Some backends return 401 or similar with specific messages for 2FA
+        final String msg = data['message']?.toString().toLowerCase() ?? '';
+        final bool is2FARelated = msg.contains('2fa') ||
+            msg.contains('mfa') ||
+            msg.contains('verification') ||
+            msg.contains('two-factor') ||
+            msg.contains('two factor') ||
+            msg.contains('challenge');
+
+        if ((response.statusCode == 401 ||
+                response.statusCode == 403 ||
+                response.statusCode == 422) &&
+            is2FARelated) {
+          await set2FAEnabled(true);
+          return {'success': true, 'require2fa': true, 'data': data};
+        }
+
         return {
           'success': false,
           'message': data['message'] ?? 'Login failed',
@@ -505,10 +567,11 @@ class AuthService {
             ...logMap,
             'action': 'Gate entry/exit (Lane $lane)',
             'createdAt': date.isNotEmpty ? date : timeIn,
-            'status':
-                timeOut == 'null' || timeOut.isEmpty || logMap['timeOut'] == null
-                    ? 'Active'
-                    : 'Completed',
+            'status': timeOut == 'null' ||
+                    timeOut.isEmpty ||
+                    logMap['timeOut'] == null
+                ? 'Active'
+                : 'Completed',
           };
         }).toList();
 
@@ -517,7 +580,7 @@ class AuthService {
 
         return results;
       }
-      
+
       // Fallback to cache if non-200
       return await getCachedGateLogs();
     } catch (e) {
@@ -574,10 +637,11 @@ class AuthService {
         body['image'] = imageBase64;
       }
 
+      print('DEBUG: Profile Update Token: Bearer ${token.substring(0, 15)}...');
       final response = await http.put(
         Uri.parse('$baseUrl/users/profile'),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer ${token.trim()}',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(body),
@@ -598,6 +662,207 @@ class AuthService {
         return {
           'success': false,
           'message': data['message'] ?? 'Failed to update profile'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  // 2FA state management
+  static const String _2faEnabledKey = '2fa_enabled';
+
+  Future<bool> is2FAEnabled() async {
+    final profile = await getCachedProfile();
+    if (profile != null) {
+      final enabled = profile['twoFactorEnabled'] == true || 
+                     profile['is2faEnabled'] == true;
+      // Sync local pref but trust server/profile first
+      await set2FAEnabled(enabled);
+      return enabled;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_2faEnabledKey) ?? false;
+  }
+
+  Future<void> set2FAEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_2faEnabledKey, enabled);
+  }
+
+  Future<Map<String, dynamic>> get2FASetup() async {
+    final token = await getToken();
+    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/2fa/setup'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to fetch 2FA setup'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> enable2FA(String code, String secret) async {
+    final token = await getToken();
+    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/2fa/enable'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'secret': secret,
+          'code': code,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await set2FAEnabled(true);
+        // Refresh profile to update is2faEnabled flag
+        await getProfile();
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Two-Factor Authentication enabled successfully!'
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Invalid verification code. Please try again.'
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> disable2FA(String password, String code) async {
+    final token = await getToken();
+    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/2fa/disable'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'password': password,
+          'code': code,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        await set2FAEnabled(false);
+        // Refresh profile to update is2faEnabled flag
+        await getProfile();
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Two-Factor Authentication disabled.'
+        };
+      }
+      return {
+        'success': false,
+        'message': data['message'] ?? 'Invalid password or verification code.'
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  // Get unread notifications count
+  Future<int> getNotificationCount() async {
+    final enabled = await is2FAEnabled();
+    return enabled ? 0 : 1;
+  }
+
+  // Verify 2FA during login
+  Future<Map<String, dynamic>> verify2FALogin(
+      String code, String? tempToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/2fa/verify'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (tempToken != null) 'Authorization': 'Bearer $tempToken',
+        },
+        body: jsonEncode({
+          'code': code,
+          if (tempToken != null) 'tempToken': tempToken,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      // Always log to see what the server actually returns
+      print('DEBUG: 2FA Status: ${response.statusCode}');
+      print('DEBUG: 2FA Response Body: ${response.body}');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // 1. Try known keys
+        String? token = data['token'] ??
+            data['accessToken'] ??
+            data['jwt'] ??
+            data['authToken'] ??
+            data['access_token'] ??
+            data['data']?['token'] ??
+            data['user']?['token'];
+
+        // 2. Greedy fallback: Scan for anything looking like a JWT
+        if (token == null) {
+          print('DEBUG: Greedy scanning for JWT...');
+          data.forEach((key, value) {
+            if (value is String &&
+                value.trim().startsWith('ey') &&
+                value.trim().split('.').length == 3) {
+              token = value.trim();
+              print('DEBUG: Greedily found token in key: $key');
+            }
+          });
+
+          if (token == null && data['data'] is Map) {
+            (data['data'] as Map).forEach((key, value) {
+              if (value is String &&
+                  value.trim().startsWith('ey') &&
+                  value.trim().split('.').length == 3) {
+                token = value.trim();
+                print('DEBUG: Greedily found token in data.$key');
+              }
+            });
+          }
+        }
+
+        if (token != null) {
+          await saveToken(token!);
+        } else if (tempToken != null) {
+          // Backend only validates the OTP — the tempToken from login IS the session token.
+          print(
+              'DEBUG: No new token in 2FA response. Saving tempToken as session token.');
+          await saveToken(tempToken);
+        } else {
+          print('DEBUG: WARNING - No token found anywhere. Update will fail.');
+        }
+        final user = data['user'] ?? data['data'] ?? data;
+        await saveProfile(user);
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Verification failed',
         };
       }
     } catch (e) {

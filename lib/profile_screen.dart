@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
 import 'services/borrow_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'services/pc_service.dart';
 import 'services/book_service.dart';
 import 'login_screen.dart';
@@ -68,9 +69,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final TextEditingController _2faCodeController = TextEditingController();
+  final TextEditingController _2faDisablePasswordController =
+      TextEditingController();
   final _securityFormKey = GlobalKey<FormState>();
   bool _isSaving = false;
   bool _isUpdatingSecurity = false;
+
+  // 2FA State
+  bool _is2FAEnabled = false;
+  bool _is2FAExpanded = false;
+  String? _2faQrCodeUrl;
+  String? _2faManualKey;
+  String? _2faSecret;
+  bool _isEnabling2FA = false;
+  bool _isDisabling2FA = false;
 
   @override
   void initState() {
@@ -89,8 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (mounted) {
       setState(() {
-        _cachedTransactions =
-            (results[0] as List).cast<BorrowTransaction>();
+        _cachedTransactions = (results[0] as List).cast<BorrowTransaction>();
         _cachedGateLogs = (results[1] as List)
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
@@ -102,6 +114,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _updateControllers(cachedProfile);
         }
         _isLoading = false;
+      });
+    }
+
+    // Load 2FA status
+    final _is2faEnabledLocal = await AuthService().is2FAEnabled();
+    if (mounted) {
+      setState(() {
+        _is2FAEnabled = _is2faEnabledLocal;
       });
     }
 
@@ -509,6 +529,98 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _handleEnable2FA() async {
+    final code = _2faCodeController.text.trim();
+    if (code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 6-digit code')),
+      );
+      return;
+    }
+
+    if (_2faSecret == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('2FA session expired. Please refresh.')),
+      );
+      return;
+    }
+
+    setState(() => _isEnabling2FA = true);
+    final res = await AuthService().enable2FA(code, _2faSecret!);
+    setState(() => _isEnabling2FA = false);
+
+    if (res['success'] == true) {
+      setState(() {
+        _is2FAEnabled = true;
+        _2faCodeController.clear();
+        _2faSecret = null;
+      });
+      _showSuccessDialog('Two-Factor Authentication enabled!');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message'] ?? 'Failed to enable 2FA')),
+      );
+    }
+  }
+
+  Future<void> _handleDisable2FA() async {
+    final password = _2faDisablePasswordController.text.trim();
+    final code = _2faCodeController.text.trim();
+
+    if (password.isEmpty || code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please enter password and a 6-digit code')),
+      );
+      return;
+    }
+
+    setState(() => _isDisabling2FA = true);
+    final res = await AuthService().disable2FA(password, code);
+    setState(() => _isDisabling2FA = false);
+
+    if (res['success'] == true) {
+      setState(() {
+        _is2FAEnabled = false;
+        _2faCodeController.clear();
+        _2faDisablePasswordController.clear();
+      });
+      _showSuccessDialog('Two-Factor Authentication disabled!');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message'] ?? 'Failed to disable 2FA')),
+      );
+    }
+  }
+
+  Future<void> _openAuthenticatorApp() async {
+    final Uri otpauthUri = Uri.parse('otpauth://');
+    final Uri googleAuthUri = Uri.parse('googleauthenticator://');
+
+    try {
+      if (await canLaunchUrl(otpauthUri)) {
+        await launchUrl(otpauthUri);
+      } else if (await canLaunchUrl(googleAuthUri)) {
+        await launchUrl(googleAuthUri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('No authenticator app found. Please open it manually.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open authenticator app')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Determine trailing theme label
@@ -526,143 +638,144 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: _primaryColor,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-              child: Stack(
-                children: [
-                  // Maroon Background behind the profile card, scrolling with the view
-                  Container(
-                    height: 350, // Made longer/larger as requested
-                    decoration: BoxDecoration(
-                      color: _accentColor,
-                      borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(20)),
-                    ),
-                  ),
-
-                  // Content
-                  SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0, vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Custom embedded App Bar so it scrolls with the page
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back,
-                                    color: Colors.white),
-                                onPressed: () => Navigator.pop(context),
-                                padding: EdgeInsets.zero,
-                                alignment: Alignment.centerLeft,
-                              ),
-                              const Text(
-                                'Profile',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(
-                                  width: 48), // Balances the back button
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          _buildProfileBanner(),
-                          const SizedBox(height: 32),
-                          _buildSection(
-                            title: 'Account',
-                            items: [
-                              _buildSettingsTile(
-                                icon: Icons.person_outline,
-                                title: 'Manage Profile',
-                                onTap: () => _showEditProfileModal(),
-                              ),
-                              _buildSettingsTile(
-                                icon: Icons.lock_outline,
-                                title: 'Password & Security',
-                                onTap: () => _showSecuritySheet(),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          _buildSection(
-                            title: 'Preferences',
-                            items: [
-                              _buildSettingsTile(
-                                icon: Icons.info_outline,
-                                title: 'About LibraGuard',
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const AboutScreen()),
-                                  );
-                                },
-                              ),
-                              _buildSettingsTile(
-                                icon: Icons.palette_outlined,
-                                title: 'Theme',
-                                trailingLabel: themeLabel,
-                                onTap: _showThemeSettings,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          _buildSection(
-                            title: 'Library Records',
-                            items: [
-                              _buildSettingsTile(
-                                icon: Icons.book_outlined,
-                                title: 'Borrowing Records',
-                                onTap: () => _showBorrowingSheet(),
-                              ),
-                              _buildSettingsTile(
-                                icon: Icons.door_front_door_outlined,
-                                title: 'Entry & Exit Gate Logs',
-                                onTap: () => _showGateLogs(),
-                              ),
-                              _buildSettingsTile(
-                                icon: Icons.computer_outlined,
-                                title: 'Computer Sessions',
-                                onTap: () => _showSessions(),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          _buildSection(
-                            title: 'Support',
-                            items: [
-                              _buildSettingsTile(
-                                icon: Icons.help_outline,
-                                title: 'Help Center',
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const HelpSupportScreen()),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 48),
-                          _buildLogoutButton(),
-                          const SizedBox(height: 32),
-                        ],
+                child: Stack(
+                  children: [
+                    // Maroon Background behind the profile card, scrolling with the view
+                    Container(
+                      height: 350, // Made longer/larger as requested
+                      decoration: BoxDecoration(
+                        color: _accentColor,
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(20)),
                       ),
                     ),
-                  ),
-                ],
+
+                    // Content
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24.0, vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Custom embedded App Bar so it scrolls with the page
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back,
+                                      color: Colors.white),
+                                  onPressed: () => Navigator.pop(context),
+                                  padding: EdgeInsets.zero,
+                                  alignment: Alignment.centerLeft,
+                                ),
+                                const Text(
+                                  'Profile',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(
+                                    width: 48), // Balances the back button
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            _buildProfileBanner(),
+                            const SizedBox(height: 32),
+                            _buildSection(
+                              title: 'Account',
+                              items: [
+                                _buildSettingsTile(
+                                  icon: Icons.person_outline,
+                                  title: 'Manage Profile',
+                                  onTap: () => _showEditProfileModal(),
+                                ),
+                                _buildSettingsTile(
+                                  icon: Icons.lock_outline,
+                                  title: 'Password & Security',
+                                  onTap: () => _showSecuritySheet(),
+                                ),
+                                _build2FASection(),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _buildSection(
+                              title: 'Preferences',
+                              items: [
+                                _buildSettingsTile(
+                                  icon: Icons.info_outline,
+                                  title: 'About LibraGuard',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const AboutScreen()),
+                                    );
+                                  },
+                                ),
+                                _buildSettingsTile(
+                                  icon: Icons.palette_outlined,
+                                  title: 'Theme',
+                                  trailingLabel: themeLabel,
+                                  onTap: _showThemeSettings,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _buildSection(
+                              title: 'Library Records',
+                              items: [
+                                _buildSettingsTile(
+                                  icon: Icons.book_outlined,
+                                  title: 'Borrowing Records',
+                                  onTap: () => _showBorrowingSheet(),
+                                ),
+                                _buildSettingsTile(
+                                  icon: Icons.door_front_door_outlined,
+                                  title: 'Entry & Exit Gate Logs',
+                                  onTap: () => _showGateLogs(),
+                                ),
+                                _buildSettingsTile(
+                                  icon: Icons.computer_outlined,
+                                  title: 'Computer Sessions',
+                                  onTap: () => _showSessions(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _buildSection(
+                              title: 'Support',
+                              items: [
+                                _buildSettingsTile(
+                                  icon: Icons.help_outline,
+                                  title: 'Help Center',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const HelpSupportScreen()),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 48),
+                            _buildLogoutButton(),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
       bottomNavigationBar: AppBottomNavBar(
         selectedIndex: 3,
         onItemTapped: (index) {
@@ -1822,7 +1935,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context: context,
                                 title: 'Filter Borrowing',
                                 options: {
-                                  'Status': ['All', 'Borrowed', 'Returned', 'Cancelled'],
+                                  'Status': [
+                                    'All',
+                                    'Borrowed',
+                                    'Returned',
+                                    'Cancelled'
+                                  ],
                                   'Timeframe': [
                                     'All Time',
                                     'This Week',
@@ -1884,7 +2002,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Status Match
                           bool matchesStatus = true;
                           if (selectedStatus == 'Borrowed') {
-                            matchesStatus = tx.returnDate == null && !tx.isCancelled;
+                            matchesStatus =
+                                tx.returnDate == null && !tx.isCancelled;
                           } else if (selectedStatus == 'Returned') {
                             matchesStatus = tx.returnDate != null;
                           } else if (selectedStatus == 'Cancelled') {
@@ -3691,6 +3810,418 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _build2FASection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        children: [
+          // Collapsed Tile
+          ListTile(
+            onTap: () async {
+              if (!_is2FAExpanded && !_is2FAEnabled) {
+                // Fetch setup data when expanding
+                final setup = await AuthService().get2FASetup();
+                setState(() {
+                  _2faQrCodeUrl = setup['qrCodeUrl'];
+                  _2faManualKey = setup['manualKey'];
+                  _2faSecret = setup['secret'];
+                });
+              }
+              setState(() => _is2FAExpanded = !_is2FAExpanded);
+            },
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _primaryColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.phonelink_lock_outlined,
+                  color: _primaryColor, size: 20),
+            ),
+            title: const Text(
+              'Two-Factor Authentication',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _is2FAEnabled
+                        ? const Color(0xFF22C55E).withOpacity(0.12)
+                        : _primaryColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _is2FAEnabled ? 'ENABLED' : 'NOT SET UP',
+                    style: TextStyle(
+                      color: _is2FAEnabled
+                          ? const Color(0xFF16A34A)
+                          : _primaryColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _is2FAExpanded ? Icons.expand_more : Icons.chevron_right,
+                  color: _textColor.withOpacity(0.2),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+
+          // Expanded Content
+          if (_is2FAExpanded)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.02) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border(
+                  left: BorderSide(color: _primaryColor, width: 3),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: _is2FAEnabled
+                    ? _build2FAEnabledView()
+                    : _build2FASetupView(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _build2FASetupView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Protect your account with an authenticator app (Google Authenticator, Authy, Bitwarden, etc.). Scan the QR code below, then enter the 6-digit code to confirm.',
+          style: TextStyle(
+              color: _textColor.withOpacity(0.6), fontSize: 13, height: 1.5),
+        ),
+        const SizedBox(height: 24),
+
+        // Step By Step Guide Summary
+        _build2FAStep(1, "Open Account Settings",
+            "Navigate to Profile → Account Settings → tap \"Two-Factor Authentication\""),
+        _build2FAStep(2, "View the Setup Panel",
+            "The section expands to show a QR code and a Manual Entry Key"),
+
+        const SizedBox(height: 24),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black12, blurRadius: 10, spreadRadius: 2)
+              ],
+            ),
+            child: _2faQrCodeUrl != null
+                ? Image.network(_2faQrCodeUrl!, width: 180, height: 180)
+                : const SizedBox(
+                    width: 180,
+                    height: 180,
+                    child: Center(child: CircularProgressIndicator())),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _build2FAStep(3, "Scan or Enter Manually",
+            "Open your authenticator app and choose one of the options below"),
+
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _textColor.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _textColor.withOpacity(0.05)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'MANUAL ENTRY KEY',
+                style: TextStyle(
+                  color: _textColor.withOpacity(0.4),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                _2faManualKey ?? 'Loading...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _openAuthenticatorApp,
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('Open Authenticator App'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _accentColor,
+              side: BorderSide(color: _accentColor),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _build2FAStep(4, "Confirm Security Code",
+            "Enter the 6-digit code generated by your app below to finalize"),
+        const SizedBox(height: 12),
+        Text(
+          'Verification Code',
+          style: TextStyle(
+              color: _textColor, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _2faCodeController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 8),
+          decoration: InputDecoration(
+            hintText: '– – – – – –',
+            counterText: '',
+            fillColor: _textColor.withOpacity(0.03),
+            filled: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: _isEnabling2FA ? null : _handleEnable2FA,
+            icon: const Icon(Icons.verified_user_outlined),
+            label: _isEnabling2FA
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Text('Enable Two-Factor Authentication',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _build2FAStep(int step, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: _primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              "$step",
+              style: TextStyle(
+                  color: _primaryColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        color: _textColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold)),
+                Text(description,
+                    style: TextStyle(
+                        color: _textColor.withOpacity(0.5), fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _build2FAEnabledView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF22C55E).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle_outline,
+                  color: Color(0xFF16A34A), size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Two-Factor Authentication is Active',
+                      style: TextStyle(
+                        color: Color(0xFF16A34A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'Your account is protected. A code is required at every login.',
+                      style: TextStyle(
+                        color: const Color(0xFF16A34A).withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'To disable 2FA, enter your current password and a live code from your authenticator app.',
+          style: TextStyle(color: _textColor.withOpacity(0.6), fontSize: 13),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Current Password',
+          style: TextStyle(
+              color: _textColor, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _2faDisablePasswordController,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            hintText: 'Required for confirmation',
+            fillColor: _textColor.withOpacity(0.03),
+            filled: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            suffixIcon: IconButton(
+              icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  size: 20),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Authenticator Code',
+          style: TextStyle(
+              color: _textColor, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _2faCodeController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          decoration: InputDecoration(
+            hintText: '6-digit code',
+            counterText: '',
+            fillColor: _textColor.withOpacity(0.03),
+            filled: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isDisabling2FA ? null : _handleDisable2FA,
+            icon: const Icon(Icons.no_encryption_gmailerrorred_outlined,
+                size: 20),
+            label: _isDisabling2FA
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Disable Two-Factor Authentication',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

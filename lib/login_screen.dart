@@ -5,6 +5,7 @@ import 'register_screen.dart';
 import 'services/auth_service.dart';
 import 'main.dart' show themeNotifier; // Import for theme synchronization
 import 'widgets/glow_text_field.dart';
+import 'two_factor_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -106,6 +107,39 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (!mounted) return;
+
+        // Check if 2FA is enabled for this user (Server-driven or Local fallback)
+        final bool is2FARequiredByServer = result['require2fa'] == true;
+        final bool is2FAEnabledLocally = await _authService.is2FAEnabled();
+        
+        if (is2FARequiredByServer || is2FAEnabledLocally) {
+          // Slide animation to 2FA screen
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  TwoFactorVerificationScreen(
+                firstName: firstName,
+                tempToken: result['tempToken'],
+              ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOutQuart;
+                var tween = Tween(begin: begin, end: end)
+                    .chain(CurveTween(curve: curve));
+                return SlideTransition(
+                  position: animation.drive(tween),
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 800),
+            ),
+          );
+          return;
+        }
+
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -283,8 +317,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               return 'Please enter your email address';
                             }
                             if (!RegExp(
-                              r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
-                            ).hasMatch(value)) {
+                              r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$',
+                            ).hasMatch(value.trim())) {
                               return 'Please enter a valid email address';
                             }
                             return null;
@@ -532,6 +566,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter your email address.';
+                        }
+                        if (!RegExp(
+                          r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$',
+                        ).hasMatch(value.trim())) {
+                          return 'Please enter a valid email address.';
                         }
                         return null;
                       },

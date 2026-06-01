@@ -15,6 +15,7 @@ import 'library_staff_screen.dart';
 import 'services/book_service.dart';
 import 'services/favorite_service.dart';
 import 'widgets/app_bottom_nav.dart';
+import 'notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? firstName;
@@ -35,6 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
+  Color get _headerIconColor =>
+      Theme.of(context).brightness == Brightness.dark
+          ? Colors.white
+          : const Color(0xFF344054); // Dark charcoal/grey
   final Color _accentYellow = const Color(0xFFFFC107); // Yellow matching image
 
   List<BookItem> _homeBooks = [];
@@ -85,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _occupancyCount = 0;
   int _maxCapacity = 100;
+  int _notificationCount = 0;
   Timer? _occupancyTimer;
 
   @override
@@ -103,6 +109,14 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() => _firstName = name);
         }
       });
+    }
+    _loadNotificationCount();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    final count = await AuthService().getNotificationCount();
+    if (mounted) {
+      setState(() => _notificationCount = count);
     }
   }
 
@@ -322,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (mounted) {
                 setState(() => _selectedIndex = 0);
                 _loadUserProfile(); // Re-fetch profile to sync image
+                _loadNotificationCount(); // Refresh badge after 2FA changes
               }
             });
           }
@@ -370,6 +385,48 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Row(
           children: [
+            // Notification Bell
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const NotificationScreen()),
+                ).then((_) => _loadNotificationCount());
+              },
+              child: Stack(
+                children: [
+                   Icon(Icons.notifications_none_outlined,
+                        color: _headerIconColor, size: 28),
+                  if (_notificationCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '$_notificationCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
             // Favorites heart icon
             GestureDetector(
               onTap: () {
@@ -379,20 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       builder: (context) => const FavoritesScreen()),
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _cardColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.favorite_border, color: _primaryColor),
-              ),
+              child: Icon(Icons.favorite_border, color: _headerIconColor, size: 28),
             ),
             const SizedBox(width: 10),
             GestureDetector(
@@ -401,11 +445,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => const ProfileScreen()),
-                );
+                ).then((_) {
+                  if (mounted) {
+                    _loadUserProfile();
+                    _loadNotificationCount(); // Refresh badge after 2FA changes
+                  }
+                });
               },
               child: CircleAvatar(
                 radius: 20,
-                backgroundColor: _accentColor.withOpacity(0.1),
+                backgroundColor: Colors.transparent,
                 backgroundImage: _profileImageUrl != null
                     ? NetworkImage(_profileImageUrl!)
                     : null,
@@ -419,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       )
                     : (_profileImageUrl == null
-                        ? Icon(Icons.person, color: _accentColor, size: 24)
+                        ? Icon(Icons.person, color: _headerIconColor, size: 28)
                         : null),
               ),
             ),
