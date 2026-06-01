@@ -4021,7 +4021,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               SelectableText(
-                _2faManualKey ?? 'Loading...',
+                (_2faManualKey ?? _2faSecret ?? 'Loading...')
+                    .replaceAllMapped(
+                        RegExp(r".{4}"), (match) => "${match.group(0)} ")
+                    .trim(),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _textColor,
