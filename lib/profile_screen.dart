@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
 import 'services/borrow_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'services/pc_service.dart';
 import 'services/book_service.dart';
 import 'login_screen.dart';
@@ -82,6 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _2faQrCodeUrl;
   String? _2faManualKey;
   String? _2faSecret;
+  String? _2faOtpauthUri;
   bool _isEnabling2FA = false;
   bool _isDisabling2FA = false;
 
@@ -132,6 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _2faQrCodeUrl = setup['qrCodeUrl'];
               _2faManualKey = setup['manualKey'];
               _2faSecret = setup['secret'];
+              _2faOtpauthUri = setup['otpauthUri'];
             });
           }
         }).catchError((e) {
@@ -3856,6 +3859,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _2faQrCodeUrl = setup['qrCodeUrl'];
                       _2faManualKey = setup['manualKey'];
                       _2faSecret = setup['secret'];
+                      _2faOtpauthUri = setup['otpauthUri'];
                     });
                   }
                 } catch (e) {
@@ -3976,8 +3980,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: Colors.black12, blurRadius: 10, spreadRadius: 2)
               ],
             ),
-            child: _2faQrCodeUrl != null
-                ? Image.network(_2faQrCodeUrl!, width: 180, height: 180)
+            child: _2faSecret != null
+                ? QrImageView(
+                    data: _2faOtpauthUri ??
+                        'otpauth://totp/LibraGuard:${_emailController.text}?secret=$_2faSecret&issuer=LibraGuard',
+                    version: QrVersions.auto,
+                    size: 180.0,
+                    backgroundColor: Colors.white,
+                  )
                 : const SizedBox(
                     width: 180,
                     height: 180,

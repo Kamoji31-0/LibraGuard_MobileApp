@@ -716,6 +716,7 @@ class AuthService {
           'qrCodeUrl': data['qrCodeUrl'] ?? data['qr_code_url'],
           'manualKey': data['manualKey'] ?? data['manual_key'],
           'secret': data['secret'],
+          'otpauthUri': data['otpauthUri'] ?? data['otpauth_url'],
         };
         await prefs.setString('cached_2fa_setup', jsonEncode(setup));
         return setup;
