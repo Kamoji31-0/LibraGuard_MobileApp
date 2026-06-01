@@ -3824,16 +3824,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Collapsed Tile
           ListTile(
             onTap: () async {
-              if (!_is2FAExpanded && !_is2FAEnabled) {
-                // Fetch setup data when expanding
-                final setup = await AuthService().get2FASetup();
-                setState(() {
-                  _2faQrCodeUrl = setup['qrCodeUrl'];
-                  _2faManualKey = setup['manualKey'];
-                  _2faSecret = setup['secret'];
-                });
-              }
               setState(() => _is2FAExpanded = !_is2FAExpanded);
+
+              if (_is2FAExpanded && !_is2FAEnabled && _2faQrCodeUrl == null) {
+                // Fetch setup data in background if not already loaded
+                try {
+                  final setup = await AuthService()
+                      .get2FASetup(); // Use established method
+                  if (mounted) {
+                    setState(() {
+                      _2faQrCodeUrl = setup['qrCodeUrl'];
+                      _2faManualKey = setup['manualKey'];
+                      _2faSecret = setup['secret'];
+                    });
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    setState(() => _is2FAExpanded = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Failed to load 2FA setup details')),
+                    );
+                  }
+                }
+              }
             },
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
