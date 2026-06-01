@@ -9,7 +9,7 @@ class BookDetailsScreen extends StatefulWidget {
   final String category;
   final bool isAvailable;
   final String? description;
-   final String? imageUrl;
+  final String? imageUrl;
   final String publishedIn;
   final String isbn;
 
@@ -111,7 +111,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // ── Book Cover ──────────────────────────────────────────────────
-             Container(
+            Container(
               width: 180,
               height: 250,
               decoration: BoxDecoration(
@@ -245,7 +245,8 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                       ),
                       const SizedBox(width: 24),
                       Expanded(
-                        child: _buildMetaInfo('PUBLISHED IN', widget.publishedIn),
+                        child:
+                            _buildMetaInfo('PUBLISHED IN', widget.publishedIn),
                       ),
                       const SizedBox(width: 24),
                       SizedBox(
