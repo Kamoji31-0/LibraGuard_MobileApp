@@ -565,6 +565,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isEnabling2FA = false);
 
     if (res['success'] == true) {
+      await AuthService().clear2FACache();
       setState(() {
         _is2FAEnabled = true;
         _2faCodeController.clear();
@@ -595,10 +596,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isDisabling2FA = false);
 
     if (res['success'] == true) {
+      await AuthService().clear2FACache();
       setState(() {
         _is2FAEnabled = false;
         _2faCodeController.clear();
         _2faDisablePasswordController.clear();
+        _2faQrCodeUrl = null;
+        _2faManualKey = null;
+        _2faSecret = null;
       });
       _showSuccessDialog('Two-Factor Authentication disabled!');
     } else {

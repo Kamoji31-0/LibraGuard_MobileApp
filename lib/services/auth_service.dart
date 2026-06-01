@@ -691,6 +691,12 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> get2FASetup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('cached_2fa_setup');
+    if (cached != null) {
+      return jsonDecode(cached);
+    }
+
     final token = await getToken();
     if (token == null) return {'success': false, 'message': 'Not authenticated'};
 
@@ -704,12 +710,26 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        // Normalize and cache
+        final setup = {
+          'qrCodeUrl': data['qrCodeUrl'] ?? data['qr_code_url'],
+          'manualKey': data['manualKey'] ?? data['manual_key'],
+          'secret': data['secret'],
+        };
+        await prefs.setString('cached_2fa_setup', jsonEncode(setup));
+        return setup;
       }
       return {'success': false, 'message': 'Failed to fetch 2FA setup'};
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
+  }
+
+  // Clear 2FA cache
+  Future<void> clear2FACache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('cached_2fa_setup');
   }
 
   Future<Map<String, dynamic>> enable2FA(String code, String secret) async {
