@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
 import 'services/borrow_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'services/pc_service.dart';
 import 'services/book_service.dart';
@@ -421,9 +422,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _saveProfileChanges() async {
+  Future<void> _saveProfileChanges({StateSetter? setModalState}) async {
     if (_nameController.text.isEmpty) return;
 
+    if (setModalState != null) setModalState(() => _isSaving = true);
     setState(() => _isSaving = true);
 
     final res = await AuthService().updateProfile(
@@ -455,6 +457,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'year': _yearController.text,
           };
         }
+        if (setModalState != null) setModalState(() => _isSaving = false);
         _isSaving = false;
       });
 
@@ -468,6 +471,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (mounted) _showSuccessDialog('Profile updated successfully!');
       });
     } else {
+      if (setModalState != null) setModalState(() => _isSaving = false);
       setState(() => _isSaving = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -619,17 +623,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openAuthenticatorApp() async {
     // 1. Try launching the full otpauth URI if available (Automatic Import)
     if (_2faSecret != null) {
+      final String email = (_userProfile?['email'] ??
+              _userProfile?['emailAddress'] ??
+              _userProfile?['username'] ??
+              'user')
+          .toString();
       final String fullUriString = _2faOtpauthUri ??
-          'otpauth://totp/LibraGuard:${_emailController.text}?secret=$_2faSecret&issuer=LibraGuard';
+          'otpauth://totp/LibraGuard:$email?secret=$_2faSecret&issuer=LibraGuard';
       final Uri fullUri = Uri.parse(fullUriString);
 
       try {
-        if (await canLaunchUrl(fullUri)) {
-          await launchUrl(fullUri, mode: LaunchMode.externalApplication);
-          return;
-        }
+        // Direct launch for standard schemes is sometimes more reliable than canLaunchUrl
+        await launchUrl(fullUri, mode: LaunchMode.externalApplication);
+        return;
       } catch (e) {
-        print('Error launching full URI: $e');
+        debugPrint('Error launching full URI: $e');
       }
     }
 
@@ -643,13 +651,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else if (await canLaunchUrl(googleAuthUri)) {
         await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('No authenticator app found. Please open it manually.'),
-            ),
-          );
+        // Final fallback: just try to launch otpauth:// anyway, it might work even if canLaunch returns false
+        try {
+          await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'No authenticator app found. Please open it manually.'),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -994,24 +1007,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 85,
                       height: 85,
                       color: _accentColor.withOpacity(0.1),
-                      child: _base64Image != null
-                          ? Image.memory(
-                              base64Decode(_base64Image!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(Icons.person,
-                                      color: _accentColor, size: 40),
-                            )
-                          : (_profileImageUrl != null
-                              ? Image.network(
-                                  _profileImageUrl!,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _base64Image != null
+                              ? Image.memory(
+                                  base64Decode(_base64Image!),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Icon(Icons.person,
                                           color: _accentColor, size: 40),
                                 )
-                              : Icon(Icons.person,
-                                  color: _accentColor, size: 40)),
+                              : (_profileImageUrl != null
+                                  ? Image.network(
+                                      _profileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Icon(
+                                              Icons.person,
+                                              color: _accentColor,
+                                              size: 40),
+                                    )
+                                  : Icon(Icons.person,
+                                      color: _accentColor, size: 40)),
+                          if (_isSaving)
+                            Container(
+                              color: Colors.black.withOpacity(0.4),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -3623,18 +3653,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     )
                                   : null,
                             ),
-                            child: _base64Image != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Image.memory(
-                                      base64Decode(_base64Image!),
-                                      fit: BoxFit.cover,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                _base64Image != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Image.memory(
+                                          base64Decode(_base64Image!),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : (_profileImageUrl != null
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            child: Image.network(
+                                              _profileImageUrl!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : Icon(Icons.person,
+                                            color: _accentColor, size: 40)),
+                                if (_isSaving)
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.4),
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
-                                  )
-                                : (_profileImageUrl == null
-                                    ? Icon(Icons.person,
-                                        color: _accentColor, size: 40)
-                                    : null),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text('Change Profile Photo',
@@ -3701,7 +3756,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isSaving ? null : _saveProfileChanges,
+                      onPressed: _isSaving ? null : () => _saveProfileChanges(setModalState: setModalState),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentColor,
                         shape: RoundedRectangleBorder(
@@ -4016,41 +4071,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _build2FAStep(3, "Scan or Enter Manually",
             "Open your authenticator app and choose one of the options below"),
 
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _textColor.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _textColor.withOpacity(0.05)),
-          ),
-          child: Column(
-            children: [
-              Text(
-                'MANUAL ENTRY KEY',
-                style: TextStyle(
-                  color: _textColor.withOpacity(0.4),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
+        GestureDetector(
+          onLongPress: () {
+            final key = _2faManualKey ?? _2faSecret;
+            if (key != null) {
+              Clipboard.setData(ClipboardData(text: key));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Manual Entry Key copied to clipboard'),
+                  duration: Duration(seconds: 2),
                 ),
-              ),
-              const SizedBox(height: 8),
-              SelectableText(
-                (_2faManualKey ?? _2faSecret ?? 'Loading...')
-                    .replaceAllMapped(
-                        RegExp(r".{4}"), (match) => "${match.group(0)} ")
-                    .trim(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
+              );
+            }
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _textColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _textColor.withOpacity(0.05)),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'MANUAL ENTRY KEY',
+                  style: TextStyle(
+                    color: _textColor.withOpacity(0.4),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                SelectableText(
+                  (_2faManualKey ?? _2faSecret ?? 'Loading...')
+                      .replaceAllMapped(
+                          RegExp(r".{4}"), (match) => "${match.group(0)} ")
+                      .trim(),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),

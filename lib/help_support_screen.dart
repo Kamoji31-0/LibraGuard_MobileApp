@@ -34,6 +34,11 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           'Undergraduate students can borrow up to 3 books at a time for a specific duration depending on the book category (Class Use or Overnight).',
     },
     {
+      'question': 'How do I enable Two-Factor Authentication (2FA)?',
+      'answer':
+          '1. Go to your Profile screen.\n2. Tap the "Two-Factor Authentication" section to expand it.\n3. Scan the QR code with an authenticator app (like Google Authenticator) OR long-press the Manual Entry Key to copy it.\n4. Open your authenticator app, add a new account, and paste the key if scanning isn\'t used.\n5. Enter the 6-digit code from your app into LibraGuard and tap "Enable".',
+    },
+    {
       'question': 'What are the fines for late returns?',
       'answer':
           'Overnight books incur a fine of ₱5.00 per day or ₱1.00 per hour depending on the overdue status. Please return books on time to avoid academic holds.',
