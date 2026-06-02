@@ -56,29 +56,29 @@ class _TwoFactorVerificationScreenState
   }
 
   Future<void> _openAuthenticatorApp() async {
+    // Try direct launch — more reliable than canLaunchUrl on many devices
     final Uri otpauthUri = Uri.parse('otpauth://');
     final Uri googleAuthUri = Uri.parse('googleauthenticator://');
-    
+
     try {
-      if (await canLaunchUrl(otpauthUri)) {
-        await launchUrl(otpauthUri);
-      } else if (await canLaunchUrl(googleAuthUri)) {
-        await launchUrl(googleAuthUri);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No authenticator app found. Please open it manually.'),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open authenticator app')),
-        );
-      }
+      // Attempt direct launch of otpauth:// first
+      await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
+      return;
+    } catch (_) {}
+
+    try {
+      // Fallback: try googleauthenticator://
+      await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
+      return;
+    } catch (_) {}
+
+    // If all else fails, show a message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No authenticator app found. Please open it manually.'),
+        ),
+      );
     }
   }
 

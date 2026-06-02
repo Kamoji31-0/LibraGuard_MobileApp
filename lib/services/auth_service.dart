@@ -53,6 +53,10 @@ class AuthService {
     await prefs.remove('first_name');
     await prefs.remove('user_profile');
 
+    // Clear 2FA state
+    await prefs.remove('2fa_enabled');
+    await prefs.remove('cached_2fa_setup');
+
     // Clear History & Services Caches
     await prefs.remove('cached_gate_logs');
     await prefs.remove('cached_pc_sessions');
@@ -673,16 +677,27 @@ class AuthService {
   static const String _2faEnabledKey = '2fa_enabled';
 
   Future<bool> is2FAEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Trust the local flag set explicitly by enable2FA() / disable2FA()
+    //    This is the most reliable source — it is set on every user action.
+    final localFlag = prefs.getBool(_2faEnabledKey);
+    if (localFlag != null) {
+      return localFlag;
+    }
+
+    // 2. Fall back to the cached profile (first-time load, before any action)
     final profile = await getCachedProfile();
     if (profile != null) {
-      final enabled = profile['twoFactorEnabled'] == true || 
-                     profile['is2faEnabled'] == true;
-      // Sync local pref but trust server/profile first
+      final enabled = profile['twoFactorEnabled'] == true ||
+          profile['is2faEnabled'] == true ||
+          profile['isTwoFactorEnabled'] == true;
+      // Persist so future calls use the fast path above
       await set2FAEnabled(enabled);
       return enabled;
     }
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_2faEnabledKey) ?? false;
+
+    return false;
   }
 
   Future<void> set2FAEnabled(bool enabled) async {
