@@ -123,17 +123,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-
         _buildSectionHeader('New'),
         if (!_is2FAEnabled) _buildSecurityAlertCard(),
         ..._buildDismissibleItems(now),
-
-if (today.isNotEmpty) ...[
+        if (today.isNotEmpty) ...[
           _buildSectionHeader('Earlier Today'),
           ..._buildDismissibleItems(today),
         ],
-
-if (yesterday.isNotEmpty) ...[
+        if (yesterday.isNotEmpty) ...[
           _buildSectionHeader('Yesterday'),
           ..._buildDismissibleItems(yesterday),
         ],
@@ -141,7 +138,7 @@ if (yesterday.isNotEmpty) ...[
     );
   }
 
-Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 8, left: 2),
       child: Text(
@@ -196,7 +193,7 @@ Widget _buildSectionHeader(String title) {
     }
   }
 
-Widget _buildListItem(NotificationData n) {
+  Widget _buildListItem(NotificationData n) {
     final iconColor = _iconColorFor(n.type);
     final dividerColor = _textColor.withOpacity(0.07);
 
@@ -207,7 +204,6 @@ Widget _buildListItem(NotificationData n) {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-
               Container(
                 width: 40,
                 height: 40,
@@ -218,7 +214,6 @@ Widget _buildListItem(NotificationData n) {
                 child: Icon(n.avatarIcon, color: iconColor, size: 20),
               ),
               const SizedBox(width: 12),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,13 +238,14 @@ Widget _buildListItem(NotificationData n) {
                   ],
                 ),
               ),
-
               if (n.hasAction) ...[
                 const SizedBox(width: 10),
                 OutlinedButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${n.actionText} action triggered for notification ${n.id}')),
+                      SnackBar(
+                          content: Text(
+                              '${n.actionText} action triggered for notification ${n.id}')),
                     );
                   },
                   style: OutlinedButton.styleFrom(
@@ -279,7 +275,7 @@ Widget _buildListItem(NotificationData n) {
     );
   }
 
-Widget _buildSecurityAlertCard() {
+  Widget _buildSecurityAlertCard() {
     final Color alertAccent = _isDark ? Colors.white : _primaryColor;
     final Color alertText = _isDark ? Colors.white : _primaryColor;
     final Color subText = _isDark
@@ -402,7 +398,7 @@ Widget _buildSecurityAlertCard() {
     );
   }
 
-Widget _buildEmptyState() {
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

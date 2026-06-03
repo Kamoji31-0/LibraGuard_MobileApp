@@ -141,12 +141,13 @@ final Color dialogBg = theme.dialogTheme.backgroundColor ?? (isDark ? const Colo
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.pushReplacement(
+                      Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
                               HomeScreen(firstName: widget.firstName),
                         ),
+                        (route) => false,
                       );
                     },
                     style: ElevatedButton.styleFrom(

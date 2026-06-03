@@ -14,7 +14,7 @@ final loginRes = await http.post(
   );
 
   if (loginRes.statusCode != 200) {
-    print('Login failed: \${loginRes.body}');
+    print('Login failed: ${loginRes.body}');
     return;
   }
 
@@ -32,6 +32,6 @@ final favRes = await http.get(
     Uri.parse('$baseUrl/users/favorites'),
     headers: {'Authorization': 'Bearer $token'},
   );
-  print('Favorites Endpoint Response (\${favRes.statusCode}):');
+  print('Favorites Endpoint Response (${favRes.statusCode}):');
   print(favRes.body);
 }
