@@ -24,8 +24,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   List<BookItem> _favoriteBooks = [];
   bool _isLoading = true;
 
-  // Filter & Sort state
-  Set<String> _selectedGenres = {};
+Set<String> _selectedGenres = {};
   String _availabilityFilter = 'All';
   String _selectedSort = 'A – Z';
 
@@ -62,13 +61,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _loadFavorites() async {
-    // 1. Load from Persistent Cache instantly (if available)
+
     final ids = await _favoriteService.getFavoriteIds();
     final cached = await _bookService.getPersistentCachedBooks();
-    
-    // Filter favorites from the cached full book list
-    final cachedFavorites = cached.where((b) => ids.contains(b.id)).toList();
-    
+
+final cachedFavorites = cached.where((b) => ids.contains(b.id)).toList();
+
     if (cachedFavorites.isNotEmpty && mounted) {
       setState(() {
         _favoriteBooks = cachedFavorites;
@@ -78,8 +76,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       setState(() => _isLoading = true);
     }
 
-    // 2. Refresh from network (by IDs specifically or full refresh)
-    final books = await _bookService.fetchBooksByIds(ids);
+final books = await _bookService.fetchBooksByIds(ids);
 
     if (mounted) {
       setState(() {
@@ -453,22 +450,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Apply filters & sorting
+
     List<BookItem> filteredBooks = _favoriteBooks.where((book) {
-      // Genre filter
+
       final matchGenre =
           _selectedGenres.isEmpty || _selectedGenres.contains(book.displayGenre);
 
-      // Availability filter
-      final matchAvail = _availabilityFilter == 'All' ||
+final matchAvail = _availabilityFilter == 'All' ||
           (_availabilityFilter == 'Available' && book.isAvailable) ||
           (_availabilityFilter == 'Borrowed' && !book.isAvailable);
 
       return matchGenre && matchAvail;
     }).toList();
 
-    // Sorting
-    switch (_selectedSort) {
+switch (_selectedSort) {
       case 'A – Z':
         filteredBooks.sort((a, b) => a.title.compareTo(b.title));
         break;
@@ -525,7 +520,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Filter + Sort row
+
                       Row(
                         children: [
                           _headerChipButton(
@@ -614,7 +609,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             mainAxisSpacing: 16,
                             crossAxisSpacing: 16,
                             childAspectRatio:
-                                0.51, // Decreased to allow more vertical space
+                                0.51,
                           ),
                           itemCount: filteredBooks.length,
                           itemBuilder: (context, index) {

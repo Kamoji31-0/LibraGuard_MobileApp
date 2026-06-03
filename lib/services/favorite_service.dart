@@ -8,20 +8,17 @@ class FavoriteService {
   static const String _baseKey = 'favorite_book_ids';
   final String baseUrl = AuthService.baseUrl;
 
-  // Retrieve an account-specific storage key so data doesn't mix between accounts
-  Future<String> _getStorageKey() async {
+Future<String> _getStorageKey() async {
     final authService = AuthService();
     final profile = await authService.getCachedProfile();
     final userId = profile?['id']?.toString() ?? 'guest';
     return '${_baseKey}_$userId';
   }
 
-  // Get all favorite IDs
-  Future<List<String>> getFavoriteIds() async {
+Future<List<String>> getFavoriteIds() async {
     final storageKey = await _getStorageKey();
 
-    // 1. Try to fetch from server for sync
-    try {
+try {
       final authService = AuthService();
       final token = await authService.getToken();
       if (token != null) {
@@ -38,13 +35,13 @@ class FavoriteService {
           if (body['data'] != null) {
             final List<String> serverFavorites =
                 List<String>.from(body['data']);
-            // Cache server response locally (account-specific)
+
             final prefs = await SharedPreferences.getInstance();
             await prefs.setStringList(storageKey, serverFavorites);
             return serverFavorites;
           }
         } else if (response.statusCode == 404) {
-          // Silent fallback: server doesn't support favorites yet
+
           debugPrint('Favorites sync skipped: Endpoint not found (404)');
         } else {
           debugPrint('Favorites sync failed: Status ${response.statusCode}');
@@ -54,13 +51,11 @@ class FavoriteService {
       debugPrint('Error syncing favorites from server: $e');
     }
 
-    // 2. Fallback to local storage if API is not yet implemented or offline
-    final prefs = await SharedPreferences.getInstance();
+final prefs = await SharedPreferences.getInstance();
     return prefs.getStringList(storageKey) ?? [];
   }
 
-  // Toggle favorite status
-  Future<bool> toggleFavorite(String bookId) async {
+Future<bool> toggleFavorite(String bookId) async {
     final storageKey = await _getStorageKey();
     final prefs = await SharedPreferences.getInstance();
     List<String> favorites = prefs.getStringList(storageKey) ?? [];
@@ -74,11 +69,9 @@ class FavoriteService {
       isFavorited = true;
     }
 
-    // Save locally for instant UI update (account-specific)
-    await prefs.setStringList(storageKey, favorites);
+await prefs.setStringList(storageKey, favorites);
 
-    // Sync with server background
-    try {
+try {
       final authService = AuthService();
       final token = await authService.getToken();
       if (token != null) {
@@ -101,8 +94,7 @@ class FavoriteService {
     return isFavorited;
   }
 
-  // Check if a book is favorited (Instant UX via local cache)
-  Future<bool> isFavorited(String bookId) async {
+Future<bool> isFavorited(String bookId) async {
     final storageKey = await _getStorageKey();
     final prefs = await SharedPreferences.getInstance();
     final favorites = prefs.getStringList(storageKey) ?? [];

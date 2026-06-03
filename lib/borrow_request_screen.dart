@@ -30,10 +30,10 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     return Theme.of(context).textTheme.bodyLarge?.color ??
         (isDark ? Colors.white : const Color(0xFF1D2939));
   }
+
   Color get _cardColor => Theme.of(context).cardColor;
 
-  // 0 = rules, 1 = confirm, 2 = submitted/approval
-  int _step = 0;
+int _step = 0;
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -43,14 +43,12 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   final AuthService _authService = AuthService();
   final BookService _bookService = BookService();
 
-  // Borrower data
-  String _borrowerName = "";
+String _borrowerName = "";
   String _borrowerRole = "";
   String _borrowerDept = "";
   String _borrowerYear = "";
 
-  // Book data
-  String _bookGenre = "Loading...";
+String _bookGenre = "Loading...";
 
   @override
   void initState() {
@@ -60,7 +58,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   }
 
   Future<void> _loadBookDetails() async {
-    // 1. Try cache first
+
     final cachedBooks = await _bookService.getPersistentCachedBooks();
     final cachedMatch = cachedBooks.where((b) => b.id == widget.bookId);
     if (cachedMatch.isNotEmpty && mounted) {
@@ -69,8 +67,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
       });
     }
 
-    // 2. Fetch live
-    try {
+try {
       final books = await _bookService.fetchBooksByIds([widget.bookId]);
       if (books.isNotEmpty && mounted) {
         setState(() {
@@ -78,7 +75,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         });
       } else if (mounted && _bookGenre == "Loading...") {
         setState(() {
-          _bookGenre = "General Collection"; 
+          _bookGenre = "General Collection";
         });
       }
     } catch (_) {
@@ -91,14 +88,13 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   }
 
   Future<void> _loadUserProfile() async {
-    // 1. Load from cache instantly
+
     final cached = await _authService.getCachedProfile();
     if (cached != null && mounted) {
       _applyProfileData(cached);
     }
 
-    // 2. Refresh from network
-    final result = await _authService.getProfile();
+final result = await _authService.getProfile();
     if (result['success'] == true && result['data'] != null && mounted) {
       _applyProfileData(result['data']);
     }
@@ -231,11 +227,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-  // ── Awaiting Approval ─────────────────────────────────────────────────────
-
-  // ── Borrowing Summary (Approval Step) ──────────────────────────────────────
-
-  Widget _buildAwaitingApprovalContent() {
+Widget _buildAwaitingApprovalContent() {
     final tx = _resultTransaction;
     if (tx == null) {
       return const Center(child: CircularProgressIndicator());
@@ -272,30 +264,25 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Borrower Details
-              _buildBorrowerDetails(),
+_buildBorrowerDetails(),
 
               const SizedBox(height: 24),
               const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
               const SizedBox(height: 24),
 
-              // Book Summary Card
-              _buildBookSummaryCard(),
+_buildBookSummaryCard(),
 
               const SizedBox(height: 24),
 
-              // Pickup & Return Details Card
-              _buildPickupAndReturnDetails(tx),
+_buildPickupAndReturnDetails(tx),
 
               const SizedBox(height: 24),
 
-              // Reminders Card with Service Guide Link
-              _buildRemindersWithLink(isBorrowing: true),
+_buildRemindersWithLink(isBorrowing: true),
 
               const SizedBox(height: 12),
 
-              // Confirm Button
-              _buildFinalConfirmButton(),
+_buildFinalConfirmButton(),
             ],
           ),
         ),
@@ -339,7 +326,8 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, Color color) {
+  Widget _buildDetailRow(
+      IconData icon, String label, String value, Color color) {
     return Row(
       children: [
         Icon(icon, size: 16, color: color.withOpacity(0.8)),
@@ -365,7 +353,8 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   }
 
   Widget _buildRemindersWithLink({bool isBorrowing = false}) {
-    final String guideText = isBorrowing ? 'Borrowing Process Guide' : 'Returning Process Guide';
+    final String guideText =
+        isBorrowing ? 'Borrowing Process Guide' : 'Returning Process Guide';
     final int targetIndex = isBorrowing ? 1 : 2;
 
     return Container(
@@ -385,7 +374,8 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFFF59E0B), size: 18),
+              const Icon(Icons.info_outline,
+                  color: Color(0xFFF59E0B), size: 18),
               const SizedBox(width: 8),
               Text(
                 'Reminders',
@@ -537,7 +527,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(ctx); // Close dialog
+                        Navigator.pop(ctx);
                         Navigator.popUntil(context, (route) => route.isFirst);
                       },
                       style: ElevatedButton.styleFrom(
@@ -558,8 +548,8 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        Navigator.pop(ctx); // Close dialog
-                        Navigator.pop(context); // Go back to book list
+                        Navigator.pop(ctx);
+                        Navigator.pop(context);
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -583,10 +573,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-
-  // ── Library Rules ─────────────────────────────────────────────────────────
-
-  Widget _buildRulesContent() {
+Widget _buildRulesContent() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -709,7 +696,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const LibraryRulesScreen(
-                      initialExpandedIndex: 3, // Loaning Policies
+                      initialExpandedIndex: 3,
                     ),
                   ),
                 );
@@ -751,11 +738,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-  // ── Confirmation ──────────────────────────────────────────────────────────
-
-  // ── Confirmation (Redesigned) ──────────────────────────────────────────────
-
-  Widget _buildConfirmationContent() {
+Widget _buildConfirmationContent() {
     return Column(
       children: [
         Container(
@@ -787,25 +770,21 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Borrower Details Section
-              _buildBorrowerDetails(),
+_buildBorrowerDetails(),
 
               const SizedBox(height: 24),
               const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
               const SizedBox(height: 24),
 
-              // Book Summary Card (Inspired by Screenshot 2)
-              _buildBookSummaryCard(),
+_buildBookSummaryCard(),
 
               const SizedBox(height: 24),
 
-              // Terms & Conditions / Info
-              _buildTermsAndConditions(),
+_buildTermsAndConditions(),
 
               const SizedBox(height: 32),
 
-              // Action Buttons
-              _buildActionButtons(),
+_buildActionButtons(),
             ],
           ),
         ),
@@ -1156,9 +1135,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-  // ── Stepper ───────────────────────────────────────────────────────────────
-
-  Widget _buildStepper() {
+Widget _buildStepper() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Stack(
@@ -1259,9 +1236,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     );
   }
 
-  // ── Rule Item ─────────────────────────────────────────────────────────────
-
-  Widget _buildRuleItem(String number, String text1,
+Widget _buildRuleItem(String number, String text1,
       {String? bold, String? text2}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

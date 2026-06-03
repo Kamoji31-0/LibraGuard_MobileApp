@@ -56,24 +56,23 @@ class _TwoFactorVerificationScreenState
   }
 
   Future<void> _openAuthenticatorApp() async {
-    // Try direct launch — more reliable than canLaunchUrl on many devices
+
     final Uri otpauthUri = Uri.parse('otpauth://');
     final Uri googleAuthUri = Uri.parse('googleauthenticator://');
 
     try {
-      // Attempt direct launch of otpauth:// first
+
       await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
       return;
     } catch (_) {}
 
     try {
-      // Fallback: try googleauthenticator://
+
       await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
       return;
     } catch (_) {}
 
-    // If all else fails, show a message
-    if (mounted) {
+if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No authenticator app found. Please open it manually.'),
@@ -85,9 +84,8 @@ class _TwoFactorVerificationScreenState
   void _showSuccessDialog() {
     final theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    
-    // Use theme-defined colors for consistency
-    final Color dialogBg = theme.dialogTheme.backgroundColor ?? (isDark ? const Color(0xFF272B30) : Colors.white);
+
+final Color dialogBg = theme.dialogTheme.backgroundColor ?? (isDark ? const Color(0xFF272B30) : Colors.white);
     final Color dialogTextColor = isDark ? Colors.white : const Color(0xFF1D2939);
     final Color primaryColor = theme.primaryColor;
 
@@ -142,7 +140,7 @@ class _TwoFactorVerificationScreenState
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).pop(); // Close dialog
+                      Navigator.of(context).pop();
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
@@ -192,7 +190,7 @@ class _TwoFactorVerificationScreenState
         bottom: false,
         child: Column(
           children: [
-            // Top Header Area (Maroon) - Following Register Screen format
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
@@ -227,8 +225,7 @@ class _TwoFactorVerificationScreenState
               ),
             ),
 
-            // White/Dark Card Area
-            Expanded(
+Expanded(
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32.0),
@@ -250,7 +247,7 @@ class _TwoFactorVerificationScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 8),
-                      // Label from Register Screen style
+
                       Text(
                         'Verification Code',
                         style: TextStyle(
@@ -269,14 +266,13 @@ class _TwoFactorVerificationScreenState
                         ),
                       ),
                       const SizedBox(height: 40),
-                      
-                      // Code boxes
-                      Center(
+
+Center(
                         child: FittedBox(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              for (var i = 0; i < 6; i++) 
+                              for (var i = 0; i < 6; i++)
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                   child: _buildCodeBox(i, isDark, accentColor),
@@ -285,11 +281,10 @@ class _TwoFactorVerificationScreenState
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 48),
-                      
-                      // Action Button
-                      SizedBox(
+
+SizedBox(
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
@@ -317,7 +312,7 @@ class _TwoFactorVerificationScreenState
                                     Text(
                                       'VERIFY ACCOUNT',
                                       style: TextStyle(
-                                          fontSize: 16, 
+                                          fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 1.5),
                                     ),
@@ -325,9 +320,9 @@ class _TwoFactorVerificationScreenState
                                 ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 48),
-                      
+
                       Center(
                         child: OutlinedButton.icon(
                           onPressed: _openAuthenticatorApp,
@@ -380,9 +375,9 @@ class _TwoFactorVerificationScreenState
         maxLength: 1,
         cursorColor: accentColor,
         style: TextStyle(
-          fontSize: 24, 
+          fontSize: 24,
           fontWeight: FontWeight.bold,
-          color: textColor, // Explicitly set text color
+          color: textColor,
         ),
         decoration: const InputDecoration(
           counterText: '',

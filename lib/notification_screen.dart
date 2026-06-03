@@ -15,7 +15,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   bool _isLoading = true;
   List<NotificationData> _notifications = [];
 
-  Color get _primaryColor => const Color(0xFF75111D); // Dark Maroon
+  Color get _primaryColor => const Color(0xFF75111D);
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
@@ -54,24 +54,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
         type: NotificationType.info,
         avatarIcon: Icons.login_outlined,
         section: 'Earlier today',
-      ),
-      NotificationData(
-        id: '4',
-        title: 'System Update: LibraGuard updated to v2.4.0.',
-        date: 'June 1, 2026',
-        type: NotificationType.info,
-        avatarIcon: Icons.system_update_alt_outlined,
-        section: 'Earlier today',
-      ),
-      NotificationData(
-        id: '5',
-        title: 'Monthly Report: Your October reading session is ready.',
-        date: 'May 31, 2026',
-        type: NotificationType.reminder,
-        avatarIcon: Icons.assessment_outlined,
-        hasAction: true,
-        actionText: 'View',
-        section: 'Yesterday',
       ),
     ];
   }
@@ -141,19 +123,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        // ── NEW ─────────────────────────────────────────────────────────
+
         _buildSectionHeader('New'),
         if (!_is2FAEnabled) _buildSecurityAlertCard(),
         ..._buildDismissibleItems(now),
 
-        // ── EARLIER TODAY ───────────────────────────────────────────────
-        if (today.isNotEmpty) ...[
+if (today.isNotEmpty) ...[
           _buildSectionHeader('Earlier Today'),
           ..._buildDismissibleItems(today),
         ],
 
-        // ── YESTERDAY ───────────────────────────────────────────────────
-        if (yesterday.isNotEmpty) ...[
+if (yesterday.isNotEmpty) ...[
           _buildSectionHeader('Yesterday'),
           ..._buildDismissibleItems(yesterday),
         ],
@@ -161,11 +141,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Helpers
-  // ──────────────────────────────────────────────────────────────────────────
-
-  Widget _buildSectionHeader(String title) {
+Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 16, bottom: 8, left: 2),
       child: Text(
@@ -202,26 +178,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (_isDark) {
       switch (type) {
         case NotificationType.security:
-          return const Color(0xFFF87171); // Light Red
+          return const Color(0xFFF87171);
         case NotificationType.reminder:
-          return const Color(0xFFFB923C); // Light Orange
+          return const Color(0xFFFB923C);
         case NotificationType.info:
-          return const Color(0xFF60A5FA); // Light Blue
+          return const Color(0xFF60A5FA);
       }
     } else {
       switch (type) {
         case NotificationType.security:
-          return const Color(0xFFB21A2D); // Deep Red/Maroon
+          return const Color(0xFFB21A2D);
         case NotificationType.reminder:
-          return const Color(0xFFC2410C); // Dark Orange
+          return const Color(0xFFC2410C);
         case NotificationType.info:
-          return const Color(0xFF1D4ED8); // Dark Blue
+          return const Color(0xFF1D4ED8);
       }
     }
   }
 
-  /// Flat list item — matches img2 layout
-  Widget _buildListItem(NotificationData n) {
+Widget _buildListItem(NotificationData n) {
     final iconColor = _iconColorFor(n.type);
     final dividerColor = _textColor.withOpacity(0.07);
 
@@ -232,7 +207,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icon
+
               Container(
                 width: 40,
                 height: 40,
@@ -243,7 +218,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 child: Icon(n.avatarIcon, color: iconColor, size: 20),
               ),
               const SizedBox(width: 12),
-              // Content
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,11 +243,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ],
                 ),
               ),
-              // Optional action button (pill/outlined)
+
               if (n.hasAction) ...[
                 const SizedBox(width: 10),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('${n.actionText} action triggered for notification ${n.id}')),
+                    );
+                  },
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: iconColor.withOpacity(0.5),
@@ -300,9 +279,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  // ── Security Alert Card ──────────────────────────────────────────────────
-
-  Widget _buildSecurityAlertCard() {
+Widget _buildSecurityAlertCard() {
     final Color alertAccent = _isDark ? Colors.white : _primaryColor;
     final Color alertText = _isDark ? Colors.white : _primaryColor;
     final Color subText = _isDark
@@ -425,9 +402,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  // ── Empty State ──────────────────────────────────────────────────────────
-
-  Widget _buildEmptyState() {
+Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

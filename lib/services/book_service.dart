@@ -108,16 +108,14 @@ class BookService {
   static List<BookItem>? _cachedBooks;
   static DateTime? _lastFetchTime;
 
-  /// Helper to save books to persistent storage
-  Future<void> _saveToPersistentCache(List<dynamic> rawJson) async {
+Future<void> _saveToPersistentCache(List<dynamic> rawJson) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_cacheKey, jsonEncode(rawJson));
     } catch (_) {}
   }
 
-  /// Get books from persistent storage
-  Future<List<BookItem>> getPersistentCachedBooks() async {
+Future<List<BookItem>> getPersistentCachedBooks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_cacheKey);
@@ -130,7 +128,7 @@ class BookService {
   }
 
   Future<List<BookItem>> fetchBooks({bool forceRefresh = false}) async {
-    // Return cache if it's fresh (less than 10 minutes old)
+
     if (!forceRefresh &&
         _cachedBooks != null &&
         _lastFetchTime != null &&
@@ -140,9 +138,9 @@ class BookService {
     try {
       final authService = AuthService();
       final token = await authService.getToken();
-      
+
       final response = await http.get(
-        Uri.parse('$baseUrl/books'), 
+        Uri.parse('$baseUrl/books'),
         headers: {
           if (token != null) 'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -152,16 +150,14 @@ class BookService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(response.body);
         final List<dynamic> data = body['data'] ?? [];
-        
-        // Persist to disk
-        _saveToPersistentCache(data);
-        
+
+_saveToPersistentCache(data);
+
         final results = data.map((json) => BookItem.fromJson(json)).toList();
-        
-        // Update cache
-        _cachedBooks = results;
+
+_cachedBooks = results;
         _lastFetchTime = DateTime.now();
-        
+
         return results;
       } else {
         throw Exception('Failed to load books (Status: ${response.statusCode})');
@@ -172,9 +168,8 @@ class BookService {
     }
   }
 
-  /// NEW: Fetch a single book by its ID. Much faster than fetching all books.
-  Future<BookItem?> fetchBookById(String id) async {
-    // Check cache first
+Future<BookItem?> fetchBookById(String id) async {
+
     if (_cachedBooks != null) {
       try {
         return _cachedBooks!.firstWhere((b) => b.id == id);
@@ -218,7 +213,7 @@ class BookService {
           'Content-Type': 'application/json',
         },
       );
-      
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(response.body);
         final List<dynamic> data = body['data'] ?? [];
@@ -244,7 +239,7 @@ class BookService {
           'Content-Type': 'application/json',
         },
       );
-      
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(response.body);
         final List<dynamic> data = body['data'] ?? [];

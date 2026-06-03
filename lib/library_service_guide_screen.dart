@@ -1,4 +1,4 @@
-// ignore_for_file: dead_code
+
 
 import 'package:flutter/material.dart';
 import 'book_list_screen.dart';
@@ -23,8 +23,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
-  // Track open state for dropdown
-  int? _expandedIndex;
+int? _expandedIndex;
 
   @override
   void initState() {
@@ -642,8 +641,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
   Widget _buildDetailsContent(Map<String, dynamic> item) {
     List<Widget> children = [];
 
-    // Process/Rules section
-    if (item.containsKey('rules')) {
+if (item.containsKey('rules')) {
       children.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,8 +708,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       );
     }
 
-    // Pickup Rules section (Special for Borrowing)
-    if (item.containsKey('pickupRules')) {
+if (item.containsKey('pickupRules')) {
       children.add(
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,8 +789,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       );
     }
 
-    // Divider and Note section
-    if (item.containsKey('note')) {
+if (item.containsKey('note')) {
         children.add(Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Divider(
@@ -868,8 +864,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
       );
     }
 
-    // Custom button if specified
-    if (item.containsKey('buttonText')) {
+if (item.containsKey('buttonText')) {
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 16.0),

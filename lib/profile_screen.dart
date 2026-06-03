@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context)
       .colorScheme
-      .secondary; // Maroon in light, Primary 600 in dark
+      .secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -78,8 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   bool _isUpdatingSecurity = false;
 
-  // 2FA State
-  bool _is2FAEnabled = false;
+bool _is2FAEnabled = false;
   bool _is2FAExpanded = false;
   String? _2faQrCodeUrl;
   String? _2faManualKey;
@@ -95,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    // 1. Load ALL cached data in one shot for instant UI
+
     final results = await Future.wait([
       BorrowService().getPersistentCachedTransactions(),
       AuthService().getCachedGateLogs(),
@@ -120,15 +119,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    // Load 2FA status and pre-fetch setup details if needed
-    final _is2faEnabledLocal = await AuthService().is2FAEnabled();
+final _is2faEnabledLocal = await AuthService().is2FAEnabled();
     if (mounted) {
       setState(() {
         _is2FAEnabled = _is2faEnabledLocal;
       });
 
-      // Optimization: Pre-fetch setup details so expansion is instant
-      if (!_is2faEnabledLocal) {
+if (!_is2faEnabledLocal) {
         AuthService().get2FASetup().then((setup) {
           if (mounted) {
             setState(() {
@@ -139,13 +136,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             });
           }
         }).catchError((e) {
-          // Silent fail for pre-fetch
+
         });
       }
     }
 
-    // 2. Silently fetch fresh data in background
-    _refreshProfileData();
+_refreshProfileData();
   }
 
   void _updateControllers(Map<String, dynamic> profile) {
@@ -187,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _refreshAllData() async {
     await Future.wait([
       _refreshProfileData(),
-      // Pre-fetch other history items as well to update local cache
+
       BorrowService().fetchMyTransactions(),
       PcService().fetchMySessions(),
       AuthService().getGateLogs().then((res) {
@@ -222,13 +218,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Cropping Area
+
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // RepaintBoundary to capture the final view
+
                         RepaintBoundary(
                           key: boundaryKey,
                           child: Container(
@@ -259,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        // Circular Overlay (using a hole in a stack)
+
                         IgnorePointer(
                           child: SizedBox(
                             width: 300,
@@ -292,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        // Helper Text
+
                         Positioned(
                           top: 20,
                           child: Container(
@@ -320,8 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                  // Zoom Slider
-                  Padding(
+Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 30, vertical: 20),
                     child: Row(
@@ -338,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onChanged: (val) {
                               setDialogState(() {
                                 currentZoom = val;
-                                // Update scale while keeping center
+
                                 final translation =
                                     transformController.value.getTranslation();
                                 transformController.value = Matrix4.identity()
@@ -366,8 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 10),
                   const Divider(color: Colors.white12),
 
-                  // Buttons
-                  Padding(
+Padding(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -382,7 +376,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ElevatedButton(
                           onPressed: () async {
                             try {
-                              // Capture the RepaintBoundary as an image
+
                               final RenderRepaintBoundary boundary =
                                   boundaryKey.currentContext!.findRenderObject()
                                       as RenderRepaintBoundary;
@@ -461,13 +455,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isSaving = false;
       });
 
-      // Close modal first
-      if (Navigator.of(context, rootNavigator: true).canPop()) {
+if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
-      // Show success dialog with a very small delay to ensure modal is out of the way
-      Future.delayed(const Duration(milliseconds: 100), () {
+Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) _showSuccessDialog('Profile updated successfully!');
       });
     } else {
@@ -621,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openAuthenticatorApp() async {
-    // 1. Try launching the full otpauth URI if available (Automatic Import)
+
     if (_2faSecret != null) {
       final String email = (_userProfile?['email'] ??
               _userProfile?['emailAddress'] ??
@@ -633,7 +625,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final Uri fullUri = Uri.parse(fullUriString);
 
       try {
-        // Direct launch for standard schemes is sometimes more reliable than canLaunchUrl
+
         await launchUrl(fullUri, mode: LaunchMode.externalApplication);
         return;
       } catch (e) {
@@ -641,8 +633,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    // 2. Fallback to just opening the apps if they exist
-    final Uri otpauthUri = Uri.parse('otpauth://');
+final Uri otpauthUri = Uri.parse('otpauth://');
     final Uri googleAuthUri = Uri.parse('googleauthenticator://');
 
     try {
@@ -651,7 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else if (await canLaunchUrl(googleAuthUri)) {
         await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
       } else {
-        // Final fallback: just try to launch otpauth:// anyway, it might work even if canLaunch returns false
+
         try {
           await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
         } catch (_) {
@@ -676,7 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine trailing theme label
+
     final mode = themeNotifier.value;
     final themeLabel = mode == ThemeMode.system
         ? 'System'
@@ -693,9 +684,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Stack(
                   children: [
-                    // Maroon Background behind the profile card, scrolling with the view
+
                     Container(
-                      height: 350, // Made longer/larger as requested
+                      height: 350,
                       decoration: BoxDecoration(
                         color: _accentColor,
                         borderRadius: const BorderRadius.vertical(
@@ -703,8 +694,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
 
-                    // Content
-                    SafeArea(
+SafeArea(
                       bottom: false,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -712,7 +702,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Custom embedded App Bar so it scrolls with the page
+
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -732,7 +722,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(
-                                    width: 48), // Balances the back button
+                                    width: 48),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -902,11 +892,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 50, // Optimize for base64
+      imageQuality: 50,
     );
 
     if (image != null && mounted) {
-      // Show Resize Dialog before uploading
+
       final Uint8List bytes = await image.readAsBytes();
       final String? resizedBase64 = await _showResizeDialog(bytes);
 
@@ -929,7 +919,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isSaving = false;
               if (res['success'] == true) {
                 _userProfile = res['data'];
-                // Sync base64 immediately for UI feedback
+
                 _base64Image = resizedBase64.split(',').last;
                 _profileImageUrl = null;
                 _showSuccessDialog('Profile picture updated!');
@@ -946,7 +936,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             });
           }
         } else {
-          // Deferred save (e.g. from Manage Profile modal)
+
           setState(() {
             _base64Image = resizedBase64.split(',').last;
             _profileImageUrl = null;
@@ -983,7 +973,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.only(top: 24, bottom: 24),
         child: Column(
           children: [
-            // Profile Picture
+
             Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
@@ -991,8 +981,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: _cardColor, // White border effect
-                    borderRadius: BorderRadius.circular(16), // Squircle shape
+                    color: _cardColor,
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.06),
@@ -1055,7 +1045,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context)
                             .colorScheme
-                            .secondary, // Maroon in light, Primary 600 in dark
+                            .secondary,
                         shape: BoxShape.circle,
                         border: Border.all(color: _cardColor, width: 2),
                       ),
@@ -1069,11 +1059,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 16),
 
-            // Name and badge
-            Row(
+Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(width: 24), // Offset for badge spacing
+                const SizedBox(width: 24),
                 Text(
                   fullName,
                   style: TextStyle(
@@ -1085,7 +1074,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(width: 4),
                 const Icon(
                   Icons.verified,
-                  color: Color(0xFFFFD700), // Yellow verified badge
+                  color: Color(0xFFFFD700),
                   size: 20,
                 ),
               ],
@@ -1093,8 +1082,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 4),
 
-            // Email underneath name
-            Text(
+Text(
               email,
               style: TextStyle(
                 color: _textColor.withOpacity(0.5),
@@ -1104,13 +1092,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 24),
 
-            // Badges Row (Department, Year, Role)
-            Container(
+Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
                 color: _textColor
-                    .withOpacity(0.03), // Light grey background like image
+                    .withOpacity(0.03),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -1131,7 +1118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileBadge(IconData icon, String value, String label) {
     final theme = Theme.of(context);
     final accentColor =
-        theme.colorScheme.secondary; // Maroon in light, Primary 600 in dark
+        theme.colorScheme.secondary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1309,7 +1296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         _newPasswordController.clear();
                                         _confirmPasswordController.clear();
                                         Navigator.pop(
-                                            context); // Close bottom sheet
+                                            context);
                                         _showSuccessDialog(res['message'] ??
                                             'Password updated successfully!');
                                       } else {
@@ -1949,7 +1936,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Search and Filter Bar
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -2058,19 +2045,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: _primaryColor));
                         }
 
-                        // Apply Search & Advanced Filtering
-                        List<BorrowTransaction> filtered =
+List<BorrowTransaction> filtered =
                             transactions.where((tx) {
                           final query = searchQuery.toLowerCase();
                           final bookTitle = tx.bookTitle.toLowerCase();
                           final borrower = tx.borrowerName.toLowerCase();
 
-                          // Search Match
-                          bool matchesSearch = bookTitle.contains(query) ||
+bool matchesSearch = bookTitle.contains(query) ||
                               borrower.contains(query);
 
-                          // Status Match
-                          bool matchesStatus = true;
+bool matchesStatus = true;
                           if (selectedStatus == 'Borrowed') {
                             matchesStatus =
                                 tx.returnDate == null && !tx.isCancelled;
@@ -2080,8 +2064,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             matchesStatus = tx.isCancelled;
                           }
 
-                          // Timeframe Match
-                          bool matchesTime = true;
+bool matchesTime = true;
                           if (selectedTimeframe != 'All Time') {
                             try {
                               final borrowDate = DateTime.parse(tx.borrowDate);
@@ -2099,8 +2082,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           return matchesSearch && matchesStatus && matchesTime;
                         }).toList();
 
-                        // Apply Sorting
-                        if (selectedSort == 'Newest First') {
+if (selectedSort == 'Newest First') {
                           filtered.sort(
                               (a, b) => b.borrowDate.compareTo(a.borrowDate));
                         } else if (selectedSort == 'Oldest First') {
@@ -2593,8 +2575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Section 1: Borrower's Details
-                        _buildDialogSection(
+_buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,
                           hasOutline: true,
@@ -2615,8 +2596,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Section 2: Book Details
-                        FutureBuilder<BookItem?>(
+FutureBuilder<BookItem?>(
                           future: BookService().fetchBookById(tx.bookId),
                           builder: (context, snapshot) {
                             final book = snapshot.data;
@@ -2737,8 +2717,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Section 3: Schedule
-                        _buildDialogSection(
+_buildDialogSection(
                           title: 'SCHEDULE',
                           showIcon: false,
                           children: [
@@ -2764,8 +2743,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Section 4: Penalty if any
-                        if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
+if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           _buildDialogSection(
                             title: 'PENALTY',
                             showIcon: false,
@@ -2776,7 +2754,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
 
-                        const SizedBox(height: 3), // Section 5: Reminders
+                        const SizedBox(height: 3),
                         _buildDialogSection(
                           title: 'Reminders',
                           showIcon: false,
@@ -2802,7 +2780,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   MaterialPageRoute(
                                     builder: (context) =>
                                         const LibraryServiceGuideScreen(
-                                      initialExpandedIndex: 2, // Return Books
+                                      initialExpandedIndex: 2,
                                     ),
                                   ),
                                 );
@@ -3040,7 +3018,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Search and Filter Bar
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -3131,7 +3109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(
                     child: Builder(
                       builder: (context) {
-                        // Apply filtering to localLogs
+
                         final filtered = localLogs.where((log) {
                           final query = searchQuery.toLowerCase();
                           final timeIn =
@@ -3139,12 +3117,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final laneVal =
                               log['lane']?.toString().toLowerCase() ?? '';
 
-                          // Search Match
-                          bool matchesSearch =
+bool matchesSearch =
                               timeIn.contains(query) || laneVal.contains(query);
 
-                          // Presence Match
-                          bool matchesPresence = true;
+bool matchesPresence = true;
                           final bool isAtLibrary = log['timeOut'] == null ||
                               log['timeOut'].toString().isEmpty ||
                               log['timeOut'].toString() == 'null';
@@ -3154,16 +3130,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             matchesPresence = !isAtLibrary;
                           }
 
-                          // Lane Match
-                          bool matchesLane = true;
+bool matchesLane = true;
                           if (selectedLane != 'All') {
                             matchesLane = selectedLane
                                 .toLowerCase()
                                 .contains(laneVal.toLowerCase());
                           }
 
-                          // Timeframe Match
-                          bool matchesTime = true;
+bool matchesTime = true;
                           if (selectedTimeframe != 'All Time') {
                             try {
                               final timeInStr = log['timeIn']?.toString() ?? '';
@@ -3312,7 +3286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showSessions() {
-    // Pre-hook to pre-fetch computers for the filter
+
     PcService().fetchComputers().then((pcs) {
       if (mounted && pcs.isNotEmpty) {
         setState(() => _cachedComputers = pcs);
@@ -3375,7 +3349,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Search and Filter Bar
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -3427,7 +3401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : _textColor.withOpacity(0.6),
                                 size: 20),
                             onPressed: () {
-                              // Get unique PC names from history AND the full computer list
+
                               final historyPcs = _cachedSessions
                                   .map((s) => s.computerName)
                                   .toSet();
@@ -3491,18 +3465,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: _primaryColor));
                         }
 
-                        // Apply Search & Advanced Filtering
-                        final filtered = sessions.where((s) {
+final filtered = sessions.where((s) {
                           final query = searchQuery.toLowerCase();
                           final pcName = s.computerName.toLowerCase();
                           final ref = s.reference?.toLowerCase() ?? '';
 
-                          // Search Match
-                          bool matchesSearch =
+bool matchesSearch =
                               pcName.contains(query) || ref.contains(query);
 
-                          // Status Match
-                          bool matchesStatus = true;
+bool matchesStatus = true;
                           if (selectedStatus != 'All') {
                             final sStatus = s.status.toLowerCase();
                             final selSt = selectedStatus.toLowerCase();
@@ -3514,12 +3485,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                           }
 
-                          // Duration Match
-                          bool matchesDuration = true;
+bool matchesDuration = true;
                           if (selectedDuration != 'All') {
                             final dur = s.duration.toLowerCase();
                             final sel = selectedDuration.toLowerCase();
-                            // Match "1 Hour" with "1 Hour", "1 hr", "60 min" etc.
+
                             if (sel == '1 hour') {
                               matchesDuration = dur.contains('1 hour') ||
                                   dur.contains('1 hr') ||
@@ -3533,8 +3503,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                           }
 
-                          // PC Match
-                          bool matchesPc = true;
+bool matchesPc = true;
                           if (selectedPc != 'All') {
                             matchesPc = s.computerName
                                 .toLowerCase()
@@ -3916,16 +3885,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         children: [
-          // Collapsed Tile
+
           ListTile(
             onTap: () async {
               setState(() => _is2FAExpanded = !_is2FAExpanded);
 
               if (_is2FAExpanded && !_is2FAEnabled && _2faQrCodeUrl == null) {
-                // Fetch setup data in background if not already loaded
+
                 try {
                   final setup = await AuthService()
-                      .get2FASetup(); // Use established method
+                      .get2FASetup();
                   if (mounted) {
                     setState(() {
                       _2faQrCodeUrl = setup['qrCodeUrl'];
@@ -3993,8 +3962,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // Expanded Content
-          if (_is2FAExpanded)
+if (_is2FAExpanded)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               decoration: BoxDecoration(
@@ -4034,8 +4002,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 24),
 
-        // Step By Step Guide Summary
-        _build2FAStep(1, "Open Account Settings",
+_build2FAStep(1, "Open Account Settings",
             "Navigate to Profile → Account Settings → tap \"Two-Factor Authentication\""),
         _build2FAStep(2, "View the Setup Panel",
             "The section expands to show a QR code and a Manual Entry Key"),
@@ -4281,7 +4248,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'To disable 2FA, enter your current password and a live code from your authenticator app.',
           style: TextStyle(color: _textColor.withOpacity(0.6), fontSize: 13),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _openAuthenticatorApp,
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('Open Authenticator App'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _accentColor,
+              side: BorderSide(color: _accentColor),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
         Text(
           'Current Password',
           style: TextStyle(

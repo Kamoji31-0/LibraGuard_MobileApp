@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
-/// Model representing one borrow transaction from the API.
 class BorrowTransaction {
   final String id;
   final String userId;
@@ -65,16 +64,14 @@ class BorrowService {
   static List<BorrowTransaction>? _cachedTransactions;
   static DateTime? _lastFetchTime;
 
-  /// Helper to save transactions to persistent storage
-  Future<void> _saveToPersistentCache(List<dynamic> rawJson) async {
+Future<void> _saveToPersistentCache(List<dynamic> rawJson) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_cacheKey, jsonEncode(rawJson));
     } catch (_) {}
   }
 
-  /// Get transactions from persistent storage
-  Future<List<BorrowTransaction>> getPersistentCachedTransactions() async {
+Future<List<BorrowTransaction>> getPersistentCachedTransactions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_cacheKey);
@@ -88,9 +85,8 @@ class BorrowService {
     return [];
   }
 
-  /// Fetch all borrow transactions for the currently logged-in user.
-  Future<List<BorrowTransaction>> fetchMyTransactions({bool forceRefresh = false}) async {
-    // Return cache if it's fresh (less than 5 minutes old)
+Future<List<BorrowTransaction>> fetchMyTransactions({bool forceRefresh = false}) async {
+
     if (!forceRefresh &&
         _cachedTransactions != null &&
         _lastFetchTime != null &&
@@ -103,7 +99,7 @@ class BorrowService {
     if (token == null) return [];
 
     try {
-      // Safety constraint: strictly enforce the active userId
+
       final profileRes = await authService.getProfile();
       final String currentUserId = profileRes['data']?['id']?.toString() ??
           profileRes['data']?['_id']?.toString() ??
@@ -116,7 +112,7 @@ class BorrowService {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      ).timeout(const Duration(seconds: 10)); // Add timeout
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -127,13 +123,12 @@ class BorrowService {
             .map((e) => BorrowTransaction.fromJson(e as Map<String, dynamic>))
             .toList();
 
-        // Enforce user-specific filtering down to the ID level rigidly
-        final results = currentUserId.isNotEmpty
+final results = currentUserId.isNotEmpty
             ? allTransactions.where((tx) => tx.userId == currentUserId).toList()
             : <BorrowTransaction>[];
 
         if (results.isNotEmpty) {
-          // Persist to disk
+
           _saveToPersistentCache(results.map((e) => {
             'id': e.id,
             'userId': e.userId,
@@ -149,8 +144,7 @@ class BorrowService {
           }).toList());
         }
 
-        // Update cache
-        _cachedTransactions = results;
+_cachedTransactions = results;
         _lastFetchTime = DateTime.now();
 
         return results;
@@ -161,9 +155,7 @@ class BorrowService {
     }
   }
 
-  /// Submit a new borrow request for [bookId].
-  /// The [dueDate] defaults to 7 days from now if not provided.
-  Future<Map<String, dynamic>> submitBorrowRequest({
+Future<Map<String, dynamic>> submitBorrowRequest({
     required String bookId,
     DateTime? dueDate,
   }) async {
@@ -173,8 +165,7 @@ class BorrowService {
       return {'success': false, 'message': 'You are not logged in.'};
     }
 
-    // Get userId from the cached profile
-    final profileRes = await authService.getProfile();
+final profileRes = await authService.getProfile();
     final userId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         '';
@@ -201,7 +192,7 @@ class BorrowService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Normalize: API may return the transaction directly or wrapped
+
         final tx = data is Map && data['data'] != null ? data['data'] : data;
         return {
           'success': true,

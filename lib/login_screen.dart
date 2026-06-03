@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 import 'services/auth_service.dart';
-import 'main.dart' show themeNotifier; // Import for theme synchronization
+import 'main.dart' show themeNotifier;
 import 'widgets/glow_text_field.dart';
 import 'two_factor_verification_screen.dart';
 
@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _cardColor => Theme.of(context).cardColor;
-  Color get _accentColor => Theme.of(context).colorScheme.secondary; // Maroon in light, Primary 600 in dark
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
 
   @override
@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       if (result['success']) {
-        // Handle Remember Me persistence
+
         final prefs = await SharedPreferences.getInstance();
         if (_rememberMe) {
           await prefs.setString('saved_email', _emailController.text.trim());
@@ -84,19 +84,17 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.remove('remember_me');
         }
 
-        // Extract first name from API response
-        final data = result['data'] ?? {};
+final data = result['data'] ?? {};
         final user = data['user'] ?? data['data'] ?? data;
         final fullName =
             (user['name'] ?? user['fullName'] ?? '').toString().trim();
         final firstName =
             fullName.isNotEmpty ? fullName.split(' ').first : null;
 
-        // Sync theme preference for this account
-        if (mounted) {
+if (mounted) {
           final userEmail = _emailController.text.trim().toLowerCase();
           final userThemeMode = await _authService.getThemePreference(userEmail);
-          
+
           if (userThemeMode == 'dark') {
             themeNotifier.value = ThemeMode.dark;
           } else if (userThemeMode == 'light') {
@@ -108,12 +106,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        // Check if 2FA is enabled for this user (Server-driven or Local fallback)
-        final bool is2FARequiredByServer = result['require2fa'] == true;
+final bool is2FARequiredByServer = result['require2fa'] == true;
         final bool is2FAEnabledLocally = await _authService.is2FAEnabled();
-        
+
         if (is2FARequiredByServer || is2FAEnabledLocally) {
-          // Slide animation to 2FA screen
+
           Navigator.push(
             context,
             PageRouteBuilder(
@@ -201,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _accentColor,
-                          foregroundColor: Colors.white, // Fix: Ensure white text
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -210,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text(
                           'PROCEED TO HOME',
                           style: TextStyle(
-                            color: Colors.white, // Fix: Force white text visibility
+                            color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
@@ -229,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text(result['message']),
             backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFFB21A2D) // Primary 700
+                ? const Color(0xFFB21A2D)
                 : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -249,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Top colored area (Maroon)
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(
@@ -279,8 +276,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
 
-            // White Card Area
-            Expanded(
+Expanded(
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32.0),
@@ -305,8 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const SizedBox(height: 16),
 
-                        // Email Field
-                        _buildLabel('Email Address'),
+_buildLabel('Email Address'),
                         const SizedBox(height: 12),
                         GlowTextField(
                           hint: 'scholar@libraguard.edu',
@@ -326,8 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Password Field
-                        _buildLabel('Password'),
+_buildLabel('Password'),
                         const SizedBox(height: 12),
                         GlowTextField(
                           hint: 'Enter your password...',
@@ -343,8 +337,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Remember Me & Forgot Password
-                        Row(
+Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Row(
@@ -394,8 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Sign In Button
-                        SizedBox(
+SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
@@ -436,8 +428,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Register
-                        Row(
+Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
@@ -491,9 +482,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-
-  void _showForgotPasswordSheet() {
+void _showForgotPasswordSheet() {
     final TextEditingController forgotEmailController = TextEditingController();
     final TextEditingController newPasswordController = TextEditingController();
     final TextEditingController confirmPasswordController = TextEditingController();
@@ -502,7 +491,7 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isSendingReset = false;
     bool obscureNew = true;
     bool obscureConfirm = true;
-    int step = 1; // 1 = Email, 2 = Target Password
+    int step = 1;
 
     showModalBottomSheet(
       context: context,
@@ -679,9 +668,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: isSendingReset
                           ? null
                           : () async {
-                              // Perform unified inline validation
+
                               if (!_resetFormKey.currentState!.validate()) return;
-                              
+
                               if (step == 1) {
                                 setModalState(() => isSendingReset = true);
                                 final res = await AuthService().forgotPassword(forgotEmailController.text.trim());
@@ -689,7 +678,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   setModalState(() {
                                     isSendingReset = false;
                                     if (res['success'] == true) {
-                                      step = 2; // Transition without requiring token
+                                      step = 2;
                                     } else {
                                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to send'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent));
                                     }
@@ -697,7 +686,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 }
                               } else {
                                 setModalState(() => isSendingReset = true);
-                                // The email itself handles identity via proxy since explicit token is dropped.
+
                                 final res = await AuthService().resetPassword(
                                     resetToken: forgotEmailController.text.trim(),
                                     newPassword: newPasswordController.text);

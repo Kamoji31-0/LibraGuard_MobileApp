@@ -8,8 +8,7 @@ class AuthService {
 
   final SecureStorageService _secureStorage = SecureStorageService();
 
-  // Save JWT token
-  Future<void> saveToken(String token) async {
+Future<void> saveToken(String token) async {
     print('DEBUG: Attempting to save token: ${token.substring(0, 10)}...');
     await _secureStorage.saveToken(token);
     final prefs = await SharedPreferences.getInstance();
@@ -17,9 +16,8 @@ class AuthService {
     print('DEBUG: Token saved successfully to both storage layers');
   }
 
-  // Get JWT token
-  Future<String?> getToken() async {
-    // Try secure storage first
+Future<String?> getToken() async {
+
     try {
       String? token = await _secureStorage.getToken();
       if (token != null && token.isNotEmpty) {
@@ -30,12 +28,11 @@ class AuthService {
       print('DEBUG: SecureStorage error: $e');
     }
 
-    // Fallback to SharedPreferences (migration path)
-    final prefs = await SharedPreferences.getInstance();
+final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
     if (token != null && token.isNotEmpty) {
       print('DEBUG: Token found in SharedPreferences');
-      // Migrate to secure storage
+
       await _secureStorage.saveToken(token);
     } else {
       print('DEBUG: No token found in SharedPreferences either');
@@ -43,47 +40,39 @@ class AuthService {
     return token;
   }
 
-  // Clear session
-  Future<void> logout() async {
+Future<void> logout() async {
     await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
 
-    // Clear Core Auth
-    await prefs.remove('jwt_token');
+await prefs.remove('jwt_token');
     await prefs.remove('first_name');
     await prefs.remove('user_profile');
 
-    // Clear 2FA state
-    await prefs.remove('2fa_enabled');
+await prefs.remove('2fa_enabled');
     await prefs.remove('cached_2fa_setup');
 
-    // Clear History & Services Caches
-    await prefs.remove('cached_gate_logs');
+await prefs.remove('cached_gate_logs');
     await prefs.remove('cached_pc_sessions');
     await prefs.remove('cached_pc_list');
     await prefs.remove('cached_transactions_list');
   }
 
-  // Save first name
-  Future<void> saveFirstName(String name) async {
+Future<void> saveFirstName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('first_name', name);
   }
 
-  // Get first name
-  Future<String?> getFirstName() async {
+Future<String?> getFirstName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('first_name');
   }
 
-  // Save profile
-  Future<void> saveProfile(Map<String, dynamic> user) async {
+Future<void> saveProfile(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_profile', jsonEncode(user));
   }
 
-  // Get cached profile
-  Future<Map<String, dynamic>?> getCachedProfile() async {
+Future<Map<String, dynamic>?> getCachedProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('user_profile');
     if (data != null) {
@@ -92,39 +81,32 @@ class AuthService {
     return null;
   }
 
-  // Save theme preference for a specific email
-  // mode: 'light', 'dark', or 'system'
-  Future<void> saveThemePreference(String email, String mode) async {
+Future<void> saveThemePreference(String email, String mode) async {
     final prefs = await SharedPreferences.getInstance();
     final normalizedEmail = email.trim().toLowerCase();
     await prefs.setString('themeMode_$normalizedEmail', mode);
-    // Legacy support: sync the boolean flag for components that still check it
+
     await prefs.setBool('isDarkTheme_$normalizedEmail', mode == 'dark');
-    // Global fallback for startup (before email is known)
+
     await prefs.setString('app_theme_mode', mode);
   }
 
-  // Get theme preference for a specific email
-  Future<String> getThemePreference(String email) async {
+Future<String> getThemePreference(String email) async {
     final prefs = await SharedPreferences.getInstance();
     final normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Try new string-based preference
-    final mode = prefs.getString('themeMode_$normalizedEmail');
+final mode = prefs.getString('themeMode_$normalizedEmail');
     if (mode != null) return mode;
 
-    // 2. Fallback to legacy boolean preference
-    final isDark = prefs.getBool('isDarkTheme_$normalizedEmail');
+final isDark = prefs.getBool('isDarkTheme_$normalizedEmail');
     if (isDark != null) {
       return isDark ? 'dark' : 'light';
     }
 
-    // 3. Global fallback
-    return prefs.getString('app_theme_mode') ?? 'system';
+return prefs.getString('app_theme_mode') ?? 'system';
   }
 
-  // Login
-  Future<Map<String, dynamic>> login(String email, String password) async {
+Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
@@ -140,7 +122,7 @@ class AuthService {
       if (response.statusCode == 200 ||
           response.statusCode == 201 ||
           response.statusCode == 202) {
-        // Check for 2FA requirement in response body
+
         final String msg = data['message']?.toString().toLowerCase() ?? '';
         final bool msgMentions2FA = msg.contains('2fa') ||
             msg.contains('mfa') ||
@@ -167,18 +149,17 @@ class AuthService {
           };
         }
 
-        // Robust token extraction
-        final String? token = data['token'] ??
+final String? token = data['token'] ??
             data['accessToken'] ??
             data['data']?['token'] ??
             data['user']?['token'];
 
         if (token != null) {
           await saveToken(token);
-          // Apply any pending dept/year saved during registration
+
           await _applyPendingStudentFields(token);
         }
-        // Persist first name and full profile
+
         final user = data['user'] ?? data['data'] ?? data;
         await saveProfile(user);
 
@@ -190,7 +171,7 @@ class AuthService {
         }
         return {'success': true, 'data': data};
       } else {
-        // Special case: Some backends return 401 or similar with specific messages for 2FA
+
         final String msg = data['message']?.toString().toLowerCase() ?? '';
         final bool is2FARelated = msg.contains('2fa') ||
             msg.contains('mfa') ||
@@ -217,8 +198,7 @@ class AuthService {
     }
   }
 
-  // Apply pending dept/year saved during registration (called after login)
-  Future<void> _applyPendingStudentFields(String token) async {
+Future<void> _applyPendingStudentFields(String token) async {
     final prefs = await SharedPreferences.getInstance();
     final pendingDept = prefs.getString('pending_dept');
     final pendingYear = prefs.getString('pending_year');
@@ -229,8 +209,7 @@ class AuthService {
       if (pendingDept != null) body['dept'] = pendingDept;
       if (pendingYear != null) body['year'] = pendingYear;
 
-      // Try PATCH first, then PUT
-      http.Response? res;
+http.Response? res;
       for (final method in ['PATCH', 'PUT']) {
         final uri = Uri.parse('$baseUrl/users/profile');
         res = method == 'PATCH'
@@ -248,14 +227,13 @@ class AuthService {
                 body: jsonEncode(body));
         if (res.statusCode == 200) break;
       }
-      // Clear pending values regardless of result
+
     } catch (_) {}
     await prefs.remove('pending_dept');
     await prefs.remove('pending_year');
   }
 
-  // Register
-  Future<Map<String, dynamic>> register({
+Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
@@ -285,9 +263,8 @@ class AuthService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Save dept/year locally — the /auth/register endpoint ignores these,
-        // so we flush them to the server on first login via _applyPendingStudentFields
-        final deptVal = department?.trim() ?? '';
+
+final deptVal = department?.trim() ?? '';
         final yearVal = yearLevel?.trim() ?? '';
         if (role.toUpperCase() == 'STUDENT' &&
             (deptVal.isNotEmpty || yearVal.isNotEmpty)) {
@@ -298,8 +275,7 @@ class AuthService {
             await prefs.setString('pending_year', yearVal);
         }
 
-        // If the server returns a token immediately, flush now
-        final token =
+final token =
             data['token'] ?? data['data']?['token'] ?? data['user']?['token'];
         if (token != null) await _applyPendingStudentFields(token);
 
@@ -315,8 +291,7 @@ class AuthService {
     }
   }
 
-  // Forgot Password
-  Future<Map<String, dynamic>> forgotPassword(String email) async {
+Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/forgot-password'),
@@ -342,8 +317,7 @@ class AuthService {
     }
   }
 
-  // Reset Password using Code/Token
-  Future<Map<String, dynamic>> resetPassword(
+Future<Map<String, dynamic>> resetPassword(
       {required String resetToken, required String newPassword}) async {
     try {
       final response = await http.post(
@@ -373,12 +347,10 @@ class AuthService {
     }
   }
 
-  // Get User Profile — always fetches live, falls back to cache
-  Future<Map<String, dynamic>> getProfile() async {
+Future<Map<String, dynamic>> getProfile() async {
     final token = await getToken();
 
-    // If no token, fall back to cache (e.g., offline)
-    if (token == null) {
+if (token == null) {
       final cached = await getCachedProfile();
       if (cached != null) return {'success': true, 'data': cached};
       return {'success': false, 'message': 'Not authenticated'};
@@ -395,26 +367,25 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // API may return {user: {...}} or the user directly
+
         final user = data['user'] ?? data['data'] ?? data;
-        await saveProfile(user); // update cache
+        await saveProfile(user);
         return {'success': true, 'data': user};
       } else {
-        // Network failed — serve stale cache
+
         final cached = await getCachedProfile();
         if (cached != null) return {'success': true, 'data': cached};
         return {'success': false, 'message': 'Failed to fetch profile'};
       }
     } catch (e) {
-      // Offline — serve stale cache
+
       final cached = await getCachedProfile();
       if (cached != null) return {'success': true, 'data': cached};
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
-  // Update Security Credentials (Password)
-  Future<Map<String, dynamic>> updateSecurity(
+Future<Map<String, dynamic>> updateSecurity(
       String currentPassword, String newPassword) async {
     try {
       final token = await getToken();
@@ -451,8 +422,7 @@ class AuthService {
     }
   }
 
-  // Get Borrowing Transactions
-  Future<List<dynamic>> getTransactions() async {
+Future<List<dynamic>> getTransactions() async {
     final token = await getToken();
     if (token == null) return [];
 
@@ -474,8 +444,7 @@ class AuthService {
     }
   }
 
-  // Get Computer Sessions
-  Future<List<dynamic>> getComputerSessions() async {
+Future<List<dynamic>> getComputerSessions() async {
     final token = await getToken();
     if (token == null) return [];
 
@@ -499,16 +468,14 @@ class AuthService {
 
   static const String _gateLogsCacheKey = 'cached_gate_logs';
 
-  /// Save gate logs to persistent storage
-  Future<void> _saveGateLogsToCache(List<dynamic> logs) async {
+Future<void> _saveGateLogsToCache(List<dynamic> logs) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_gateLogsCacheKey, jsonEncode(logs));
     } catch (_) {}
   }
 
-  /// Get gate logs from persistent storage
-  Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
+Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_gateLogsCacheKey);
@@ -520,13 +487,12 @@ class AuthService {
     return [];
   }
 
-  // Get Gate Logs (Synchronized with web system)
-  Future<List<Map<String, dynamic>>> getGateLogs() async {
+Future<List<Map<String, dynamic>>> getGateLogs() async {
     final token = await getToken();
     if (token == null) return [];
 
     try {
-      // Safety constraint: strictly enforce the active userId
+
       final profileRes = await getProfile();
       final String currentUserId = profileRes['data']?['id']?.toString() ??
           profileRes['data']?['_id']?.toString() ??
@@ -546,8 +512,7 @@ class AuthService {
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['logs'] ?? []);
 
-        // Enforce user-specific filtering down to the ID level rigidly
-        final filteredList = currentUserId.isNotEmpty
+final filteredList = currentUserId.isNotEmpty
             ? list.where((log) {
                 final logMap = log is Map ? log : {};
                 final logUid = (logMap['userId'] ??
@@ -559,8 +524,7 @@ class AuthService {
               }).toList()
             : [];
 
-        // Map data to match the UI expectations in profile_screen.dart
-        final results = filteredList.map((log) {
+final results = filteredList.map((log) {
           final logMap = Map<String, dynamic>.from(log as Map);
           final timeIn = logMap['timeIn']?.toString() ?? '';
           final timeOut = logMap['timeOut']?.toString() ?? 'Active';
@@ -579,22 +543,19 @@ class AuthService {
           };
         }).toList();
 
-        // Persist to disk
-        _saveGateLogsToCache(results);
+_saveGateLogsToCache(results);
 
         return results;
       }
 
-      // Fallback to cache if non-200
-      return await getCachedGateLogs();
+return await getCachedGateLogs();
     } catch (e) {
-      // Fallback to cache if network error
+
       return await getCachedGateLogs();
     }
   }
 
-  // Get current library occupancy (students currently inside)
-  Future<Map<String, dynamic>> getLibraryOccupancy() async {
+Future<Map<String, dynamic>> getLibraryOccupancy() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/rfid/occupancy'),
@@ -615,8 +576,7 @@ class AuthService {
     return {'count': 0, 'maxCapacity': 100};
   }
 
-  // Update User Profile
-  Future<Map<String, dynamic>> updateProfile({
+Future<Map<String, dynamic>> updateProfile({
     required String name,
     required String idNumber,
     required String contact,
@@ -653,13 +613,13 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Normalize: handle {user: {...}} or flat object
+
         final user = (data is Map && data['user'] != null)
             ? data['user']
             : (data is Map && data['data'] != null)
                 ? data['data']
                 : data;
-        await saveProfile(user); // refresh cache
+        await saveProfile(user);
         return {'success': true, 'data': user};
       } else {
         final data = jsonDecode(response.body);
@@ -673,26 +633,22 @@ class AuthService {
     }
   }
 
-  // 2FA state management
-  static const String _2faEnabledKey = '2fa_enabled';
+static const String _2faEnabledKey = '2fa_enabled';
 
   Future<bool> is2FAEnabled() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Trust the local flag set explicitly by enable2FA() / disable2FA()
-    //    This is the most reliable source — it is set on every user action.
-    final localFlag = prefs.getBool(_2faEnabledKey);
+final localFlag = prefs.getBool(_2faEnabledKey);
     if (localFlag != null) {
       return localFlag;
     }
 
-    // 2. Fall back to the cached profile (first-time load, before any action)
-    final profile = await getCachedProfile();
+final profile = await getCachedProfile();
     if (profile != null) {
       final enabled = profile['twoFactorEnabled'] == true ||
           profile['is2faEnabled'] == true ||
           profile['isTwoFactorEnabled'] == true;
-      // Persist so future calls use the fast path above
+
       await set2FAEnabled(enabled);
       return enabled;
     }
@@ -726,7 +682,7 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Normalize and cache
+
         final setup = {
           'qrCodeUrl': data['qrCodeUrl'] ?? data['qr_code_url'],
           'manualKey': data['manualKey'] ?? data['manual_key'],
@@ -742,8 +698,7 @@ class AuthService {
     }
   }
 
-  // Clear 2FA cache
-  Future<void> clear2FACache() async {
+Future<void> clear2FACache() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('cached_2fa_setup');
   }
@@ -768,7 +723,7 @@ class AuthService {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         await set2FAEnabled(true);
-        // Refresh profile to update is2faEnabled flag
+
         await getProfile();
         return {
           'success': true,
@@ -804,7 +759,7 @@ class AuthService {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200) {
         await set2FAEnabled(false);
-        // Refresh profile to update is2faEnabled flag
+
         await getProfile();
         return {
           'success': true,
@@ -820,14 +775,12 @@ class AuthService {
     }
   }
 
-  // Get unread notifications count
-  Future<int> getNotificationCount() async {
+Future<int> getNotificationCount() async {
     final enabled = await is2FAEnabled();
     return enabled ? 0 : 1;
   }
 
-  // Verify 2FA during login
-  Future<Map<String, dynamic>> verify2FALogin(
+Future<Map<String, dynamic>> verify2FALogin(
       String code, String? tempToken) async {
     try {
       final response = await http.post(
@@ -844,12 +797,11 @@ class AuthService {
 
       final data = jsonDecode(response.body);
 
-      // Always log to see what the server actually returns
-      print('DEBUG: 2FA Status: ${response.statusCode}');
+print('DEBUG: 2FA Status: ${response.statusCode}');
       print('DEBUG: 2FA Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // 1. Try known keys
+
         String? token = data['token'] ??
             data['accessToken'] ??
             data['jwt'] ??
@@ -858,8 +810,7 @@ class AuthService {
             data['data']?['token'] ??
             data['user']?['token'];
 
-        // 2. Greedy fallback: Scan for anything looking like a JWT
-        if (token == null) {
+if (token == null) {
           print('DEBUG: Greedy scanning for JWT...');
           data.forEach((key, value) {
             if (value is String &&
@@ -885,7 +836,7 @@ class AuthService {
         if (token != null) {
           await saveToken(token!);
         } else if (tempToken != null) {
-          // Backend only validates the OTP — the tempToken from login IS the session token.
+
           print(
               'DEBUG: No new token in 2FA response. Saving tempToken as session token.');
           await saveToken(tempToken);

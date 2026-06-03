@@ -6,8 +6,6 @@ import 'services/book_service.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'services/favorite_service.dart';
 
-// Screen
-
 class BookListScreen extends StatefulWidget {
   final String? initialQuery;
   const BookListScreen({super.key, this.initialQuery});
@@ -17,15 +15,14 @@ class BookListScreen extends StatefulWidget {
 }
 
 class _BookListScreenState extends State<BookListScreen> {
-  // Theme
+
   Color get _primary => Theme.of(context).primaryColor;
   Color get _bg => Theme.of(context).scaffoldBackgroundColor;
   Color get _textDark =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
-  // All genres for filter (Standardized)
-  final List<String> _allGenres = [
+final List<String> _allGenres = [
     'Arts',
     'Business & Management',
     'Criminology',
@@ -45,30 +42,25 @@ class _BookListScreenState extends State<BookListScreen> {
     'Others',
   ];
 
-  // Sort options
-  static const List<String> _sortOptions = [
+static const List<String> _sortOptions = [
     'A – Z',
     'Z – A',
     'New Arrivals',
   ];
 
-  // State
-  late List<BookItem> _allBooks;
+late List<BookItem> _allBooks;
   List<BookItem> _filteredBooks = [];
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
 
-  // Filter state
-  Set<String> _selectedGenres = {};
-  String _availabilityFilter = 'All'; // 'All' | 'Available' | 'Unavailable'
+Set<String> _selectedGenres = {};
+  String _availabilityFilter = 'All';
 
-  // Sort state
-  String _selectedSort = 'A – Z';
+String _selectedSort = 'A – Z';
 
-  // Pagination
-  int _currentPage = 1;
+int _currentPage = 1;
   static const int _itemsPerPage = 10;
   bool _isInitialLoading = true;
 
@@ -86,7 +78,7 @@ class _BookListScreenState extends State<BookListScreen> {
   }
 
   Future<void> _loadBooks() async {
-    // 1. Load from Persistent Cache instantly
+
     final cached = await _bookService.getPersistentCachedBooks();
     if (cached.isNotEmpty && mounted) {
       setState(() {
@@ -98,8 +90,7 @@ class _BookListScreenState extends State<BookListScreen> {
       setState(() => _isInitialLoading = true);
     }
 
-    // 2. Refresh from Network in background
-    final books = await _bookService.fetchBooks();
+final books = await _bookService.fetchBooks();
     final favoriteIds = await _favoriteService.getFavoriteIds();
 
     if (mounted) {
@@ -125,15 +116,14 @@ class _BookListScreenState extends State<BookListScreen> {
 
   void _applyAll() {
     List<BookItem> result = _allBooks.where((b) {
-      // Search
+
       final q = _searchQuery.toLowerCase();
       final matchSearch = q.isEmpty ||
           b.title.toLowerCase().contains(q) ||
           b.author.toLowerCase().contains(q) ||
           b.genre.toLowerCase().contains(q);
 
-      // Genre filter logic
-      bool matchesGenre = _selectedGenres.isEmpty;
+bool matchesGenre = _selectedGenres.isEmpty;
       if (!matchesGenre) {
         for (final selectedGenre in _selectedGenres) {
           if (b.displayGenre.toLowerCase() == selectedGenre.toLowerCase()) {
@@ -144,16 +134,14 @@ class _BookListScreenState extends State<BookListScreen> {
       }
       final matchGenre = matchesGenre;
 
-      // Availability
-      final matchAvail = _availabilityFilter == 'All' ||
+final matchAvail = _availabilityFilter == 'All' ||
           (_availabilityFilter == 'Available' && b.isAvailable) ||
           (_availabilityFilter == 'Borrowed' && !b.isAvailable);
 
       return matchSearch && matchGenre && matchAvail;
     }).toList();
 
-    // Sort
-    switch (_selectedSort) {
+switch (_selectedSort) {
       case 'A – Z':
         result.sort((a, b) => a.title.compareTo(b.title));
         break;
@@ -182,10 +170,8 @@ class _BookListScreenState extends State<BookListScreen> {
     _applyAll();
   }
 
-  // ── Bottom Sheets ─────────────────────────────────────────────────────────
+void _showFilterSheet() {
 
-  void _showFilterSheet() {
-    // Local copies for the sheet
     Set<String> tempGenres = Set.from(_selectedGenres);
     String tempAvail = _availabilityFilter;
 
@@ -204,7 +190,7 @@ class _BookListScreenState extends State<BookListScreen> {
             ),
             child: Column(
               children: [
-                // Handle
+
                 const SizedBox(height: 12),
                 Container(
                   width: 40,
@@ -214,7 +200,7 @@ class _BookListScreenState extends State<BookListScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                // Header
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
                   child: Row(
@@ -244,7 +230,7 @@ class _BookListScreenState extends State<BookListScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 12),
-                        // Genre section
+
                         Row(
                           children: [
                             Icon(Icons.menu_book_outlined,
@@ -287,7 +273,7 @@ class _BookListScreenState extends State<BookListScreen> {
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 12),
-                        // Availability section
+
                         Row(
                           children: [
                             Icon(Icons.library_books_outlined,
@@ -342,7 +328,7 @@ class _BookListScreenState extends State<BookListScreen> {
                     ),
                   ),
                 ),
-                // Buttons
+
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                   child: Row(
@@ -492,9 +478,7 @@ class _BookListScreenState extends State<BookListScreen> {
     );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
-  bool get _hasActiveFilters =>
+bool get _hasActiveFilters =>
       _selectedGenres.isNotEmpty || _availabilityFilter != 'All';
 
   int get _totalPages => (_filteredBooks.length / _itemsPerPage).ceil();
@@ -528,7 +512,7 @@ class _BookListScreenState extends State<BookListScreen> {
             ? Center(child: CircularProgressIndicator(color: _primary))
             : Column(
                 children: [
-                  // ── Light header ─────────────────────────────────────────────
+
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     child: Column(
@@ -553,7 +537,7 @@ class _BookListScreenState extends State<BookListScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Search bar
+
                         AnimatedBuilder(
                           animation: _searchFocusNode,
                           builder: (context, child) {
@@ -620,7 +604,7 @@ class _BookListScreenState extends State<BookListScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        // Filter + Sort row
+
                         Row(
                           children: [
                             _headerChipButton(
@@ -655,7 +639,7 @@ class _BookListScreenState extends State<BookListScreen> {
                             ],
                           ],
                         ),
-                        // Active filter chips
+
                         if (_hasActiveFilters) ...[
                           const SizedBox(height: 10),
                           SingleChildScrollView(
@@ -680,15 +664,14 @@ class _BookListScreenState extends State<BookListScreen> {
                     ),
                   ),
 
-                  // ── White body ────────────────────────────────────────────────
-                  Expanded(
+Expanded(
                     child: Container(
                       decoration: BoxDecoration(
                         color: _cardColor,
                       ),
                       child: Column(
                         children: [
-                          // Info bar
+
                           Padding(
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                             child: Row(
@@ -716,8 +699,7 @@ class _BookListScreenState extends State<BookListScreen> {
                             ),
                           ),
 
-                          // Book list
-                          Expanded(
+Expanded(
                             child: count == 0
                                 ? Center(
                                     child: Column(
@@ -746,7 +728,7 @@ class _BookListScreenState extends State<BookListScreen> {
                                       crossAxisSpacing: 16,
                                       mainAxisSpacing: 16,
                                       childAspectRatio:
-                                          0.51, // Decreased to allow more vertical space
+                                          0.51,
                                     ),
                                     itemCount: _pageBooks.length,
                                     itemBuilder: (ctx, i) =>
@@ -754,8 +736,7 @@ class _BookListScreenState extends State<BookListScreen> {
                                   ),
                           ),
 
-                          // Pagination
-                          if (_totalPages > 1)
+if (_totalPages > 1)
                             Container(
                               color: _cardColor,
                               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -800,7 +781,7 @@ class _BookListScreenState extends State<BookListScreen> {
           if (index == 0) {
             Navigator.pop(context);
           } else if (index == 1) {
-            // Already here
+
           } else if (index == 2) {
             Navigator.pushReplacement(
               context,
@@ -818,9 +799,7 @@ class _BookListScreenState extends State<BookListScreen> {
     );
   }
 
-  // ── Helper widgets ────────────────────────────────────────────────────────
-
-  Widget _headerChipButton({
+Widget _headerChipButton({
     required IconData icon,
     required String label,
     required bool active,
@@ -933,12 +912,12 @@ class _BookListScreenState extends State<BookListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Book cover (navy blue)
+
           Container(
             height: 130,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A), // Dark navy
+              color: const Color(0xFF0F172A),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Stack(
@@ -988,7 +967,7 @@ class _BookListScreenState extends State<BookListScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // Category
+
           Text(
             book.displayGenre.toUpperCase(),
             style: TextStyle(
@@ -999,7 +978,7 @@ class _BookListScreenState extends State<BookListScreen> {
             ),
           ),
           const SizedBox(height: 3),
-          // Title
+
           Text(
             book.title,
             style: TextStyle(
@@ -1011,7 +990,7 @@ class _BookListScreenState extends State<BookListScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 5),
-          // Author
+
           Text(
             book.author,
             style: TextStyle(
@@ -1023,7 +1002,7 @@ class _BookListScreenState extends State<BookListScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 10),
-          // Availability Dot + Text
+
           Row(
             children: [
               Container(
@@ -1046,8 +1025,8 @@ class _BookListScreenState extends State<BookListScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12), // Reduced from 20
-          // Outlined Maroon Button
+          const SizedBox(height: 12),
+
           SizedBox(
             width: double.infinity,
             height: 28,

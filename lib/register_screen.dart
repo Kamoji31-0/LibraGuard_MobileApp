@@ -28,7 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _cardColor => Theme.of(context).cardColor;
-  Color get _accentColor => Theme.of(context).colorScheme.secondary; // Maroon in light, Primary 600 in dark
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
 
   @override
@@ -151,7 +151,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SnackBar(
             content: Text(result['message']),
             backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFFB21A2D) // Primary 700
+                ? const Color(0xFFB21A2D)
                 : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -171,7 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Top colored area (Maroon)
+
             Container(
               width: double.infinity,
               padding:
@@ -209,8 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
 
-            // White Card Area
-            Expanded(
+Expanded(
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32.0),
@@ -233,14 +232,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Segmented Control for Roles
+
                         Container(
                           width: double.infinity,
                           height: 56,
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark
                                 ? Colors.white.withOpacity(0.05)
-                                : const Color(0xFFF1F5F9), // Slate 100
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -253,8 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Full Name Field
-                        _buildLabel('Full Name'),
+_buildLabel('Full Name'),
                         const SizedBox(height: 8),
                         GlowTextField(
                           hint: 'Jane Doe',
@@ -274,8 +272,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                         ),
 
-                        // Optional ID Field mapping
-                        if (_selectedRole != 'GUEST') ...[
+if (_selectedRole != 'GUEST') ...[
                           const SizedBox(height: 24),
                           _buildLabel(_selectedRole == 'STUDENT'
                               ? 'Student ID Number'
@@ -378,8 +375,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         const SizedBox(height: 24),
 
-                        // Email Field
-                        _buildLabel('Email Address'),
+_buildLabel('Email Address'),
                         const SizedBox(height: 8),
                         GlowTextField(
                           hint: 'scholar@libraguard.edu',
@@ -399,8 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Password Field
-                        _buildLabel('Password'),
+_buildLabel('Password'),
                         const SizedBox(height: 8),
                         GlowTextField(
                           hint: 'Create a strong password...',
@@ -428,8 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Confirm Password Field
-                        _buildLabel('Confirm Password'),
+_buildLabel('Confirm Password'),
                         const SizedBox(height: 8),
                         GlowTextField(
                           hint: 'Confirm your password...',
@@ -448,8 +442,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Register Button
-                        SizedBox(
+SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
@@ -490,8 +483,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 32),
 
-                        // Sign In Redirect
-                        Row(
+Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
@@ -611,7 +603,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onTap: () {
           setState(() {
             _selectedRole = role;
-            // Clear ID field when swapping roles to avoid confusion
+
             _idController.clear();
           });
         },

@@ -52,12 +52,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   }
 
   Future<void> _loadFavoriteStatus() async {
-    // 1. Fast load from local storage
+
     final localStatus = await _favoriteService.isFavorited(widget.bookId);
     if (mounted) setState(() => _isFavorite = localStatus);
 
-    // 2. Background sync with cloud
-    final syncedIds = await _favoriteService.getFavoriteIds();
+final syncedIds = await _favoriteService.getFavoriteIds();
     if (mounted)
       setState(() => _isFavorite = syncedIds.contains(widget.bookId));
   }
@@ -110,12 +109,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ── Book Cover ──────────────────────────────────────────────────
+
             Container(
               width: 180,
               height: 250,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A), // Consistent dark navy
+                color: const Color(0xFF0F172A),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _cardColor, width: 6),
                 boxShadow: [
@@ -139,13 +138,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
             ),
             const SizedBox(height: 48),
 
-            // ── Details ─────────────────────────────────────────────────────
-            Align(
+Align(
               alignment: Alignment.centerLeft,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category + availability badge
+
                   Row(
                     children: [
                       Text(
@@ -187,8 +185,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Title
-                  Text(
+Text(
                     widget.title,
                     style: TextStyle(
                       color: _textColor,
@@ -198,8 +195,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Author
-                  Text(
+Text(
                     'By ${widget.author}',
                     style: TextStyle(
                       color: _textColor.withOpacity(0.8),
@@ -209,8 +205,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Description
-                  Container(
+Container(
                     padding: const EdgeInsets.only(left: 16),
                     decoration: BoxDecoration(
                       border: Border(
@@ -232,8 +227,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // ── Meta info row ──────────────────────────────────────────
-                  Divider(height: 1, color: Colors.black.withOpacity(0.06)),
+Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -260,8 +254,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   const SizedBox(height: 48),
 
-                  // ── Checkout Button ────────────────────────────────────────
-                  SizedBox(
+SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: widget.isAvailable
@@ -301,8 +294,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Add to Favorites Button ────────────────────────────────
-                  SizedBox(
+SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _isFavoriteLoading ? null : _toggleFavorite,

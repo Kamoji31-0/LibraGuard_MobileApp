@@ -325,7 +325,7 @@ class _LibraryStaffScreenState extends State<LibraryStaffScreen> {
           style: TextStyle(
           color: isClosed
               ? (Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFFFF4D4D) // Lighter red for dark mode
+                  ? const Color(0xFFFF4D4D)
                   : Colors.red.shade700)
               : _primaryColor,
             fontSize: 14,

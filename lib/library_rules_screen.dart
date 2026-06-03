@@ -519,7 +519,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
         selectedIndex: 0,
         onItemTapped: (index) {
           if (index == 0) {
-            // Already "home" logic for rules
+
           } else if (index == 1) {
             Navigator.pushReplacement(
               context,
@@ -674,8 +674,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
   Widget _buildDetailsContent(Map<String, dynamic> item) {
     List<Widget> children = [];
 
-    // Divider
-    children.add(
+children.add(
       Padding(
         padding: const EdgeInsets.only(bottom: 20.0),
         child: Divider(
@@ -685,8 +684,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       ),
     );
 
-    // Detail Title
-    children.add(
+children.add(
       Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: Row(
@@ -707,8 +705,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       ),
     );
 
-    // List of rules
-    if (item['rules'] != null) {
+if (item['rules'] != null) {
       children.addAll((item['rules'] as List).map((rule) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
@@ -750,8 +747,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       }).toList());
     }
 
-    // List of sub-sections (bullet points with headers)
-    if (item['subSections'] != null) {
+if (item['subSections'] != null) {
       children.addAll((item['subSections'] as List).map((section) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,8 +790,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       }).toList());
     }
 
-    // Take Note section
-    if (item['note'] != null) {
+if (item['note'] != null) {
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 12.0),
@@ -866,8 +861,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       );
     }
 
-    // Violation Matrix
-    if (item['violationMatrix'] != null) {
+if (item['violationMatrix'] != null) {
       children.add(
         Padding(
           padding: const EdgeInsets.only(top: 24.0),
@@ -971,8 +965,7 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
       );
     }
 
-    // Payment Policy
-    if (item['paymentPolicy'] != null) {
+if (item['paymentPolicy'] != null) {
       final bool isDark = Theme.of(context).brightness == Brightness.dark;
       children.add(
         Padding(

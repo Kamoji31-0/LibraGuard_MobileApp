@@ -221,4 +221,3 @@ class EntryLoginScreen extends StatelessWidget {
   }
 }
 
-

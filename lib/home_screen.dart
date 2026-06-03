@@ -28,7 +28,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   int _selectedQuickAction = -1;
-  String _firstName = 'Scholar'; // generic default
+  String _firstName = 'Scholar';
 
   Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
@@ -39,8 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Color get _headerIconColor =>
       Theme.of(context).brightness == Brightness.dark
           ? Colors.white
-          : const Color(0xFF344054); // Dark charcoal/grey
-  final Color _accentYellow = const Color(0xFFFFC107); // Yellow matching image
+          : const Color(0xFF344054);
+  final Color _accentYellow = const Color(0xFFFFC107);
 
   List<BookItem> _homeBooks = [];
   final BookService _bookService = BookService();
@@ -53,8 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSearchLoading = false;
   List<BookItem> _searchResults = [];
 
-  // Search filter/sort state
-  Set<String> _selectedGenres = {};
+Set<String> _selectedGenres = {};
   String _availabilityFilter = 'All';
   String _selectedSort = 'A – Z';
 
@@ -121,19 +120,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadHomeBooks() async {
-    // 1. Load from Persistent Cache instantly
+
     final cached = await _bookService.getPersistentCachedBooks();
     if (cached.isNotEmpty && mounted) {
       setState(() => _homeBooks = cached);
     }
 
-    // 2. Refresh from Network in background
-    final books = await _bookService.fetchBooks();
+final books = await _bookService.fetchBooks();
     final favoriteIds = await _favoriteService.getFavoriteIds();
 
     if (mounted) {
       setState(() {
-        // Randomize and limit to 10 books for the home view
+
         _homeBooks = books..shuffle();
         if (_homeBooks.length > 10) {
           _homeBooks = _homeBooks.take(10).toList();
@@ -204,18 +202,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadUserProfile() async {
-    // 1. Try local cache first for instant UI
+
     final cached = await AuthService().getCachedProfile();
     if (cached != null && mounted) {
       _applyProfileData(cached);
     }
 
-    // 2. Fetch live data
-    final res = await AuthService().getProfile();
+final res = await AuthService().getProfile();
     if (res['success'] == true && mounted) {
       _applyProfileData(res['data']);
     } else if (cached == null) {
-      // Fallback to mock image if API fails
+
       if (mounted) {
         setState(() {
           _profileImageUrl =
@@ -230,8 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _userProfile = data;
 
-      // Handle base64 image or URL
-      final imgData = _userProfile?['image'] ??
+final imgData = _userProfile?['image'] ??
           _userProfile?['profilePictureUrl'] ??
           _userProfile?['avatar'];
       if (imgData != null && imgData.toString().startsWith('data:image')) {
@@ -335,8 +331,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ).then((_) {
               if (mounted) {
                 setState(() => _selectedIndex = 0);
-                _loadUserProfile(); // Re-fetch profile to sync image
-                _loadNotificationCount(); // Refresh badge after 2FA changes
+                _loadUserProfile();
+                _loadNotificationCount();
               }
             });
           }
@@ -385,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Row(
           children: [
-            // Notification Bell
+
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -427,7 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            // Favorites heart icon
+
             GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -448,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).then((_) {
                   if (mounted) {
                     _loadUserProfile();
-                    _loadNotificationCount(); // Refresh badge after 2FA changes
+                    _loadNotificationCount();
                   }
                 });
               },
@@ -515,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _performSearch(value.trim());
             },
             onChanged: (value) {
-              setState(() {}); // Trigger rebuild to show/hide clear icon
+              setState(() {});
               if (value.trim().isEmpty) {
                 setState(() => _isSearching = false);
               } else {
@@ -560,8 +556,8 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF75111D), // Classic Dark Maroon (Top)
-            const Color(0xFF5D0D17), // Slightly Darker depth (Bottom)
+            const Color(0xFF75111D),
+            const Color(0xFF5D0D17),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -583,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Row
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -637,13 +633,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 
                 const SizedBox(height: 24),
-                
-                // Main Dashboard Area
-                Row(
+
+Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // Capacity Statistics (Left aligned now)
+
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -680,9 +675,8 @@ class _HomeScreenState extends State<HomeScreen> {
                          ),
                       ],
                     ),
-                    
-                    // Status Badge (Right aligned)
-                    Container(
+
+Container(
                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                        decoration: BoxDecoration(
                          color: (occupied >= total ? Colors.redAccent : const Color(0xFF69F0AE)).withOpacity(0.15),
@@ -701,24 +695,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 
                 const SizedBox(height: 20),
-                
-                // Straight Progress bar
-                ClipRRect(
+
+ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: occupancyPercent,
                     minHeight: 8,
-                    backgroundColor: Colors.black.withOpacity(0.2), // Dark track
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF69F0AE)), // Green fill
+                    backgroundColor: Colors.black.withOpacity(0.2),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF69F0AE)),
                   ),
                 ),
                 
                 const SizedBox(height: 24),
                 Divider(color: Colors.white.withOpacity(0.1), height: 1),
                 const SizedBox(height: 16),
-                
-                // Footer Schedule Row
-                Builder(builder: (context) {
+
+Builder(builder: (context) {
                   final now = DateTime.now();
                   final bool isMondayToSaturday = now.weekday >= DateTime.monday && now.weekday <= DateTime.saturday;
                   final bool isOpen = isMondayToSaturday && now.hour >= 8 && now.hour < 17;
@@ -909,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchResults() {
-    // Apply all filters & sorting to searchable results
+
     List<BookItem> filtered = _searchResults.where((book) {
       final q = _searchQuery.toLowerCase();
       final matchSearch = q.isEmpty ||
@@ -917,20 +909,17 @@ class _HomeScreenState extends State<HomeScreen> {
           book.author.toLowerCase().contains(q) ||
           book.genre.toLowerCase().contains(q);
 
-      // Genre filter
-      final matchGenre = _selectedGenres.isEmpty || 
+final matchGenre = _selectedGenres.isEmpty || 
           _selectedGenres.contains(book.displayGenre);
 
-      // Availability filter
-      final matchAvail = _availabilityFilter == 'All' ||
+final matchAvail = _availabilityFilter == 'All' ||
           (_availabilityFilter == 'Available' && book.isAvailable) ||
           (_availabilityFilter == 'Borrowed' && !book.isAvailable);
 
       return matchSearch && matchGenre && matchAvail;
     }).toList();
 
-    // Sorting
-    switch (_selectedSort) {
+switch (_selectedSort) {
       case 'A – Z':
         filtered.sort((a, b) => a.title.compareTo(b.title));
         break;
@@ -962,7 +951,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Filter + Sort header
+
           Row(
             children: [
               _headerChipButton(
@@ -1056,7 +1045,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.55, // Taller cards to prevent overflow
+                childAspectRatio: 0.55,
               ),
               itemCount: filtered.length,
               itemBuilder: (context, index) {
@@ -1071,7 +1060,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBookList() {
     return SizedBox(
-      height: 270, // balanced with card height
+      height: 270,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
@@ -1088,8 +1077,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-  Widget _buildBookCard(BookItem book) {
+Widget _buildBookCard(BookItem book) {
     final theme = Theme.of(context);
     return Container(
       height: 280,
@@ -1339,7 +1327,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _backgroundColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: theme.colorScheme.secondary), // 600
+              child: Icon(icon, color: theme.colorScheme.secondary),
             ),
             const SizedBox(width: 16),
             Expanded(

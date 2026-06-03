@@ -5,14 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'splash_screen.dart';
 
-// Global theme notifier bridging the StyleGuide across the app without external packages.
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Restore persisted theme preference
-  final prefs = await SharedPreferences.getInstance();
+final prefs = await SharedPreferences.getInstance();
   final modeStr = prefs.getString('app_theme_mode') ?? 'system';
 
   if (modeStr == 'dark') {
@@ -47,15 +45,14 @@ class MyApp extends StatelessWidget {
           builder: DevicePreview.appBuilder,
           themeMode: currentMode,
 
-          // Light Theme — Standard White/Slate Palette
-          theme: ThemeData(
+theme: ThemeData(
             brightness: Brightness.light,
-            primaryColor: const Color(0xFF800000), // Maroon 900 equivalent
-            scaffoldBackgroundColor: const Color(0xFFF1F5F9), // Slate 100
+            primaryColor: const Color(0xFF800000),
+            scaffoldBackgroundColor: const Color(0xFFF1F5F9),
             cardColor: Colors.white,
             colorScheme: const ColorScheme.light(
               primary: Color(0xFF800000),
-              secondary: Color(0xFF800000), // Updated to Maroon
+              secondary: Color(0xFF800000),
               surface: Colors.white,
             ),
             textTheme: const TextTheme(
@@ -71,23 +68,22 @@ class MyApp extends StatelessWidget {
             ),
           ),
 
-          // Dark Theme — Premium Dark/Red Palette matching external image StyleGuide
-          darkTheme: ThemeData(
+darkTheme: ThemeData(
             brightness: Brightness.dark,
-            primaryColor: const Color(0xFFB21A2D), // Primary 700
+            primaryColor: const Color(0xFFB21A2D),
             scaffoldBackgroundColor:
-                const Color(0xFF131518), // Secondary 900 Background
-            cardColor: const Color(0xFF272B30), // Secondary 500 Surface
+                const Color(0xFF131518),
+            cardColor: const Color(0xFF272B30),
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFB21A2D), // Primary 700
-              secondary: Color(0xFFD72036), // Primary 600 Accent
+              primary: Color(0xFFB21A2D),
+              secondary: Color(0xFFD72036),
               surface: Color(0xFF272B30),
-              surfaceContainerHighest: Color(0xFF23272B), // Secondary 600
+              surfaceContainerHighest: Color(0xFF23272B),
             ),
             textTheme: const TextTheme(
               bodyLarge: TextStyle(color: Colors.white),
               bodyMedium:
-                  TextStyle(color: Color(0xFF8B8E98)), // Secondary 400 Text
+                  TextStyle(color: Color(0xFF8B8E98)),
             ),
             dialogTheme: DialogThemeData(
               backgroundColor: const Color(0xFF272B30),

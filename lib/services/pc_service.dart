@@ -3,11 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
-/// A single computer from the library lab.
 class LibraryComputer {
   final String id;
   final String name;
-  final String status; // "Available", "In Use"
+  final String status;
 
   LibraryComputer({
     required this.id,
@@ -30,14 +29,13 @@ class LibraryComputer {
   }
 }
 
-/// A single PC reservation / session record.
 class PcSession {
   final String id;
   final String userId;
   final String computerId;
   final String computerName;
-  final String status; // Pending, Active, Completed
-  final String duration; // e.g. "1 Hour 0 Minutes"
+  final String status;
+  final String duration;
   final String? startTime;
   final String? endTime;
   final String? createdAt;
@@ -67,11 +65,10 @@ class PcSession {
         json['computerName']?.toString() ??
         'Unknown PC';
 
-    // Duration: handle int (minutes), double (hours), or string
-    String dur = 'N/A';
-    final rawDur = json['duration'] ?? 
-                   json['requestedDuration'] ?? 
-                   json['hours'] ?? 
+String dur = 'N/A';
+    final rawDur = json['duration'] ??
+                   json['requestedDuration'] ??
+                   json['hours'] ??
                    json['sessionHours'] ??
                    json['requestedHours'] ??
                    json['sessionDuration'] ??
@@ -118,8 +115,7 @@ class PcSession {
       }
     }
 
-    // NEW: Calculate duration from startTime and endTime if dur is still 'N/A'
-    if (dur == 'N/A' && json['startTime'] != null && json['endTime'] != null) {
+if (dur == 'N/A' && json['startTime'] != null && json['endTime'] != null) {
       try {
         final start = DateTime.parse(json['startTime'].toString());
         final end = DateTime.parse(json['endTime'].toString());
@@ -134,8 +130,7 @@ class PcSession {
       } catch (_) {}
     }
 
-    // Derive reference from startTime (YYYYMMDD) in LOCAL time
-    String? ref = json['reference']?.toString() ?? json['sessionReference']?.toString();
+String? ref = json['reference']?.toString() ?? json['sessionReference']?.toString();
     if (ref == null) {
       final rawStart = json['startTime'] ?? json['start_time'] ?? json['reservationDate'] ?? json['date'];
       if (rawStart != null) {
@@ -157,10 +152,10 @@ class PcSession {
       startTime: json['startTime']?.toString(),
       endTime: json['endTime']?.toString(),
       reference: ref,
-      createdAt: json['createdAt']?.toString() ?? 
+      createdAt: json['createdAt']?.toString() ??
                  json['created_at']?.toString() ??
-                 json['date']?.toString() ?? 
-                 json['reservationDate']?.toString() ?? 
+                 json['date']?.toString() ??
+                 json['reservationDate']?.toString() ??
                  json['reservation_date']?.toString() ??
                  json['startTime']?.toString() ??
                  json['start_time']?.toString(),
@@ -173,8 +168,7 @@ class PcService {
   static const String _sessionCacheKey = 'cached_pc_sessions';
   static const String _pcListCacheKey = 'cached_pc_list';
 
-  /// Helper to save sessions to persistent storage
-  Future<void> _saveSessionsToCache(List<PcSession> sessions) async {
+Future<void> _saveSessionsToCache(List<PcSession> sessions) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final List<Map<String, dynamic>> rawList = sessions.map((s) => {
@@ -193,16 +187,14 @@ class PcService {
     } catch (_) {}
   }
 
-  /// Helper to save computers list to persistent storage
-  Future<void> _saveComputersToCache(List<dynamic> rawJson) async {
+Future<void> _saveComputersToCache(List<dynamic> rawJson) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_pcListCacheKey, jsonEncode(rawJson));
     } catch (_) {}
   }
 
-  /// Get computers from persistent storage
-  Future<List<LibraryComputer>> getPersistentCachedComputers() async {
+Future<List<LibraryComputer>> getPersistentCachedComputers() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_pcListCacheKey);
@@ -216,8 +208,7 @@ class PcService {
     return [];
   }
 
-  /// Get sessions from persistent storage
-  Future<List<PcSession>> getPersistentCachedSessions() async {
+Future<List<PcSession>> getPersistentCachedSessions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_sessionCacheKey);
@@ -229,8 +220,7 @@ class PcService {
     return [];
   }
 
-  /// Fetch all library computers with their availability.
-  Future<List<LibraryComputer>> fetchComputers() async {
+Future<List<LibraryComputer>> fetchComputers() async {
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) return [];
@@ -248,10 +238,9 @@ class PcService {
         final body = jsonDecode(response.body);
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['computers'] ?? []);
-            
-        // Persist to disk
-        _saveComputersToCache(list);
-        
+
+_saveComputersToCache(list);
+
         return list
             .map((e) => LibraryComputer.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -262,11 +251,7 @@ class PcService {
     }
   }
 
-  /// Submit a PC reservation.
-  ///
-  /// [computerId] — the UUID of the chosen computer.
-  /// [durationMinutes] — requested session length in minutes (60, 120, 180).
-  Future<Map<String, dynamic>> submitReservation({
+Future<Map<String, dynamic>> submitReservation({
     required String computerId,
     required int durationMinutes,
   }) async {
@@ -276,8 +261,7 @@ class PcService {
       return {'success': false, 'message': 'You are not logged in.'};
     }
 
-    // Get userId from cached profile
-    final profileRes = await authService.getProfile();
+final profileRes = await authService.getProfile();
     final userId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         profileRes['data']?['studentId']?.toString() ??
@@ -321,14 +305,12 @@ class PcService {
     }
   }
 
-  /// Fetch the current user's PC session history.
-  Future<List<PcSession>> fetchMySessions() async {
+Future<List<PcSession>> fetchMySessions() async {
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) return [];
 
-    // Safety constraint: strictly enforce the active userId
-    final profileRes = await authService.getProfile();
+final profileRes = await authService.getProfile();
     final String currentUserId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         profileRes['data']?['studentId']?.toString() ??
@@ -347,20 +329,19 @@ class PcService {
         final body = jsonDecode(response.body);
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['sessions'] ?? []);
-            
+
         final allSessions = list
             .map((e) => PcSession.fromJson(e as Map<String, dynamic>))
             .toList();
 
-        // Enforce user-specific filtering down to the ID level rigidly, fallback to empty list instead of global scope.
-        final result = currentUserId.isNotEmpty 
+final result = currentUserId.isNotEmpty
             ? allSessions.where((s) => s.userId == currentUserId).toList()
             : <PcSession>[];
-            
+
         if (result.isNotEmpty) {
           _saveSessionsToCache(result);
         }
-        
+
         return result;
       }
       return await getPersistentCachedSessions();

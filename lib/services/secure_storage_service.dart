@@ -11,23 +11,19 @@ class SecureStorageService {
 
   static const String _keyToken = 'auth_token';
 
-  /// Save the authentication token securely
-  Future<void> saveToken(String token) async {
+Future<void> saveToken(String token) async {
     await _storage.write(key: _keyToken, value: token);
   }
 
-  /// Read the authentication token securely
-  Future<String?> getToken() async {
+Future<String?> getToken() async {
     return await _storage.read(key: _keyToken);
   }
 
-  /// Delete the authentication token
-  Future<void> deleteToken() async {
+Future<void> deleteToken() async {
     await _storage.delete(key: _keyToken);
   }
 
-  /// Check if a token exists
-  Future<bool> hasToken() async {
+Future<bool> hasToken() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }

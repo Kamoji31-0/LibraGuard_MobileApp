@@ -39,7 +39,7 @@ class _AboutScreenState extends State<AboutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // About Libraguard Card
+
             _buildInfoCard(
               title: 'About Libraguard',
               icon: Icons.info_outline,
@@ -48,8 +48,7 @@ class _AboutScreenState extends State<AboutScreen> {
             ),
             const SizedBox(height: 32),
 
-            // System Mission Card
-            _buildInfoCard(
+_buildInfoCard(
               title: 'System Mission',
               icon: Icons.rocket_launch_outlined,
               content:
@@ -57,12 +56,10 @@ class _AboutScreenState extends State<AboutScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Library Staff Card
-            _buildStaffSection(context),
+_buildStaffSection(context),
             const SizedBox(height: 32),
 
-            // Library Hours Card
-            _buildHoursCard(),
+_buildHoursCard(),
             const SizedBox(height: 32),
           ],
         ),
@@ -154,8 +151,7 @@ class _AboutScreenState extends State<AboutScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Leadership
-          _buildStaffMember(context, 'RT', 'Rebecca S. Tique, MLIS',
+_buildStaffMember(context, 'RT', 'Rebecca S. Tique, MLIS',
               'Librarian I / Chief Librarian',
               imagePath: 'assets/images/Rebecca.jpg', isLarge: true),
           const SizedBox(height: 16),
@@ -167,8 +163,7 @@ class _AboutScreenState extends State<AboutScreen> {
           const Divider(),
           const SizedBox(height: 24),
 
-          // Staff Section with Centered Last Item
-          Column(
+Column(
             children: [
               Row(
                 children: [

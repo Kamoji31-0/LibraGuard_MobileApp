@@ -24,7 +24,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
   String? _errorMessage;
 
   LibraryComputer? _selectedComputer;
-  int _durationMinutes = 60; // default 1 hour
+  int _durationMinutes = 60;
 
   bool _isSubmitting = false;
   String? _submitError;
@@ -36,7 +36,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
   }
 
   Future<void> _loadComputers() async {
-    // 1. Load from cache first for instant UI
+
     final cached = await _pcService.getPersistentCachedComputers();
     if (cached.isNotEmpty && mounted) {
       setState(() {
@@ -50,14 +50,13 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
       });
     }
 
-    // 2. Fetch fresh data silenty
-    final computers = await _pcService.fetchComputers();
+final computers = await _pcService.fetchComputers();
 
     if (!mounted) return;
     setState(() {
       _isLoading = false;
       if (computers.isEmpty && _computers.isEmpty) {
-        // Fallback: build a static list only if we have NO data at all
+
         _computers = List.generate(
           8,
           (i) => LibraryComputer(
@@ -122,7 +121,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Status card
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -398,7 +397,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // Legend
+
           Row(
             children: [
               _buildLegendDot(_availableColor, 'Available'),
@@ -540,8 +539,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Selected computer
-          Text('Selected Computer',
+Text('Selected Computer',
               style:
                   TextStyle(color: _textColor.withOpacity(0.6), fontSize: 13)),
           const SizedBox(height: 6),
@@ -576,8 +574,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
 
           const SizedBox(height: 20),
 
-          // Duration selector
-          Text('Session Duration',
+Text('Session Duration',
               style:
                   TextStyle(color: _textColor.withOpacity(0.6), fontSize: 13)),
           const SizedBox(height: 10),
@@ -618,8 +615,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
             }).toList(),
           ),
 
-          // Error banner
-          if (_submitError != null) ...[
+if (_submitError != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),

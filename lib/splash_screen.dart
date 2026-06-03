@@ -17,8 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
-  // Blob position animations
-  late Animation<Offset> _blob1Offset;
+late Animation<Offset> _blob1Offset;
   late Animation<Offset> _blob2Offset;
 
   @override
@@ -30,8 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 8000),
     );
 
-    // Main fade/scale animations
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+_fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
         curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
@@ -45,8 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Blob movement animations (continuous looping)
-    _blob1Offset = Tween<Offset>(
+_blob1Offset = Tween<Offset>(
       begin: const Offset(-0.1, -0.1),
       end: const Offset(0.2, 0.2),
     ).animate(CurvedAnimation(
@@ -64,8 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate after animation completes
-    _controller.addStatusListener((status) {
+_controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _navigateToHome();
       }
@@ -75,25 +71,23 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateToHome() async {
     final authService = AuthService();
     final secureStorage = SecureStorageService();
-    
+
     final bool hasToken = await secureStorage.hasToken();
     String? firstName;
-    
+
     if (hasToken) {
-      // Try to get cached first name
+
       firstName = await authService.getFirstName();
-      
-      // Optionally, we could refresh the profile here, 
-      // but to keep splash fast, we'll rely on cache or let Home fetch it.
-    }
+
+}
 
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            hasToken 
-                ? HomeScreen(firstName: firstName) 
+            hasToken
+                ? HomeScreen(firstName: firstName)
                 : const LoginScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -115,13 +109,12 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // Theme-aware background
+
           Container(
             color: Theme.of(context).scaffoldBackgroundColor,
           ),
 
-          // Animated blobs (Maroon on white)
-          AnimatedBuilder(
+AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
               final size = MediaQuery.of(context).size;
@@ -142,12 +135,11 @@ class _SplashScreenState extends State<SplashScreen>
             },
           ),
 
-          // Main content
-          Center(
+Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo with scale and fade
+
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: FadeTransition(
@@ -177,8 +169,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 32),
 
-                // Title and subtitle
-                FadeTransition(
+FadeTransition(
                   opacity: _fadeAnimation,
                   child: Column(
                     children: [
@@ -187,7 +178,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: Text(
                           'LIBRAGUARD',
                           style: TextStyle(
-                            color: Theme.of(context).primaryColor, // Theme primary text
+                            color: Theme.of(context).primaryColor,
                             fontSize: 34,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 8,
@@ -218,8 +209,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
                 const SizedBox(height: 50),
 
-                // Loading indicator
-                FadeTransition(
+FadeTransition(
                   opacity: _fadeAnimation,
                   child: SizedBox(
                     width: 36,
@@ -239,8 +229,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  // Helper to build a moving blob
-  Widget _buildBlob({
+Widget _buildBlob({
     required Offset offset,
     required double size,
     required Color color,

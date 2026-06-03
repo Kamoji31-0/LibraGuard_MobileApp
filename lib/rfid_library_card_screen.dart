@@ -190,7 +190,7 @@ class _RfidLibraryCardScreenState extends State<RfidLibraryCardScreen> {
         ),
       ),
       bottomNavigationBar: AppBottomNavBar(
-        selectedIndex: -1, // Not on main nav items
+        selectedIndex: -1,
         onItemTapped: (index) {
           if (index == 0) {
             Navigator.popUntil(context, (route) => route.isFirst);

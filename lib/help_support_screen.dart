@@ -14,8 +14,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   Color get _textColor => Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
 
-  // Track expanded FAQ index
-  int _expandedIndex = -1;
+int _expandedIndex = -1;
 
   final List<Map<String, String>> _faqs = [
     {
