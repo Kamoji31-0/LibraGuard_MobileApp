@@ -33,7 +33,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
 
   Color get _cardColor => Theme.of(context).cardColor;
 
-int _step = 0;
+  int _step = 0;
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -43,12 +43,12 @@ int _step = 0;
   final AuthService _authService = AuthService();
   final BookService _bookService = BookService();
 
-String _borrowerName = "";
+  String _borrowerName = "";
   String _borrowerRole = "";
   String _borrowerDept = "";
   String _borrowerYear = "";
 
-String _bookGenre = "Loading...";
+  String _bookGenre = "Loading...";
 
   @override
   void initState() {
@@ -58,7 +58,6 @@ String _bookGenre = "Loading...";
   }
 
   Future<void> _loadBookDetails() async {
-
     final cachedBooks = await _bookService.getPersistentCachedBooks();
     final cachedMatch = cachedBooks.where((b) => b.id == widget.bookId);
     if (cachedMatch.isNotEmpty && mounted) {
@@ -67,7 +66,7 @@ String _bookGenre = "Loading...";
       });
     }
 
-try {
+    try {
       final books = await _bookService.fetchBooksByIds([widget.bookId]);
       if (books.isNotEmpty && mounted) {
         setState(() {
@@ -88,13 +87,12 @@ try {
   }
 
   Future<void> _loadUserProfile() async {
-
     final cached = await _authService.getCachedProfile();
     if (cached != null && mounted) {
       _applyProfileData(cached);
     }
 
-final result = await _authService.getProfile();
+    final result = await _authService.getProfile();
     if (result['success'] == true && result['data'] != null && mounted) {
       _applyProfileData(result['data']);
     }
@@ -227,7 +225,7 @@ final result = await _authService.getProfile();
     );
   }
 
-Widget _buildAwaitingApprovalContent() {
+  Widget _buildAwaitingApprovalContent() {
     final tx = _resultTransaction;
     if (tx == null) {
       return const Center(child: CircularProgressIndicator());
@@ -263,26 +261,17 @@ Widget _buildAwaitingApprovalContent() {
                 ),
               ),
               const SizedBox(height: 24),
-
-_buildBorrowerDetails(),
-
+              _buildBorrowerDetails(),
               const SizedBox(height: 24),
               const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
               const SizedBox(height: 24),
-
-_buildBookSummaryCard(),
-
+              _buildBookSummaryCard(),
               const SizedBox(height: 24),
-
-_buildPickupAndReturnDetails(tx),
-
+              _buildPickupAndReturnDetails(tx),
               const SizedBox(height: 24),
-
-_buildRemindersWithLink(isBorrowing: true),
-
+              _buildRemindersWithLink(isBorrowing: true),
               const SizedBox(height: 12),
-
-_buildFinalConfirmButton(),
+              _buildFinalConfirmButton(),
             ],
           ),
         ),
@@ -573,7 +562,7 @@ _buildFinalConfirmButton(),
     );
   }
 
-Widget _buildRulesContent() {
+  Widget _buildRulesContent() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -738,7 +727,7 @@ Widget _buildRulesContent() {
     );
   }
 
-Widget _buildConfirmationContent() {
+  Widget _buildConfirmationContent() {
     return Column(
       children: [
         Container(
@@ -769,22 +758,15 @@ Widget _buildConfirmationContent() {
                 ),
               ),
               const SizedBox(height: 24),
-
-_buildBorrowerDetails(),
-
+              _buildBorrowerDetails(),
               const SizedBox(height: 24),
               const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
               const SizedBox(height: 24),
-
-_buildBookSummaryCard(),
-
+              _buildBookSummaryCard(),
               const SizedBox(height: 24),
-
-_buildTermsAndConditions(),
-
+              _buildTermsAndConditions(),
               const SizedBox(height: 32),
-
-_buildActionButtons(),
+              _buildActionButtons(),
             ],
           ),
         ),
@@ -1135,7 +1117,7 @@ _buildActionButtons(),
     );
   }
 
-Widget _buildStepper() {
+  Widget _buildStepper() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Stack(
@@ -1236,7 +1218,7 @@ Widget _buildStepper() {
     );
   }
 
-Widget _buildRuleItem(String number, String text1,
+  Widget _buildRuleItem(String number, String text1,
       {String? bold, String? text2}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

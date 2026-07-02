@@ -21,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _yearController = TextEditingController();
   final _facultyCodeController = TextEditingController();
   String? _selectedYearLevel;
+  String? _selectedDepartment;
 
   bool _isLoading = false;
   String _selectedRole = 'STUDENT';
@@ -55,7 +56,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         idNumber: _idController.text.trim(),
-        department: (_selectedRole == 'STUDENT' || _selectedRole == 'FACULTY') ? _deptController.text.trim() : null,
+        department: (_selectedRole == 'STUDENT')
+            ? (_selectedDepartment ?? '').trim()
+            : (_selectedRole == 'FACULTY')
+                ? _deptController.text.trim()
+                : null,
         yearLevel: _selectedRole == 'STUDENT' ? _yearController.text.trim() : null,
         accessCode: _selectedRole == 'FACULTY' ? _facultyCodeController.text.trim() : null,
         role: _selectedRole,
@@ -298,25 +303,9 @@ if (_selectedRole != 'GUEST') ...[
 
                         if (_selectedRole == 'STUDENT') ...[
                           const SizedBox(height: 24),
-                          _buildLabel('Department'),
+                          _buildLabel('Course / Department'),
                           const SizedBox(height: 8),
-                          GlowTextField(
-                            hint: 'BSIT',
-                            icon: Icons.account_balance_outlined,
-                            controller: _deptController,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter your department';
-                              }
-                              if (value.trim().length < 2) {
-                                return 'Department must be at least 2 characters';
-                              }
-                              if (!RegExp(r"^[a-zA-Z\s/&]+$").hasMatch(value.trim())) {
-                                return 'Department must contain letters only';
-                              }
-                              return null;
-                            },
-                          ),
+                          _buildDepartmentDropdown(),
                           const SizedBox(height: 24),
                           _buildLabel('Year Level'),
                           const SizedBox(height: 8),
@@ -526,46 +515,116 @@ Row(
     );
   }
 
+  // ── Shared dropdown decoration ───────────────────────────────────────────
+  InputDecoration _dropdownDecoration({
+    required IconData icon,
+    required bool isDark,
+  }) {
+    return InputDecoration(
+      fillColor: isDark
+          ? Colors.white.withOpacity(0.05)
+          : const Color(0xFFF8FAFC),
+      filled: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      prefixIcon: Icon(icon, color: _textColor.withOpacity(0.5)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark
+              ? Colors.white.withOpacity(0.1)
+              : const Color(0xFFE2E8F0),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: _accentColor, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
+          width: 2,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
+          width: 2,
+        ),
+      ),
+    );
+  }
+
+  // ── Department dropdown (Student only) ───────────────────────────────────
+  // Sorted alphabetically by full program name
+  static const List<Map<String, String>> _departments = [
+    {'code': 'BSA',    'name': 'Bachelor of Science in Accountancy'},
+    {'code': 'BSAIS',  'name': 'Bachelor of Science in Accounting Information System'},
+    {'code': 'BSAB',   'name': 'Bachelor of Science in Agribusiness'},
+    {'code': 'BSBA',   'name': 'Bachelor of Science in Business Administration'},
+    {'code': 'BSCE',   'name': 'Bachelor of Science in Civil Engineering'},
+    {'code': 'BSCRIM', 'name': 'Bachelor of Science in Criminology'},
+    {'code': 'BECED',  'name': 'Bachelor of Early Childhood Education'},
+    {'code': 'BEED',   'name': 'Bachelor of Elementary Education'},
+    {'code': 'BSHM',   'name': 'Bachelor of Science in Hospitality Management'},
+    {'code': 'BSISM',  'name': 'Bachelor of Science in Industrial Security Management'},
+    {'code': 'BSIT',   'name': 'Bachelor of Science in Information Technology'},
+    {'code': 'BSMID',  'name': 'Bachelor of Science in Midwifery'},
+    {'code': 'BSED',   'name': 'Bachelor of Secondary Education'},
+  ];
+
+  Widget _buildDepartmentDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DropdownButtonFormField<String>(
+      value: _selectedDepartment,
+      isExpanded: true,
+      decoration: _dropdownDecoration(
+        icon: Icons.account_balance_outlined,
+        isDark: isDark,
+      ),
+      dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      hint: Text(
+        'Select your course / department',
+        style: TextStyle(color: _textColor.withOpacity(0.4)),
+      ),
+      style: TextStyle(color: _textColor, fontSize: 15),
+      icon: Icon(Icons.keyboard_arrow_down_rounded,
+          color: _textColor.withOpacity(0.5)),
+      borderRadius: BorderRadius.circular(16),
+      items: _departments.map((dept) {
+        return DropdownMenuItem<String>(
+          value: '${dept['code']} - ${dept['name']}',
+          child: Text(
+            '${dept['code']} — ${dept['name']}',
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      }).toList(),
+      onChanged: (val) {
+        setState(() {
+          _selectedDepartment = val;
+          if (val != null) _deptController.text = val;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please select your course / department';
+        }
+        return null;
+      },
+    );
+  }
+
+  // ── Year Level dropdown ───────────────────────────────────────────────────
   Widget _buildYearLevelDropdown() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return DropdownButtonFormField<String>(
       value: _selectedYearLevel,
-      decoration: InputDecoration(
-        fillColor: isDark
-            ? Colors.white.withOpacity(0.05)
-            : const Color(0xFFF8FAFC),
-        filled: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        prefixIcon: Icon(
-          Icons.history_edu_outlined,
-          color: _textColor.withOpacity(0.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.1)
-                : const Color(0xFFE2E8F0),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _accentColor, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
-            width: 2,
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: isDark ? const Color(0xFFB21A2D) : Colors.redAccent,
-            width: 2,
-          ),
-        ),
+      decoration: _dropdownDecoration(
+        icon: Icons.history_edu_outlined,
+        isDark: isDark,
       ),
       dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       hint: Text(
@@ -573,7 +632,8 @@ Row(
         style: TextStyle(color: _textColor.withOpacity(0.4)),
       ),
       style: TextStyle(color: _textColor, fontSize: 16),
-      icon: Icon(Icons.keyboard_arrow_down_rounded, color: _textColor.withOpacity(0.5)),
+      icon: Icon(Icons.keyboard_arrow_down_rounded,
+          color: _textColor.withOpacity(0.5)),
       borderRadius: BorderRadius.circular(16),
       items: const [
         DropdownMenuItem(value: '1st Year', child: Text('1st Year')),
