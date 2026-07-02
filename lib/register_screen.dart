@@ -18,10 +18,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   final _deptController = TextEditingController();
-  final _yearController = TextEditingController();
   final _facultyCodeController = TextEditingController();
+  final _yearController = TextEditingController();
   String? _selectedYearLevel;
   String? _selectedDepartment;
+  bool _showPasswordChecklist = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(() {
+      if (_showPasswordChecklist) {
+        setState(() {});
+      }
+    });
+  }
 
   bool _isLoading = false;
   String _selectedRole = 'STUDENT';
@@ -51,6 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _isLoading = true;
       });
 
+      print('DEBUG REGISTER: role=$_selectedRole, year=$_selectedYearLevel, dept=$_selectedDepartment');
       final result = await _authService.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
@@ -61,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : (_selectedRole == 'FACULTY')
                 ? _deptController.text.trim()
                 : null,
-        yearLevel: _selectedRole == 'STUDENT' ? _yearController.text.trim() : null,
+        yearLevel: _selectedRole == 'STUDENT' ? (_selectedYearLevel ?? '').trim() : null,
         accessCode: _selectedRole == 'FACULTY' ? _facultyCodeController.text.trim() : null,
         role: _selectedRole,
       );
@@ -384,32 +396,40 @@ _buildLabel('Email Address'),
                         ),
                         const SizedBox(height: 24),
 
-_buildLabel('Password'),
+                        _buildLabel('Password'),
                         const SizedBox(height: 8),
-                        GlowTextField(
-                          hint: 'Create a strong password...',
-                          icon: Icons.lock_outline,
-                          isPassword: true,
-                          controller: _passwordController,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a password';
-                            }
-                            if (value.length < 8) {
-                              return 'Password must be at least 8 characters';
-                            }
-                            if (!value.contains(RegExp(r'[A-Z]'))) {
-                              return 'Password must contain at least one uppercase letter';
-                            }
-                            if (!value.contains(RegExp(r'[a-z]'))) {
-                              return 'Password must contain at least one lowercase letter';
-                            }
-                            if (!value.contains(RegExp(r'[0-9]'))) {
-                              return 'Password must contain at least one number';
-                            }
-                            return null;
+                                                Focus(
+                          onFocusChange: (hasFocus) {
+                            setState(() {
+                              _showPasswordChecklist = hasFocus;
+                            });
                           },
+                          child: GlowTextField(
+                            hint: 'Create a strong password...',
+                            icon: Icons.lock_outline,
+                            isPassword: true,
+                            controller: _passwordController,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a password';
+                              }
+                              if (value.length < 8) {
+                                return 'Password must be at least 8 characters';
+                              }
+                              if (!value.contains(RegExp(r'[A-Z]'))) {
+                                return 'Password must contain at least one uppercase letter';
+                              }
+                              if (!value.contains(RegExp(r'[a-z]'))) {
+                                return 'Password must contain at least one lowercase letter';
+                              }
+                              if (!value.contains(RegExp(r'[0-9]'))) {
+                                return 'Password must contain at least one number';
+                              }
+                              return null;
+                            },
+                          ),
                         ),
+                        if (_showPasswordChecklist) _buildPasswordChecklist(),
                         const SizedBox(height: 24),
 
 _buildLabel('Confirm Password'),
@@ -705,6 +725,54 @@ Row(
         fontSize: 14,
         fontWeight: FontWeight.bold,
       ),
+    );
+  }
+
+  Widget _buildPasswordChecklist() {
+    final password = _passwordController.text;
+
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasDigits = password.contains(RegExp(r'[0-9]'));
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10.0, left: 4.0, bottom: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildChecklistItem('Password must be at least 8 characters', hasMinLength),
+          const SizedBox(height: 6),
+          _buildChecklistItem('Password must contain at least one uppercase letter', hasUppercase),
+          const SizedBox(height: 6),
+          _buildChecklistItem('Password must contain at least one lowercase letter', hasLowercase),
+          const SizedBox(height: 6),
+          _buildChecklistItem('Password must contain at least one number', hasDigits),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistItem(String text, bool isMet) {
+    return Row(
+      children: [
+        Icon(
+          isMet ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: isMet ? Colors.green.shade600 : _textColor.withOpacity(0.3),
+          size: 18,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: isMet ? _textColor : _textColor.withOpacity(0.55),
+              fontSize: 13.5,
+              fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

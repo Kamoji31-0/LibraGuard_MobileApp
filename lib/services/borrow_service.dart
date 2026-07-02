@@ -212,4 +212,46 @@ final profileRes = await authService.getProfile();
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
+
+  Future<Map<String, dynamic>> cancelBorrowRequest(String transactionId) async {
+    final authService = AuthService();
+    final token = await authService.getToken();
+    if (token == null) {
+      return {'success': false, 'message': 'You are not logged in.'};
+    }
+    try {
+      final uri = Uri.parse('$_baseUrl/transactions/$transactionId');
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'status': 'Cancelled'}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return {'success': true, 'message': 'Request cancelled successfully.'};
+      } else {
+        final responsePut = await http.put(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'status': 'Cancelled'}),
+        );
+        if (responsePut.statusCode == 200 || responsePut.statusCode == 204) {
+          return {'success': true, 'message': 'Request cancelled successfully.'};
+        }
+        final data = jsonDecode(responsePut.body);
+        return {
+          'success': false,
+          'message': data['message']?.toString() ??
+              'Failed to cancel request (${responsePut.statusCode})'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
 }

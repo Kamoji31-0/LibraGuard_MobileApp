@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'borrow_request_screen.dart';
 import 'services/favorite_service.dart';
+import 'services/book_service.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final String bookId;
@@ -89,6 +90,19 @@ final syncedIds = await _favoriteService.getFavoriteIds();
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final displayGenre = BookItem(
+      id: '',
+      title: '',
+      author: '',
+      genre: widget.category,
+      isAvailable: widget.isAvailable,
+    ).displayGenre;
+    final coverColor = _genreCoverColor(displayGenre, isDark);
+    final iconColor = isDark
+        ? Colors.white.withOpacity(0.25)
+        : Colors.black.withOpacity(0.15);
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
@@ -109,12 +123,11 @@ final syncedIds = await _favoriteService.getFavoriteIds();
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-
             Container(
               width: 180,
               height: 250,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: coverColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _cardColor, width: 6),
                 boxShadow: [
@@ -131,23 +144,21 @@ final syncedIds = await _favoriteService.getFavoriteIds();
                     ? Image.network(
                         widget.imageUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _coverPlaceholder(),
+                        errorBuilder: (_, __, ___) => _coverPlaceholder(iconColor),
                       )
-                    : _coverPlaceholder(),
+                    : _coverPlaceholder(iconColor),
               ),
             ),
             const SizedBox(height: 48),
-
-Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Row(
                     children: [
                       Text(
-                        widget.category.toUpperCase(),
+                        displayGenre.toUpperCase(),
                         style: TextStyle(
                           color: _textColor.withOpacity(0.5),
                           fontSize: 11,
@@ -351,12 +362,36 @@ SizedBox(
     );
   }
 
-  Widget _coverPlaceholder() {
+  static Color _genreCoverColor(String genre, bool isDark) {
+    const colors = {
+      'Arts':                   Color(0xFFF7C5D0),
+      'Business & Management':  Color(0xFFFDE7C8),
+      'Criminology':            Color(0xFFD4C5F9),
+      'Culinary Arts':          Color(0xFFFFF3CC),
+      'Education':              Color(0xFFC8E6C9),
+      'Engineering':            Color(0xFFB3E5FC),
+      'Fiction':                Color(0xFFE8D5F5),
+      'Filipino Studies':       Color(0xFFFFCCBC),
+      'History':                Color(0xFFD7ECD0),
+      'Hospitality Management': Color(0xFFFFC1B0),
+      'IT & Programming':       Color(0xFFBBDEFB),
+      'Law, Govt & Social':     Color(0xFFCCE5FF),
+      'Mathematics':            Color(0xFFE1F5C4),
+      'Nursing & Health':       Color(0xFFB2EBF2),
+      'Psychology':             Color(0xFFFFD7E8),
+      'Science':                Color(0xFFDCEDC8),
+      'Others':                 Color(0xFFECEFF1),
+    };
+    final base = colors[genre] ?? const Color(0xFFECEFF1);
+    return isDark ? base.withOpacity(0.22) : base;
+  }
+
+  Widget _coverPlaceholder(Color iconColor) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.menu_book, color: Colors.white.withOpacity(0.2), size: 40),
+          Icon(Icons.menu_book_rounded, color: iconColor, size: 48),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -376,9 +411,13 @@ SizedBox(
           Text(
             widget.author,
             style: TextStyle(
-              color: _textColor.withOpacity(0.5),
-              fontSize: 10,
+              color: _textColor.withOpacity(0.6),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

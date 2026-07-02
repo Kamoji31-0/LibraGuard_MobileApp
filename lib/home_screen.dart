@@ -1077,8 +1077,37 @@ switch (_selectedSort) {
     );
   }
 
-Widget _buildBookCard(BookItem book) {
+  static Color _genreCoverColor(String genre, bool isDark) {
+    const colors = {
+      'Arts':                   Color(0xFFF7C5D0),
+      'Business & Management':  Color(0xFFFDE7C8),
+      'Criminology':            Color(0xFFD4C5F9),
+      'Culinary Arts':          Color(0xFFFFF3CC),
+      'Education':              Color(0xFFC8E6C9),
+      'Engineering':            Color(0xFFB3E5FC),
+      'Fiction':                Color(0xFFE8D5F5),
+      'Filipino Studies':       Color(0xFFFFCCBC),
+      'History':                Color(0xFFD7ECD0),
+      'Hospitality Management': Color(0xFFFFC1B0),
+      'IT & Programming':       Color(0xFFBBDEFB),
+      'Law, Govt & Social':     Color(0xFFCCE5FF),
+      'Mathematics':            Color(0xFFE1F5C4),
+      'Nursing & Health':       Color(0xFFB2EBF2),
+      'Psychology':             Color(0xFFFFD7E8),
+      'Science':                Color(0xFFDCEDC8),
+      'Others':                 Color(0xFFECEFF1),
+    };
+    final base = colors[genre] ?? const Color(0xFFECEFF1);
+    return isDark ? base.withOpacity(0.22) : base;
+  }
+
+  Widget _buildBookCard(BookItem book) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final coverColor = _genreCoverColor(book.displayGenre, isDark);
+    final iconColor = isDark
+        ? Colors.white.withOpacity(0.25)
+        : Colors.black.withOpacity(0.15);
     return Container(
       height: 280,
       decoration: BoxDecoration(
@@ -1100,7 +1129,7 @@ Widget _buildBookCard(BookItem book) {
             height: 115,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: coverColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Stack(
@@ -1114,12 +1143,13 @@ Widget _buildBookCard(BookItem book) {
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(Icons.book,
-                                color: Colors.white.withOpacity(0.2), size: 32),
+                            errorBuilder: (_, __, ___) =>
+                                Icon(Icons.menu_book_rounded,
+                                    color: iconColor, size: 36),
                           ),
                         )
-                      : Icon(Icons.book,
-                          color: Colors.white.withOpacity(0.2), size: 32),
+                      : Icon(Icons.menu_book_rounded,
+                          color: iconColor, size: 36),
                 ),
                 Positioned(
                   top: 6,

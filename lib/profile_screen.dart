@@ -20,6 +20,7 @@ import 'about_screen.dart';
 import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
 import 'library_service_guide_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -87,6 +88,28 @@ bool _is2FAEnabled = false;
   bool _isEnabling2FA = false;
   bool _isDisabling2FA = false;
 
+  Future<void> _saveLocalYear(String email, String year) async {
+    if (email.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('local_year_${email.toLowerCase().trim()}', year);
+    } catch (_) {}
+  }
+
+  Future<String?> _getLocalYear(String email) async {
+    if (email.isEmpty) return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? localYear = prefs.getString('local_year_${email.toLowerCase().trim()}');
+      if (localYear == null || localYear.isEmpty || localYear == 'N/A') {
+        localYear = prefs.getString('pending_year');
+      }
+      return localYear;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -114,18 +137,32 @@ bool _is2FAEnabled = false;
         if (cachedProfile != null) {
           _userProfile = cachedProfile;
           _updateControllers(cachedProfile);
+          
+          final email = cachedProfile['email'] ?? cachedProfile['emailAddress'] ?? '';
+          _getLocalYear(email).then((localYear) {
+            if (mounted && localYear != null && localYear.isNotEmpty) {
+              if (_yearController.text == 'N/A' || _yearController.text.isEmpty) {
+                setState(() {
+                  _yearController.text = localYear;
+                  if (_userProfile != null) {
+                    _userProfile!['year'] = localYear;
+                  }
+                });
+              }
+            }
+          });
         }
         _isLoading = false;
       });
     }
 
-final _is2faEnabledLocal = await AuthService().is2FAEnabled();
+    final _is2faEnabledLocal = await AuthService().is2FAEnabled();
     if (mounted) {
       setState(() {
         _is2FAEnabled = _is2faEnabledLocal;
       });
 
-if (!_is2faEnabledLocal) {
+      if (!_is2faEnabledLocal) {
         AuthService().get2FASetup().then((setup) {
           if (mounted) {
             setState(() {
@@ -141,7 +178,7 @@ if (!_is2faEnabledLocal) {
       }
     }
 
-_refreshProfileData();
+    _refreshProfileData();
   }
 
   void _updateControllers(Map<String, dynamic> profile) {
@@ -173,9 +210,20 @@ _refreshProfileData();
   Future<void> _refreshProfileData() async {
     final res = await AuthService().getProfile();
     if (res['success'] == true && mounted) {
+      final profile = res['data'] as Map<String, dynamic>;
+      final email = profile['email'] ?? profile['emailAddress'] ?? '';
+      final localYear = await _getLocalYear(email);
+
       setState(() {
-        _userProfile = res['data'];
+        _userProfile = profile;
         _updateControllers(_userProfile!);
+
+        if (_yearController.text == 'N/A' || _yearController.text.isEmpty) {
+          if (localYear != null && localYear.isNotEmpty) {
+            _yearController.text = localYear;
+            _userProfile!['year'] = localYear;
+          }
+        }
       });
     }
   }
@@ -436,10 +484,15 @@ Padding(
     if (!mounted) return;
 
     if (res['success'] == true) {
+      final email = _emailController.text;
+      final yearVal = _yearController.text;
+      await _saveLocalYear(email, yearVal);
+
       final updatedUser = res['data'] as Map<String, dynamic>?;
       setState(() {
         if (updatedUser != null) {
-          _userProfile = updatedUser;
+          _userProfile = Map<String, dynamic>.from(updatedUser);
+          _userProfile!['year'] = yearVal; // Ensure local year remains updated in current state
         } else {
           _userProfile = {
             ...?_userProfile,
@@ -448,7 +501,7 @@ Padding(
             'contact': _contactController.text,
             'gender': _selectedGender,
             'dept': _deptController.text,
-            'year': _yearController.text,
+            'year': yearVal,
           };
         }
         if (setModalState != null) setModalState(() => _isSaving = false);
@@ -952,8 +1005,10 @@ SafeArea(
         _userProfile?['name'] ?? _userProfile?['fullName'] ?? 'LibraGuard User';
     final role = _userProfile?['role'] ?? 'Member';
     final email = _userProfile?['email'] ?? 'user@libraguard.edu';
-    final department =
-        _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
+    final rawDept = _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
+    final department = rawDept.contains(' - ')
+        ? rawDept.split(' - ').first.trim()
+        : rawDept;
     final year = _userProfile?['year'] ?? _userProfile?['yearLevel'] ?? 'N/A';
 
     return Container(
@@ -1890,9 +1945,11 @@ Container(
         String selectedStatus = 'All';
         String selectedTimeframe = 'All Time';
         String selectedSort = 'Newest First';
+        bool isSearchFocused = false;
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
@@ -1942,27 +1999,61 @@ Container(
                     child: Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: _textColor.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TextField(
-                              onChanged: (val) =>
-                                  setSheetState(() => searchQuery = val),
-                              style: TextStyle(color: _textColor, fontSize: 14),
-                              decoration: InputDecoration(
-                                hintText: 'Search books or authors...',
-                                hintStyle: TextStyle(
-                                    color: _textColor.withOpacity(0.3),
-                                    fontSize: 14),
-                                prefixIcon: Icon(Icons.search,
-                                    color: _textColor.withOpacity(0.3),
-                                    size: 20),
-                                border: InputBorder.none,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                          child: Focus(
+                            onFocusChange: (hasFocus) {
+                              setSheetState(() {
+                                isSearchFocused = hasFocus;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? (isSearchFocused
+                                        ? _textColor.withOpacity(0.04)
+                                        : _textColor.withOpacity(0.02))
+                                    : (isSearchFocused
+                                        ? Colors.white
+                                        : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: isSearchFocused
+                                      ? _primaryColor
+                                      : _primaryColor.withOpacity(0.35),
+                                  width: isSearchFocused ? 1.5 : 1.2,
+                                ),
+                                boxShadow: isSearchFocused
+                                    ? [
+                                        BoxShadow(
+                                          color: _primaryColor.withOpacity(0.08),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: TextField(
+                                onChanged: (val) =>
+                                    setSheetState(() => searchQuery = val),
+                                style: TextStyle(color: _textColor, fontSize: 14),
+                                cursorColor: _primaryColor,
+                                decoration: InputDecoration(
+                                  hintText: 'Search books or authors...',
+                                  hintStyle: TextStyle(
+                                      color: _textColor.withOpacity(0.3),
+                                      fontSize: 14),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: isSearchFocused
+                                        ? _primaryColor
+                                        : _textColor.withOpacity(0.4),
+                                    size: 20,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                ),
                               ),
                             ),
                           ),
@@ -1975,9 +2066,17 @@ Container(
                             color: selectedStatus != 'All' ||
                                     selectedTimeframe != 'All Time' ||
                                     selectedSort != 'Newest First'
-                                ? _primaryColor.withOpacity(0.1)
-                                : _textColor.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
+                                ? _primaryColor.withOpacity(0.05)
+                                : _textColor.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: selectedStatus != 'All' ||
+                                      selectedTimeframe != 'All Time' ||
+                                      selectedSort != 'Newest First'
+                                  ? _primaryColor.withOpacity(0.35)
+                                  : _textColor.withOpacity(0.12),
+                              width: 1.2,
+                            ),
                           ),
                           child: IconButton(
                             icon: Icon(Icons.filter_list,
@@ -2398,7 +2497,7 @@ if (selectedSort == 'Newest First') {
         children: [
           Container(
             width: 56,
-            height: 56,
+            height: 72,
             decoration: BoxDecoration(
               color: _accentColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
@@ -2465,13 +2564,52 @@ if (selectedSort == 'Newest First') {
                       ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                    color: _textColor.withOpacity(0.4),
-                    fontSize: 12,
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reserved for',
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.5),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _showPcSessionDetailDialog(context, sess),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accentColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "View Details",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -2590,7 +2728,13 @@ _buildDialogSection(
                                 (_userProfile?['role'] ?? 'STUDENT')
                                     .toString()
                                     .toUpperCase()),
-                            _buildDialogRow('Department', _deptController.text),
+                            _buildDialogRow('Department',
+                                _deptController.text.contains(' - ')
+                                    ? _deptController.text
+                                        .split(' - ')
+                                        .first
+                                        .trim()
+                                    : _deptController.text),
                             _buildDialogRow('Year', _yearController.text),
                           ],
                         ),
@@ -2804,6 +2948,445 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                             ),
                           ],
                         ),
+                        if (tx.isPending) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: ctx,
+                                  builder: (cctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20)),
+                                    title: Row(
+                                      children: [
+                                        Icon(Icons.warning_amber_rounded,
+                                            color: Colors.redAccent, size: 22),
+                                        const SizedBox(width: 8),
+                                        const Text('Cancel Request'),
+                                      ],
+                                    ),
+                                    content: const Text(
+                                        'Are you sure you want to cancel this borrow request? This action cannot be undone.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(cctx, false),
+                                        child: const Text('Keep'),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(cctx, true),
+                                        child: const Text('Yes, Cancel'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true && mounted) {
+                                  final result = await BorrowService()
+                                      .cancelBorrowRequest(tx.id);
+                                  if (mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(result['message'] ??
+                                            'Request cancelled.'),
+                                        backgroundColor: result['success'] ==
+                                                true
+                                            ? const Color(0xFF16A34A)
+                                            : Colors.redAccent,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                    if (result['success'] == true) {
+                                      setState(() {});
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.cancel_outlined,
+                                  size: 18, color: Colors.redAccent),
+                              label: const Text(
+                                'Cancel Request',
+                                style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: Colors.redAccent, width: 1.5),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPcSessionDetailDialog(BuildContext context, PcSession sess) {
+    Color statusColor;
+    if (sess.isPending) {
+      statusColor = const Color(0xFFF59E0B);
+    } else if (sess.isActive) {
+      statusColor = const Color(0xFF16A34A);
+    } else if (sess.isCompleted) {
+      statusColor = Colors.blue;
+    } else {
+      statusColor = Colors.grey;
+    }
+
+    String fmtDate(String? raw) {
+      if (raw == null || raw.isEmpty) return '---';
+      try {
+        final dt = DateTime.parse(raw).toLocal();
+        return '${dt.month}/${dt.day}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    final String deptAcronym = _deptController.text.contains(' - ')
+        ? _deptController.text.split(' - ').first.trim()
+        : _deptController.text;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Scaffold(
+            backgroundColor: _cardColor,
+            body: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Computer Session Summary',
+                          style: TextStyle(
+                            color: _textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close,
+                            color: _textColor.withOpacity(0.5)),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(color: _textColor.withOpacity(0.07), height: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Status pill header ──────────────────────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Status',
+                              style: TextStyle(
+                                color: _textColor.withOpacity(0.5),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                sess.status,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+
+                        // ── PC header card ──────────────────────────────
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: _accentColor.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: _accentColor.withOpacity(0.15)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  color: _accentColor.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.computer_rounded,
+                                    size: 34, color: _accentColor),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      sess.computerName,
+                                      style: TextStyle(
+                                        color: _textColor,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Duration: ${sess.duration}',
+                                      style: TextStyle(
+                                        color: _textColor.withOpacity(0.6),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    if (sess.reference != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Ref: ${sess.reference}',
+                                        style: TextStyle(
+                                          color: _textColor.withOpacity(0.4),
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ── User Details ────────────────────────────────
+                        _buildDialogSection(
+                          title: "User Details",
+                          showIcon: false,
+                          hasOutline: true,
+                          children: [
+                            _buildDialogRow(
+                                'Name',
+                                _nameController.text.isNotEmpty
+                                    ? _nameController.text
+                                    : '---'),
+                            _buildDialogRow(
+                                'Role',
+                                (_userProfile?['role'] ?? 'STUDENT')
+                                    .toString()
+                                    .toUpperCase()),
+                            if (deptAcronym.isNotEmpty)
+                              _buildDialogRow('Department', deptAcronym),
+                            if (_yearController.text.isNotEmpty)
+                              _buildDialogRow('Year Level', _yearController.text),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ── PC Reservation Details ──────────────────────
+                        _buildDialogSection(
+                          title: 'PC RESERVATION DETAILS',
+                          showIcon: false,
+                          children: [
+                            _buildDialogRow('Computer', sess.computerName),
+                            _buildDialogRow('Duration', sess.duration),
+                            _buildDialogRow(
+                                'Reservation Date', fmtDate(sess.createdAt)),
+                            if (sess.startTime != null)
+                              _buildDialogRow(
+                                  'Start Time', fmtDate(sess.startTime)),
+                            if (sess.endTime != null)
+                              _buildDialogRow(
+                                  'End Time', fmtDate(sess.endTime)),
+                          ],
+                        ),
+
+                        // ── Computer Access link ────────────────────────
+                        _buildDialogSection(
+                          title: 'Computer Access',
+                          showIcon: false,
+                          titleColor: _accentColor,
+                          children: [
+                            _buildReminderItem(
+                                'Tap your RFID card on the kiosk to activate your session.'),
+                            _buildReminderItem(
+                                'Arrive on time. Unconfirmed sessions may be released.'),
+                            _buildReminderItem(
+                                'No eating, drinking, or gaming in the computer area.'),
+                            _buildReminderItem(
+                                'Library Hours: 8:00 AM – 5:00 PM (Mon – Sat).'),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1, thickness: 0.5),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LibraryServiceGuideScreen(
+                                      initialExpandedIndex: 3,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(Icons.computer_outlined,
+                                      size: 18, color: _accentColor),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Computer Access Guide',
+                                    style: TextStyle(
+                                      color: _accentColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // ── Cancel Reservation button ───────────────────
+                        if (sess.isPending || sess.isActive) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: ctx,
+                                  builder: (cctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20)),
+                                    title: Row(
+                                      children: [
+                                        Icon(Icons.warning_amber_rounded,
+                                            color: Colors.redAccent, size: 22),
+                                        const SizedBox(width: 8),
+                                        const Text('Cancel Reservation'),
+                                      ],
+                                    ),
+                                    content: const Text(
+                                        'Are you sure you want to cancel this computer reservation? This action cannot be undone.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(cctx, false),
+                                        child: const Text('Keep'),
+                                      ),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(cctx, true),
+                                        child: const Text('Yes, Cancel'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true && mounted) {
+                                  final result =
+                                      await PcService().cancelReservation(sess.id);
+                                  if (mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(result['message'] ??
+                                            'Reservation cancelled.'),
+                                        backgroundColor: result['success'] ==
+                                                true
+                                            ? const Color(0xFF16A34A)
+                                            : Colors.redAccent,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                      ),
+                                    );
+                                    if (result['success'] == true) {
+                                      setState(() {});
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.cancel_outlined,
+                                  size: 18, color: Colors.redAccent),
+                              label: const Text(
+                                'Cancel Reservation',
+                                style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: Colors.redAccent, width: 1.5),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -2961,8 +3544,10 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
         String selectedLane = 'All';
         String selectedTimeframe = 'All Time';
         bool _refreshStarted = false;
+        bool isSearchFocused = false;
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             if (!_refreshStarted) {
               _refreshStarted = true;
               AuthService().getGateLogs().then((fresh) {
@@ -3024,27 +3609,61 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                     child: Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: _textColor.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TextField(
-                              onChanged: (val) =>
-                                  setSheetState(() => searchQuery = val),
-                              style: TextStyle(color: _textColor, fontSize: 14),
-                              decoration: InputDecoration(
-                                hintText: 'Search by date or lane...',
-                                hintStyle: TextStyle(
-                                    color: _textColor.withOpacity(0.3),
-                                    fontSize: 14),
-                                prefixIcon: Icon(Icons.search,
-                                    color: _textColor.withOpacity(0.3),
-                                    size: 20),
-                                border: InputBorder.none,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                          child: Focus(
+                            onFocusChange: (hasFocus) {
+                              setSheetState(() {
+                                isSearchFocused = hasFocus;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? (isSearchFocused
+                                        ? _textColor.withOpacity(0.04)
+                                        : _textColor.withOpacity(0.02))
+                                    : (isSearchFocused
+                                        ? Colors.white
+                                        : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: isSearchFocused
+                                      ? _primaryColor
+                                      : _primaryColor.withOpacity(0.35),
+                                  width: isSearchFocused ? 1.5 : 1.2,
+                                ),
+                                boxShadow: isSearchFocused
+                                    ? [
+                                        BoxShadow(
+                                          color: _primaryColor.withOpacity(0.08),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: TextField(
+                                onChanged: (val) =>
+                                    setSheetState(() => searchQuery = val),
+                                style: TextStyle(color: _textColor, fontSize: 14),
+                                cursorColor: _primaryColor,
+                                decoration: InputDecoration(
+                                  hintText: 'Search by date or lane...',
+                                  hintStyle: TextStyle(
+                                      color: _textColor.withOpacity(0.3),
+                                      fontSize: 14),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: isSearchFocused
+                                        ? _primaryColor
+                                        : _textColor.withOpacity(0.4),
+                                    size: 20,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                ),
                               ),
                             ),
                           ),
@@ -3057,9 +3676,17 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                             color: selectedPresence != 'All' ||
                                     selectedLane != 'All' ||
                                     selectedTimeframe != 'All Time'
-                                ? _primaryColor.withOpacity(0.1)
-                                : _textColor.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
+                                ? _primaryColor.withOpacity(0.05)
+                                : _textColor.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: selectedPresence != 'All' ||
+                                      selectedLane != 'All' ||
+                                      selectedTimeframe != 'All Time'
+                                  ? _primaryColor.withOpacity(0.35)
+                                  : _textColor.withOpacity(0.12),
+                              width: 1.2,
+                            ),
                           ),
                           child: IconButton(
                             icon: Icon(Icons.filter_list,
@@ -3303,9 +3930,11 @@ bool matchesTime = true;
         String selectedStatus = 'All';
         String selectedDuration = 'All';
         String selectedPc = 'All';
+        bool isSearchFocused = false;
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
@@ -3349,33 +3978,66 @@ bool matchesTime = true;
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: _textColor.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TextField(
-                              onChanged: (val) =>
-                                  setSheetState(() => searchQuery = val),
-                              style: TextStyle(color: _textColor, fontSize: 14),
-                              decoration: InputDecoration(
-                                hintText: 'Search PC or reference...',
-                                hintStyle: TextStyle(
-                                    color: _textColor.withOpacity(0.3),
-                                    fontSize: 14),
-                                prefixIcon: Icon(Icons.search,
-                                    color: _textColor.withOpacity(0.3),
-                                    size: 20),
-                                border: InputBorder.none,
-                                contentPadding:
-                                    const EdgeInsets.symmetric(vertical: 10),
+                          child: Focus(
+                            onFocusChange: (hasFocus) {
+                              setSheetState(() {
+                                isSearchFocused = hasFocus;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? (isSearchFocused
+                                        ? _textColor.withOpacity(0.04)
+                                        : _textColor.withOpacity(0.02))
+                                    : (isSearchFocused
+                                        ? Colors.white
+                                        : Colors.grey.shade50),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: isSearchFocused
+                                      ? _primaryColor
+                                      : _primaryColor.withOpacity(0.35),
+                                  width: isSearchFocused ? 1.5 : 1.2,
+                                ),
+                                boxShadow: isSearchFocused
+                                    ? [
+                                        BoxShadow(
+                                          color: _primaryColor.withOpacity(0.08),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : [],
+                              ),
+                              child: TextField(
+                                onChanged: (val) =>
+                                    setSheetState(() => searchQuery = val),
+                                style: TextStyle(color: _textColor, fontSize: 14),
+                                cursorColor: _primaryColor,
+                                decoration: InputDecoration(
+                                  hintText: 'Search PC or reference...',
+                                  hintStyle: TextStyle(
+                                      color: _textColor.withOpacity(0.3),
+                                      fontSize: 14),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: isSearchFocused
+                                        ? _primaryColor
+                                        : _textColor.withOpacity(0.4),
+                                    size: 20,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                ),
                               ),
                             ),
                           ),
@@ -3388,9 +4050,17 @@ bool matchesTime = true;
                             color: selectedStatus != 'All' ||
                                     selectedDuration != 'All' ||
                                     selectedPc != 'All'
-                                ? _primaryColor.withOpacity(0.1)
-                                : _textColor.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(12),
+                                ? _primaryColor.withOpacity(0.05)
+                                : _textColor.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: selectedStatus != 'All' ||
+                                      selectedDuration != 'All' ||
+                                      selectedPc != 'All'
+                                  ? _primaryColor.withOpacity(0.35)
+                                  : _textColor.withOpacity(0.12),
+                              width: 1.2,
+                            ),
                           ),
                           child: IconButton(
                             icon: Icon(Icons.filter_list,

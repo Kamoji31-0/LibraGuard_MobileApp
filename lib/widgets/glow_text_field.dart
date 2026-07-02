@@ -7,6 +7,7 @@ class GlowTextField extends StatefulWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
+  final FocusNode? focusNode;
 
   const GlowTextField({
     super.key,
@@ -16,6 +17,7 @@ class GlowTextField extends StatefulWidget {
     required this.controller,
     this.validator,
     this.keyboardType,
+    this.focusNode,
   });
 
   @override
@@ -30,7 +32,7 @@ class _GlowTextFieldState extends State<GlowTextField> {
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode();
+    _focusNode = widget.focusNode ?? FocusNode();
     _focusNode.addListener(_onFocusChange);
   }
 
@@ -43,7 +45,9 @@ class _GlowTextFieldState extends State<GlowTextField> {
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChange);
-    _focusNode.dispose();
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
     super.dispose();
   }
 

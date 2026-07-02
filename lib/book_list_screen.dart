@@ -894,7 +894,40 @@ Widget _headerChipButton({
     });
   }
 
+  static Color _genreCoverColor(String genre, bool isDark) {
+    // Pastel palette mapped per genre — muted slightly in dark mode
+    const colors = {
+      'Arts':                   Color(0xFFF7C5D0), // Pink
+      'Business & Management':  Color(0xFFFDE7C8), // Peach
+      'Criminology':            Color(0xFFD4C5F9), // Lavender
+      'Culinary Arts':          Color(0xFFFFF3CC), // Butter/Yellow
+      'Education':              Color(0xFFC8E6C9), // Mint
+      'Engineering':            Color(0xFFB3E5FC), // Sky Blue
+      'Fiction':                Color(0xFFE8D5F5), // Lilac
+      'Filipino Studies':       Color(0xFFFFCCBC), // Coral/Peach
+      'History':                Color(0xFFD7ECD0), // Seafoam
+      'Hospitality Management': Color(0xFFFFC1B0), // Rose/Coral
+      'IT & Programming':       Color(0xFFBBDEFB), // Baby Blue
+      'Law, Govt & Social':     Color(0xFFCCE5FF), // Periwinkle
+      'Mathematics':            Color(0xFFE1F5C4), // Lime
+      'Nursing & Health':       Color(0xFFB2EBF2), // Aqua
+      'Psychology':             Color(0xFFFFD7E8), // Pink
+      'Science':                Color(0xFFDCEDC8), // Lime/Mint
+      'Others':                 Color(0xFFECEFF1), // Light Grey-Blue
+    };
+    final base = colors[genre] ?? const Color(0xFFECEFF1);
+    // In dark mode, reduce opacity to keep it subtle against dark backgrounds
+    return isDark ? base.withOpacity(0.22) : base;
+  }
+
   Widget _buildBookCard(BookItem book) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final coverColor = _genreCoverColor(book.displayGenre, isDark);
+    // Icon color: dark on light pastel, lighter on dark-mode muted
+    final iconColor = isDark
+        ? Colors.white.withOpacity(0.25)
+        : Colors.black.withOpacity(0.15);
+
     return Container(
       height: 240,
       decoration: BoxDecoration(
@@ -917,7 +950,7 @@ Widget _headerChipButton({
             height: 130,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
+              color: coverColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Stack(
@@ -931,12 +964,13 @@ Widget _headerChipButton({
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(Icons.book,
-                                color: Colors.white.withOpacity(0.2), size: 36),
+                            errorBuilder: (_, __, ___) =>
+                                Icon(Icons.menu_book_rounded,
+                                    color: iconColor, size: 40),
                           ),
                         )
-                      : Icon(Icons.book,
-                          color: Colors.white.withOpacity(0.2), size: 36),
+                      : Icon(Icons.menu_book_rounded,
+                          color: iconColor, size: 40),
                 ),
                 Positioned(
                   top: 6,

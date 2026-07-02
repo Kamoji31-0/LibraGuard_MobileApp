@@ -8,7 +8,7 @@ class AuthService {
 
   final SecureStorageService _secureStorage = SecureStorageService();
 
-Future<void> saveToken(String token) async {
+  Future<void> saveToken(String token) async {
     print('DEBUG: Attempting to save token: ${token.substring(0, 10)}...');
     await _secureStorage.saveToken(token);
     final prefs = await SharedPreferences.getInstance();
@@ -16,8 +16,7 @@ Future<void> saveToken(String token) async {
     print('DEBUG: Token saved successfully to both storage layers');
   }
 
-Future<String?> getToken() async {
-
+  Future<String?> getToken() async {
     try {
       String? token = await _secureStorage.getToken();
       if (token != null && token.isNotEmpty) {
@@ -28,7 +27,7 @@ Future<String?> getToken() async {
       print('DEBUG: SecureStorage error: $e');
     }
 
-final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('jwt_token');
     if (token != null && token.isNotEmpty) {
       print('DEBUG: Token found in SharedPreferences');
@@ -40,39 +39,39 @@ final prefs = await SharedPreferences.getInstance();
     return token;
   }
 
-Future<void> logout() async {
+  Future<void> logout() async {
     await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
 
-await prefs.remove('jwt_token');
+    await prefs.remove('jwt_token');
     await prefs.remove('first_name');
     await prefs.remove('user_profile');
 
-await prefs.remove('2fa_enabled');
+    await prefs.remove('2fa_enabled');
     await prefs.remove('cached_2fa_setup');
 
-await prefs.remove('cached_gate_logs');
+    await prefs.remove('cached_gate_logs');
     await prefs.remove('cached_pc_sessions');
     await prefs.remove('cached_pc_list');
     await prefs.remove('cached_transactions_list');
   }
 
-Future<void> saveFirstName(String name) async {
+  Future<void> saveFirstName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('first_name', name);
   }
 
-Future<String?> getFirstName() async {
+  Future<String?> getFirstName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('first_name');
   }
 
-Future<void> saveProfile(Map<String, dynamic> user) async {
+  Future<void> saveProfile(Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_profile', jsonEncode(user));
   }
 
-Future<Map<String, dynamic>?> getCachedProfile() async {
+  Future<Map<String, dynamic>?> getCachedProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString('user_profile');
     if (data != null) {
@@ -81,7 +80,7 @@ Future<Map<String, dynamic>?> getCachedProfile() async {
     return null;
   }
 
-Future<void> saveThemePreference(String email, String mode) async {
+  Future<void> saveThemePreference(String email, String mode) async {
     final prefs = await SharedPreferences.getInstance();
     final normalizedEmail = email.trim().toLowerCase();
     await prefs.setString('themeMode_$normalizedEmail', mode);
@@ -91,22 +90,22 @@ Future<void> saveThemePreference(String email, String mode) async {
     await prefs.setString('app_theme_mode', mode);
   }
 
-Future<String> getThemePreference(String email) async {
+  Future<String> getThemePreference(String email) async {
     final prefs = await SharedPreferences.getInstance();
     final normalizedEmail = email.trim().toLowerCase();
 
-final mode = prefs.getString('themeMode_$normalizedEmail');
+    final mode = prefs.getString('themeMode_$normalizedEmail');
     if (mode != null) return mode;
 
-final isDark = prefs.getBool('isDarkTheme_$normalizedEmail');
+    final isDark = prefs.getBool('isDarkTheme_$normalizedEmail');
     if (isDark != null) {
       return isDark ? 'dark' : 'light';
     }
 
-return prefs.getString('app_theme_mode') ?? 'system';
+    return prefs.getString('app_theme_mode') ?? 'system';
   }
 
-Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
@@ -122,7 +121,6 @@ Future<Map<String, dynamic>> login(String email, String password) async {
       if (response.statusCode == 200 ||
           response.statusCode == 201 ||
           response.statusCode == 202) {
-
         final String msg = data['message']?.toString().toLowerCase() ?? '';
         final bool msgMentions2FA = msg.contains('2fa') ||
             msg.contains('mfa') ||
@@ -149,7 +147,7 @@ Future<Map<String, dynamic>> login(String email, String password) async {
           };
         }
 
-final String? token = data['token'] ??
+        final String? token = data['token'] ??
             data['accessToken'] ??
             data['data']?['token'] ??
             data['user']?['token'];
@@ -171,7 +169,6 @@ final String? token = data['token'] ??
         }
         return {'success': true, 'data': data};
       } else {
-
         final String msg = data['message']?.toString().toLowerCase() ?? '';
         final bool is2FARelated = msg.contains('2fa') ||
             msg.contains('mfa') ||
@@ -198,7 +195,7 @@ final String? token = data['token'] ??
     }
   }
 
-Future<void> _applyPendingStudentFields(String token) async {
+  Future<void> _applyPendingStudentFields(String token) async {
     final prefs = await SharedPreferences.getInstance();
     final pendingDept = prefs.getString('pending_dept');
     final pendingYear = prefs.getString('pending_year');
@@ -207,9 +204,12 @@ Future<void> _applyPendingStudentFields(String token) async {
     try {
       final body = <String, dynamic>{};
       if (pendingDept != null) body['dept'] = pendingDept;
-      if (pendingYear != null) body['year'] = pendingYear;
+      if (pendingYear != null) {
+        body['year'] = pendingYear;
+        body['yearLevel'] = pendingYear;
+      }
 
-http.Response? res;
+      http.Response? res;
       for (final method in ['PATCH', 'PUT']) {
         final uri = Uri.parse('$baseUrl/users/profile');
         res = method == 'PATCH'
@@ -227,13 +227,12 @@ http.Response? res;
                 body: jsonEncode(body));
         if (res.statusCode == 200) break;
       }
-
     } catch (_) {}
     await prefs.remove('pending_dept');
     await prefs.remove('pending_year');
   }
 
-Future<Map<String, dynamic>> register({
+  Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
@@ -254,17 +253,22 @@ Future<Map<String, dynamic>> register({
           'idNumber': idNumber,
           'role': role,
           if (department != null && department.isNotEmpty) 'dept': department,
-          if (yearLevel != null && yearLevel.isNotEmpty) 'year': yearLevel,
+          if (yearLevel != null && yearLevel.isNotEmpty) ...{
+            'year': yearLevel,
+            'yearLevel': yearLevel,
+          },
           if (accessCode != null && accessCode.isNotEmpty)
             'accessCode': accessCode,
         }),
       );
+      print(
+          'DEBUG AUTH: register body sent → dept=$department, year=$yearLevel, status=${response.statusCode}');
+      print('DEBUG AUTH: register response → ${response.body}');
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-
-final deptVal = department?.trim() ?? '';
+        final deptVal = department?.trim() ?? '';
         final yearVal = yearLevel?.trim() ?? '';
         if (role.toUpperCase() == 'STUDENT' &&
             (deptVal.isNotEmpty || yearVal.isNotEmpty)) {
@@ -275,7 +279,7 @@ final deptVal = department?.trim() ?? '';
             await prefs.setString('pending_year', yearVal);
         }
 
-final token =
+        final token =
             data['token'] ?? data['data']?['token'] ?? data['user']?['token'];
         if (token != null) await _applyPendingStudentFields(token);
 
@@ -291,7 +295,7 @@ final token =
     }
   }
 
-Future<Map<String, dynamic>> forgotPassword(String email) async {
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/forgot-password'),
@@ -317,7 +321,7 @@ Future<Map<String, dynamic>> forgotPassword(String email) async {
     }
   }
 
-Future<Map<String, dynamic>> resetPassword(
+  Future<Map<String, dynamic>> resetPassword(
       {required String resetToken, required String newPassword}) async {
     try {
       final response = await http.post(
@@ -347,10 +351,10 @@ Future<Map<String, dynamic>> resetPassword(
     }
   }
 
-Future<Map<String, dynamic>> getProfile() async {
+  Future<Map<String, dynamic>> getProfile() async {
     final token = await getToken();
 
-if (token == null) {
+    if (token == null) {
       final cached = await getCachedProfile();
       if (cached != null) return {'success': true, 'data': cached};
       return {'success': false, 'message': 'Not authenticated'};
@@ -372,20 +376,18 @@ if (token == null) {
         await saveProfile(user);
         return {'success': true, 'data': user};
       } else {
-
         final cached = await getCachedProfile();
         if (cached != null) return {'success': true, 'data': cached};
         return {'success': false, 'message': 'Failed to fetch profile'};
       }
     } catch (e) {
-
       final cached = await getCachedProfile();
       if (cached != null) return {'success': true, 'data': cached};
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
-Future<Map<String, dynamic>> updateSecurity(
+  Future<Map<String, dynamic>> updateSecurity(
       String currentPassword, String newPassword) async {
     try {
       final token = await getToken();
@@ -422,7 +424,7 @@ Future<Map<String, dynamic>> updateSecurity(
     }
   }
 
-Future<List<dynamic>> getTransactions() async {
+  Future<List<dynamic>> getTransactions() async {
     final token = await getToken();
     if (token == null) return [];
 
@@ -444,7 +446,7 @@ Future<List<dynamic>> getTransactions() async {
     }
   }
 
-Future<List<dynamic>> getComputerSessions() async {
+  Future<List<dynamic>> getComputerSessions() async {
     final token = await getToken();
     if (token == null) return [];
 
@@ -468,14 +470,14 @@ Future<List<dynamic>> getComputerSessions() async {
 
   static const String _gateLogsCacheKey = 'cached_gate_logs';
 
-Future<void> _saveGateLogsToCache(List<dynamic> logs) async {
+  Future<void> _saveGateLogsToCache(List<dynamic> logs) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_gateLogsCacheKey, jsonEncode(logs));
     } catch (_) {}
   }
 
-Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
+  Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_gateLogsCacheKey);
@@ -487,12 +489,11 @@ Future<List<Map<String, dynamic>>> getCachedGateLogs() async {
     return [];
   }
 
-Future<List<Map<String, dynamic>>> getGateLogs() async {
+  Future<List<Map<String, dynamic>>> getGateLogs() async {
     final token = await getToken();
     if (token == null) return [];
 
     try {
-
       final profileRes = await getProfile();
       final String currentUserId = profileRes['data']?['id']?.toString() ??
           profileRes['data']?['_id']?.toString() ??
@@ -512,7 +513,7 @@ Future<List<Map<String, dynamic>>> getGateLogs() async {
         final List<dynamic> list =
             body is List ? body : (body['data'] ?? body['logs'] ?? []);
 
-final filteredList = currentUserId.isNotEmpty
+        final filteredList = currentUserId.isNotEmpty
             ? list.where((log) {
                 final logMap = log is Map ? log : {};
                 final logUid = (logMap['userId'] ??
@@ -524,7 +525,7 @@ final filteredList = currentUserId.isNotEmpty
               }).toList()
             : [];
 
-final results = filteredList.map((log) {
+        final results = filteredList.map((log) {
           final logMap = Map<String, dynamic>.from(log as Map);
           final timeIn = logMap['timeIn']?.toString() ?? '';
           final timeOut = logMap['timeOut']?.toString() ?? 'Active';
@@ -543,19 +544,18 @@ final results = filteredList.map((log) {
           };
         }).toList();
 
-_saveGateLogsToCache(results);
+        _saveGateLogsToCache(results);
 
         return results;
       }
 
-return await getCachedGateLogs();
+      return await getCachedGateLogs();
     } catch (e) {
-
       return await getCachedGateLogs();
     }
   }
 
-Future<Map<String, dynamic>> getLibraryOccupancy() async {
+  Future<Map<String, dynamic>> getLibraryOccupancy() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/rfid/occupancy'),
@@ -576,7 +576,7 @@ Future<Map<String, dynamic>> getLibraryOccupancy() async {
     return {'count': 0, 'maxCapacity': 100};
   }
 
-Future<Map<String, dynamic>> updateProfile({
+  Future<Map<String, dynamic>> updateProfile({
     required String name,
     required String idNumber,
     required String contact,
@@ -633,17 +633,17 @@ Future<Map<String, dynamic>> updateProfile({
     }
   }
 
-static const String _2faEnabledKey = '2fa_enabled';
+  static const String _2faEnabledKey = '2fa_enabled';
 
   Future<bool> is2FAEnabled() async {
     final prefs = await SharedPreferences.getInstance();
 
-final localFlag = prefs.getBool(_2faEnabledKey);
+    final localFlag = prefs.getBool(_2faEnabledKey);
     if (localFlag != null) {
       return localFlag;
     }
 
-final profile = await getCachedProfile();
+    final profile = await getCachedProfile();
     if (profile != null) {
       final enabled = profile['twoFactorEnabled'] == true ||
           profile['is2faEnabled'] == true ||
@@ -669,7 +669,8 @@ final profile = await getCachedProfile();
     }
 
     final token = await getToken();
-    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+    if (token == null)
+      return {'success': false, 'message': 'Not authenticated'};
 
     try {
       final response = await http.get(
@@ -698,14 +699,15 @@ final profile = await getCachedProfile();
     }
   }
 
-Future<void> clear2FACache() async {
+  Future<void> clear2FACache() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('cached_2fa_setup');
   }
 
   Future<Map<String, dynamic>> enable2FA(String code, String secret) async {
     final token = await getToken();
-    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+    if (token == null)
+      return {'success': false, 'message': 'Not authenticated'};
 
     try {
       final response = await http.post(
@@ -727,12 +729,14 @@ Future<void> clear2FACache() async {
         await getProfile();
         return {
           'success': true,
-          'message': data['message'] ?? 'Two-Factor Authentication enabled successfully!'
+          'message': data['message'] ??
+              'Two-Factor Authentication enabled successfully!'
         };
       }
       return {
         'success': false,
-        'message': data['message'] ?? 'Invalid verification code. Please try again.'
+        'message':
+            data['message'] ?? 'Invalid verification code. Please try again.'
       };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -741,7 +745,8 @@ Future<void> clear2FACache() async {
 
   Future<Map<String, dynamic>> disable2FA(String password, String code) async {
     final token = await getToken();
-    if (token == null) return {'success': false, 'message': 'Not authenticated'};
+    if (token == null)
+      return {'success': false, 'message': 'Not authenticated'};
 
     try {
       final response = await http.post(
@@ -775,12 +780,12 @@ Future<void> clear2FACache() async {
     }
   }
 
-Future<int> getNotificationCount() async {
+  Future<int> getNotificationCount() async {
     final enabled = await is2FAEnabled();
     return enabled ? 0 : 1;
   }
 
-Future<Map<String, dynamic>> verify2FALogin(
+  Future<Map<String, dynamic>> verify2FALogin(
       String code, String? tempToken) async {
     try {
       final response = await http.post(
@@ -797,11 +802,10 @@ Future<Map<String, dynamic>> verify2FALogin(
 
       final data = jsonDecode(response.body);
 
-print('DEBUG: 2FA Status: ${response.statusCode}');
+      print('DEBUG: 2FA Status: ${response.statusCode}');
       print('DEBUG: 2FA Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-
         String? token = data['token'] ??
             data['accessToken'] ??
             data['jwt'] ??
@@ -810,7 +814,7 @@ print('DEBUG: 2FA Status: ${response.statusCode}');
             data['data']?['token'] ??
             data['user']?['token'];
 
-if (token == null) {
+        if (token == null) {
           print('DEBUG: Greedy scanning for JWT...');
           data.forEach((key, value) {
             if (value is String &&
@@ -836,7 +840,6 @@ if (token == null) {
         if (token != null) {
           await saveToken(token!);
         } else if (tempToken != null) {
-
           print(
               'DEBUG: No new token in 2FA response. Saving tempToken as session token.');
           await saveToken(tempToken);
