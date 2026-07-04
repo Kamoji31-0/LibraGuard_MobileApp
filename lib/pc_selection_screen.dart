@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/pc_service.dart';
+import 'profile_screen.dart';
 
 class PcSelectionScreen extends StatefulWidget {
   const PcSelectionScreen({super.key});
@@ -262,6 +263,33 @@ final computers = await _pcService.fetchComputers();
                   elevation: 0,
                 ),
                 child: const Text('Back to Home',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(
+                        showComputerSessionsOnInit: true,
+                      ),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _accentColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: _accentColor, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Check Reservation',
                     style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),

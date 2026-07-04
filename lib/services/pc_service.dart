@@ -358,37 +358,36 @@ final result = currentUserId.isNotEmpty
     }
     try {
       final uri = Uri.parse('$_baseUrl/computers/sessions/$sessionId');
-      final response = await http.patch(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'status': 'Cancelled'}),
-      );
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+      final body = jsonEncode({'status': 'Cancelled'});
+
+      final response = await http.patch(uri, headers: headers, body: body);
       if (response.statusCode == 200 || response.statusCode == 204) {
         return {'success': true, 'message': 'Reservation cancelled successfully.'};
-      } else {
-        final responsePut = await http.put(
-          uri,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({'status': 'Cancelled'}),
-        );
-        if (responsePut.statusCode == 200 || responsePut.statusCode == 204) {
-          return {'success': true, 'message': 'Reservation cancelled successfully.'};
-        }
-        final data = jsonDecode(responsePut.body);
-        return {
-          'success': false,
-          'message': data['message']?.toString() ??
-              'Failed to cancel reservation (${responsePut.statusCode})'
-        };
       }
+
+      // Try PUT if PATCH didn't work
+      final responsePut = await http.put(uri, headers: headers, body: body);
+      if (responsePut.statusCode == 200 || responsePut.statusCode == 204) {
+        return {'success': true, 'message': 'Reservation cancelled successfully.'};
+      }
+
+      // Safely decode error message
+      String errorMsg = 'Failed to cancel reservation (${responsePut.statusCode})';
+      try {
+        final data = jsonDecode(responsePut.body);
+        if (data is Map && data['message'] != null) {
+          errorMsg = data['message'].toString();
+        }
+      } catch (_) {
+        // Server returned non-JSON (e.g. HTML error page), use default message
+      }
+      return {'success': false, 'message': errorMsg};
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': 'Failed to cancel reservation. Please try again.'};
     }
   }
 }

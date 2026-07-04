@@ -4,6 +4,7 @@ import 'library_service_guide_screen.dart';
 import 'services/borrow_service.dart';
 import 'services/auth_service.dart';
 import 'services/book_service.dart';
+import 'profile_screen.dart';
 
 class BorrowRequestScreen extends StatefulWidget {
   final String bookId;
@@ -530,6 +531,35 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                       ),
                       child: const Text('Back to Home',
                           style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(
+                              showBorrowingRecordsOnInit: true,
+                            ),
+                          ),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: _primaryColor, width: 1.5),
+                      ),
+                      child: Text('Check Borrowing Records',
+                          style: TextStyle(
+                              color: _primaryColor,
+                              fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 12),

@@ -23,7 +23,14 @@ import 'library_service_guide_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool showComputerSessionsOnInit;
+  final bool showBorrowingRecordsOnInit;
+
+  const ProfileScreen({
+    super.key,
+    this.showComputerSessionsOnInit = false,
+    this.showBorrowingRecordsOnInit = false,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -79,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   bool _isUpdatingSecurity = false;
 
-bool _is2FAEnabled = false;
+  bool _is2FAEnabled = false;
   bool _is2FAExpanded = false;
   String? _2faQrCodeUrl;
   String? _2faManualKey;
@@ -2633,6 +2640,8 @@ if (selectedSort == 'Newest First') {
       statusColor = Colors.grey;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     String fmtDate(String raw) {
       try {
         final dt = DateTime.parse(raw).toLocal();
@@ -2952,43 +2961,92 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
-                            child: OutlinedButton.icon(
+                            height: 52,
+                            child: ElevatedButton(
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(
                                   context: ctx,
-                                  builder: (cctx) => AlertDialog(
+                                  builder: (cctx) => Dialog(
                                     shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20)),
-                                    title: Row(
-                                      children: [
-                                        Icon(Icons.warning_amber_rounded,
-                                            color: Colors.redAccent, size: 22),
-                                        const SizedBox(width: 8),
-                                        const Text('Cancel Request'),
-                                      ],
+                                        borderRadius: BorderRadius.circular(24)),
+                                    backgroundColor: _cardColor,
+                                    elevation: 8,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: _accentColor.withOpacity(0.12),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: _accentColor,
+                                              size: 48,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          Text(
+                                            'Cancel Request',
+                                            style: TextStyle(
+                                              color: _textColor,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'Are you sure you want to cancel this borrow request? This action cannot be undone.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _textColor.withOpacity(0.65),
+                                              fontSize: 14,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 32),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () => Navigator.pop(cctx, false),
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: _textColor.withOpacity(0.8),
+                                                    side: BorderSide(
+                                                        color: _textColor.withOpacity(0.12),
+                                                        width: 1.5),
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12)),
+                                                  ),
+                                                  child: const Text('Keep',
+                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () => Navigator.pop(cctx, true),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: _accentColor,
+                                                    foregroundColor: Colors.white,
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12)),
+                                                    elevation: 0,
+                                                  ),
+                                                  child: const Text('Yes, Cancel',
+                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    content: const Text(
-                                        'Are you sure you want to cancel this borrow request? This action cannot be undone.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(cctx, false),
-                                        child: const Text('Keep'),
-                                      ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.redAccent,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10)),
-                                        ),
-                                        onPressed: () =>
-                                            Navigator.pop(cctx, true),
-                                        child: const Text('Yes, Cancel'),
-                                      ),
-                                    ],
                                   ),
                                 );
                                 if (confirm == true && mounted) {
@@ -3016,19 +3074,14 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   }
                                 }
                               },
-                              icon: const Icon(Icons.cancel_outlined,
-                                  size: 18, color: Colors.redAccent),
-                              label: const Text(
+                              child: const Text(
                                 'Cancel Request',
-                                style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: Colors.redAccent, width: 1.5),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                                foregroundColor: isDark ? Colors.grey.shade100 : Colors.grey.shade800,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
                               ),
@@ -3067,6 +3120,27 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
         return '${dt.month}/${dt.day}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {
         return raw;
+      }
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    String getTimeRemaining(String? endTimeStr) {
+      if (endTimeStr == null || endTimeStr.isEmpty) return '--:--';
+      try {
+        final endTime = DateTime.parse(endTimeStr).toLocal();
+        final now = DateTime.now();
+        final diff = endTime.difference(now);
+        if (diff.isNegative) return 'Expired';
+        final hours = diff.inHours;
+        final minutes = diff.inMinutes % 60;
+        if (hours > 0) {
+          return '${hours}h ${minutes}m';
+        } else {
+          return '${minutes}m';
+        }
+      } catch (_) {
+        return '--:--';
       }
     }
 
@@ -3114,93 +3188,205 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Status pill header ──────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Status',
-                              style: TextStyle(
-                                color: _textColor.withOpacity(0.5),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                sess.status,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-
-                        // ── PC header card ──────────────────────────────
+                        // ── Connection Status Main Card (Image 1 Styled) ──
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: _accentColor.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(20),
+                            color: _cardColor,
+                            borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                                color: _accentColor.withOpacity(0.15)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  color: _accentColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.computer_rounded,
-                                    size: 34, color: _accentColor),
+                              color: statusColor.withOpacity(0.3),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      sess.computerName,
-                                      style: TextStyle(
-                                        color: _textColor,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Duration: ${sess.duration}',
-                                      style: TextStyle(
-                                        color: _textColor.withOpacity(0.6),
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    if (sess.reference != null) ...[
-                                      const SizedBox(height: 2),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Connection Status Header
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        'Ref: ${sess.reference}',
+                                        'CONNECTION STATUS',
                                         style: TextStyle(
                                           color: _textColor.withOpacity(0.4),
-                                          fontSize: 11,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        sess.status.toLowerCase().contains('pending')
+                                            ? 'Awaiting Approval'
+                                            : sess.status.toLowerCase().contains('active')
+                                                ? 'Session Active'
+                                                : 'Session ${sess.status}',
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.computer_rounded,
+                                      color: statusColor,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Divider(color: _textColor.withOpacity(0.08)),
+                              const SizedBox(height: 16),
+                              
+                              // Computer & Time Remaining side-by-side boxes
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'COMPUTER',
+                                            style: TextStyle(
+                                              color: _textColor.withOpacity(0.4),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            sess.computerName,
+                                            style: TextStyle(
+                                              color: _textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'TIME REMAINING',
+                                            style: TextStyle(
+                                              color: _textColor.withOpacity(0.4),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            getTimeRemaining(sess.endTime),
+                                            style: TextStyle(
+                                              color: _textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              
+                              // Divider and QR Code row (only if reference is available)
+                              if (sess.reference != null && sess.reference!.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Divider(color: _textColor.withOpacity(0.08)),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.black.withOpacity(0.08)),
+                                      ),
+                                      child: QrImageView(
+                                        data: sess.reference!,
+                                        version: QrVersions.auto,
+                                        size: 64,
+                                        gapless: false,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Session Reference',
+                                            style: TextStyle(
+                                              color: _textColor.withOpacity(0.4),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.8,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            sess.reference!,
+                                            style: TextStyle(
+                                              color: _textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -3304,43 +3490,92 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
-                            child: OutlinedButton.icon(
+                            height: 52,
+                            child: ElevatedButton(
                               onPressed: () async {
                                 final confirm = await showDialog<bool>(
                                   context: ctx,
-                                  builder: (cctx) => AlertDialog(
+                                  builder: (cctx) => Dialog(
                                     shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20)),
-                                    title: Row(
-                                      children: [
-                                        Icon(Icons.warning_amber_rounded,
-                                            color: Colors.redAccent, size: 22),
-                                        const SizedBox(width: 8),
-                                        const Text('Cancel Reservation'),
-                                      ],
+                                        borderRadius: BorderRadius.circular(24)),
+                                    backgroundColor: _cardColor,
+                                    elevation: 8,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: _accentColor.withOpacity(0.12),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.warning_amber_rounded,
+                                              color: _accentColor,
+                                              size: 48,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          Text(
+                                            'Cancel Reservation',
+                                            style: TextStyle(
+                                              color: _textColor,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'Are you sure you want to cancel this computer reservation? This action cannot be undone.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: _textColor.withOpacity(0.65),
+                                              fontSize: 14,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 32),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () => Navigator.pop(cctx, false),
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: _textColor.withOpacity(0.8),
+                                                    side: BorderSide(
+                                                        color: _textColor.withOpacity(0.12),
+                                                        width: 1.5),
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12)),
+                                                  ),
+                                                  child: const Text('Keep',
+                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () => Navigator.pop(cctx, true),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: _accentColor,
+                                                    foregroundColor: Colors.white,
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(12)),
+                                                    elevation: 0,
+                                                  ),
+                                                  child: const Text('Yes, Cancel',
+                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    content: const Text(
-                                        'Are you sure you want to cancel this computer reservation? This action cannot be undone.'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(cctx, false),
-                                        child: const Text('Keep'),
-                                      ),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.redAccent,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10)),
-                                        ),
-                                        onPressed: () =>
-                                            Navigator.pop(cctx, true),
-                                        child: const Text('Yes, Cancel'),
-                                      ),
-                                    ],
                                   ),
                                 );
                                 if (confirm == true && mounted) {
@@ -3368,19 +3603,14 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   }
                                 }
                               },
-                              icon: const Icon(Icons.cancel_outlined,
-                                  size: 18, color: Colors.redAccent),
-                              label: const Text(
+                              child: const Text(
                                 'Cancel Reservation',
-                                style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: Colors.redAccent, width: 1.5),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                                foregroundColor: isDark ? Colors.grey.shade100 : Colors.grey.shade800,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
                               ),
@@ -3408,7 +3638,7 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: Colors.orange.shade800),
+            child: const Icon(Icons.circle, size: 6, color: Color(0xFF800000)),
           ),
           const SizedBox(width: 10),
           Expanded(
