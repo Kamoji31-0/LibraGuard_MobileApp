@@ -32,7 +32,7 @@ class BorrowTransaction {
 
   factory BorrowTransaction.fromJson(Map<String, dynamic> json) {
     return BorrowTransaction(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       userId: json['userId']?.toString() ?? json['studentId']?.toString() ?? '',
       bookId: json['bookId']?.toString() ?? '',
       bookTitle: json['book']?.toString() ??
@@ -214,13 +214,21 @@ final profileRes = await authService.getProfile();
   }
 
   Future<Map<String, dynamic>> cancelBorrowRequest(String transactionId) async {
+    final trimmedId = transactionId.trim();
+    if (trimmedId.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Invalid transaction. Please refresh your records and try again.',
+      };
+    }
+
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
       return {'success': false, 'message': 'You are not logged in.'};
     }
     try {
-      final uri = Uri.parse('$_baseUrl/transactions/$transactionId');
+      final uri = Uri.parse('$_baseUrl/transactions/$trimmedId/cancel');
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -229,28 +237,35 @@ final profileRes = await authService.getProfile();
 
       final response = await http.patch(uri, headers: headers, body: body);
       if (response.statusCode == 200 || response.statusCode == 204) {
+        _cachedTransactions = null;
+        _lastFetchTime = null;
         return {'success': true, 'message': 'Request cancelled successfully.'};
       }
 
-      // Try PUT if PATCH didn't work
-      final responsePut = await http.put(uri, headers: headers, body: body);
-      if (responsePut.statusCode == 200 || responsePut.statusCode == 204) {
-        return {'success': true, 'message': 'Request cancelled successfully.'};
-      }
-
-      // Safely decode error message
-      String errorMsg = 'Failed to cancel request (${responsePut.statusCode})';
-      try {
-        final data = jsonDecode(responsePut.body);
-        if (data is Map && data['message'] != null) {
-          errorMsg = data['message'].toString();
-        }
-      } catch (_) {
-        // Server returned non-JSON (e.g. HTML error page), use default message
+      String errorMsg = _parseApiError(
+        response,
+        fallback: 'Failed to cancel request (${response.statusCode})',
+      );
+      if (response.statusCode == 401) {
+        errorMsg = 'Session expired. Please log in again.';
+      } else if (response.statusCode == 403) {
+        errorMsg = 'You do not have permission to cancel this request.';
       }
       return {'success': false, 'message': errorMsg};
     } catch (e) {
       return {'success': false, 'message': 'Failed to cancel request. Please try again.'};
     }
+  }
+
+  String _parseApiError(http.Response response, {required String fallback}) {
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map) {
+        return data['message']?.toString() ??
+            data['error']?.toString() ??
+            fallback;
+      }
+    } catch (_) {}
+    return fallback;
   }
 }

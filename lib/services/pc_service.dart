@@ -19,7 +19,7 @@ class LibraryComputer {
 
   factory LibraryComputer.fromJson(Map<String, dynamic> json) {
     return LibraryComputer(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['name']?.toString() ??
           json['pcName']?.toString() ??
           json['label']?.toString() ??
@@ -142,7 +142,7 @@ String? ref = json['reference']?.toString() ?? json['sessionReference']?.toStrin
     }
 
         return PcSession(
-      id: json['id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       userId: json['userId']?.toString() ?? json['studentId']?.toString() ?? '',
       computerId:
           json['computerId']?.toString() ?? computer?['id']?.toString() ?? '',
@@ -351,13 +351,21 @@ final result = currentUserId.isNotEmpty
   }
 
   Future<Map<String, dynamic>> cancelReservation(String sessionId) async {
+    final trimmedId = sessionId.trim();
+    if (trimmedId.isEmpty) {
+      return {
+        'success': false,
+        'message': 'Invalid session. Please refresh your records and try again.',
+      };
+    }
+
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
       return {'success': false, 'message': 'You are not logged in.'};
     }
     try {
-      final uri = Uri.parse('$_baseUrl/computers/sessions/$sessionId');
+      final uri = Uri.parse('$_baseUrl/computers/sessions/$trimmedId/cancel');
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -369,21 +377,19 @@ final result = currentUserId.isNotEmpty
         return {'success': true, 'message': 'Reservation cancelled successfully.'};
       }
 
-      // Try PUT if PATCH didn't work
-      final responsePut = await http.put(uri, headers: headers, body: body);
-      if (responsePut.statusCode == 200 || responsePut.statusCode == 204) {
-        return {'success': true, 'message': 'Reservation cancelled successfully.'};
-      }
-
-      // Safely decode error message
-      String errorMsg = 'Failed to cancel reservation (${responsePut.statusCode})';
+      String errorMsg = 'Failed to cancel reservation (${response.statusCode})';
       try {
-        final data = jsonDecode(responsePut.body);
-        if (data is Map && data['message'] != null) {
-          errorMsg = data['message'].toString();
+        final data = jsonDecode(response.body);
+        if (data is Map) {
+          errorMsg = data['message']?.toString() ??
+              data['error']?.toString() ??
+              errorMsg;
         }
-      } catch (_) {
-        // Server returned non-JSON (e.g. HTML error page), use default message
+      } catch (_) {}
+      if (response.statusCode == 401) {
+        errorMsg = 'Session expired. Please log in again.';
+      } else if (response.statusCode == 403) {
+        errorMsg = 'You do not have permission to cancel this reservation.';
       }
       return {'success': false, 'message': errorMsg};
     } catch (e) {
