@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/notification_setup.dart';
 import 'services/secure_storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -78,8 +79,8 @@ _controller.addStatusListener((status) {
     if (hasToken) {
 
       firstName = await authService.getFirstName();
-
-}
+      setupNotificationsAfterLogin();
+    }
 
     if (!mounted) return;
 

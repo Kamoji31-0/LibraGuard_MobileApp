@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 import 'services/auth_service.dart';
+import 'services/notification_setup.dart';
 import 'main.dart' show themeNotifier;
 import 'widgets/glow_text_field.dart';
 import 'two_factor_verification_screen.dart';
@@ -188,6 +189,7 @@ final bool is2FARequiredByServer = result['require2fa'] == true;
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).pop();
+                          setupNotificationsAfterLogin();
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(

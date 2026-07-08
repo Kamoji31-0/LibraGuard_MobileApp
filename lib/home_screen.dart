@@ -14,6 +14,7 @@ import 'library_rules_screen.dart';
 import 'library_staff_screen.dart';
 import 'services/book_service.dart';
 import 'services/favorite_service.dart';
+import 'services/notification_setup.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'notification_screen.dart';
 
@@ -25,7 +26,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   int _selectedQuickAction = -1;
   String _firstName = 'Scholar';
@@ -95,6 +96,7 @@ Set<String> _selectedGenres = {};
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadUserProfile();
     _loadHomeBooks();
     _fetchOccupancy();
@@ -194,7 +196,15 @@ final books = await _bookService.fetchBooks();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      checkStatusChangesNow();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _occupancyTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();

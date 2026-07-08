@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'background_task.dart';
+import 'notification_cache_service.dart';
+import 'notification_service.dart';
 import 'secure_storage_service.dart';
 
 class AuthService {
@@ -40,6 +43,10 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    await cancelBackgroundPollTasks();
+    await NotificationService.instance.cancelAll();
+    await NotificationCacheService().clearAll();
+
     await _secureStorage.deleteToken();
     final prefs = await SharedPreferences.getInstance();
 

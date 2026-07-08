@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/notification_setup.dart';
 
 class TwoFactorVerificationScreen extends StatefulWidget {
   final String? firstName;
@@ -141,6 +142,7 @@ final Color dialogBg = theme.dialogTheme.backgroundColor ?? (isDark ? const Colo
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
+                      setupNotificationsAfterLogin();
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(

@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'services/pc_service.dart';
 import 'services/book_service.dart';
+import 'services/notification_setup.dart';
 import 'login_screen.dart';
 import 'book_list_screen.dart';
 import 'pc_reservation_rules_screen.dart';
@@ -236,20 +237,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _refreshAllData() async {
-    await Future.wait([
+    final results = await Future.wait([
       _refreshProfileData(),
-
-      BorrowService().fetchMyTransactions(),
+      BorrowService().fetchMyTransactions(forceRefresh: true),
       PcService().fetchMySessions(),
-      AuthService().getGateLogs().then((res) {
-        if (mounted) {
-          setState(() {
-            _cachedGateLogs = res;
-          });
-        }
-      }),
+      AuthService().getGateLogs(),
     ]);
-    if (mounted) setState(() {});
+
+    if (mounted) {
+      setState(() {
+        _cachedTransactions = (results[1] as List).cast<BorrowTransaction>();
+        _cachedSessions = (results[2] as List).cast<PcSession>();
+        _cachedGateLogs = (results[3] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      });
+    }
+
+    await checkStatusChangesNow();
   }
 
   Future<String?> _showResizeDialog(Uint8List imageBytes) async {
@@ -2137,7 +2142,7 @@ Container(
                   const SizedBox(height: 16),
                   Expanded(
                     child: FutureBuilder<List<BorrowTransaction>>(
-                      future: BorrowService().fetchMyTransactions(),
+                      future: BorrowService().fetchMyTransactions(forceRefresh: true),
                       initialData: _cachedTransactions,
                       builder: (context, snapshot) {
                         final transactions =
@@ -3069,7 +3074,14 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                       ),
                                     );
                                     if (result['success'] == true) {
-                                      setState(() {});
+                                      final refreshed = await BorrowService()
+                                          .fetchMyTransactions(
+                                              forceRefresh: true);
+                                      if (mounted) {
+                                        setState(() {
+                                          _cachedTransactions = refreshed;
+                                        });
+                                      }
                                     }
                                   }
                                 }
@@ -3598,7 +3610,13 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                       ),
                                     );
                                     if (result['success'] == true) {
-                                      setState(() {});
+                                      final refreshed =
+                                          await PcService().fetchMySessions();
+                                      if (mounted) {
+                                        setState(() {
+                                          _cachedSessions = refreshed;
+                                        });
+                                      }
                                     }
                                   }
                                 }

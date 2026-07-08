@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
+import 'services/background_task.dart';
+import 'services/notification_service.dart';
 import 'splash_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.initialize();
+  Workmanager().initialize(callbackDispatcher);
 
-final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance();
   final modeStr = prefs.getString('app_theme_mode') ?? 'system';
 
   if (modeStr == 'dark') {
