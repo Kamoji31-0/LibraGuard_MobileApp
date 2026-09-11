@@ -13,7 +13,6 @@ class LibraryRulesScreen extends StatefulWidget {
 }
 
 class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
-  Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
@@ -212,6 +211,13 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
           'text': 'Library staff and librarians have the authority to ',
           'bold': 'enforce discipline and maintain order',
           'text2': '.',
+        },
+        {
+          'number': '09.',
+          'text': 'The library uses ',
+          'bold': 'EchoGuard noise sensors',
+          'text2':
+              ' to automatically monitor sound levels. A beep means it is too loud — please quiet down right away.',
         },
       ],
       'note': [
@@ -434,6 +440,13 @@ class _LibraryRulesScreenState extends State<LibraryRulesScreen> {
           'text': 'Using another person’s Borrower’s Card results in ',
           'bold': 'confiscation and suspension of privileges',
           'text2': '.',
+        },
+        {
+          'number': '07.',
+          'text': 'Getting a ',
+          'bold': 'Violation',
+          'text2':
+              ' recorded by the noise sensor means the area was too loud even after a Warning beep. Repeated violations may lead to suspension of library access.',
         },
       ],
       'subSections': [
@@ -801,7 +814,7 @@ if (item['note'] != null) {
               Row(
                 children: [
                   Icon(Icons.info_outline,
-                      color: _textColor.withOpacity(0.8), size: 20),
+                      color: const Color(0xFF800000), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Reminder',

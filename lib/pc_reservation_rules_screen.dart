@@ -13,12 +13,12 @@ class PcReservationRulesScreen extends StatefulWidget {
 }
 
 class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
-  Color get _primaryColor => Theme.of(context).primaryColor;
   Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +120,7 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                     Row(
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            color: _textColor.withOpacity(0.8), size: 20),
+                            color: _isDark ? Colors.white : _textColor, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Reminder',

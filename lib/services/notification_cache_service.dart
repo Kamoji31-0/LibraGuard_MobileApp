@@ -38,6 +38,26 @@ class NotificationCacheService {
   bool _isActive(String s) => _norm(s) == 'active';
   bool _isCompleted(String s) => _norm(s).contains('completed');
 
+  /// Call immediately after a new borrow request is created, so the cache
+  /// has a baseline status to diff against. Without this, a request that
+  /// gets approved/rejected before the next poll/refresh cycle would be
+  /// seen for the first time already in its new state, and the transition
+  /// (and its notification) would be missed entirely.
+  Future<void> seedBorrowStatus(String txId, String status) async {
+    final cache = await _loadMap(_borrowKey);
+    if (cache.containsKey(txId)) return; // don't clobber an existing entry
+    cache[txId] = status;
+    await _saveMap(_borrowKey, cache);
+  }
+
+  /// Same idea as [seedBorrowStatus] but for PC session reservations.
+  Future<void> seedPcStatus(String sessId, String status) async {
+    final cache = await _loadMap(_pcKey);
+    if (cache.containsKey(sessId)) return;
+    cache[sessId] = status;
+    await _saveMap(_pcKey, cache);
+  }
+
   Future<void> checkBorrowChanges(List<BorrowTransaction> fresh) async {
     final cache = await _loadMap(_borrowKey);
     final updated = Map<String, String>.from(cache);

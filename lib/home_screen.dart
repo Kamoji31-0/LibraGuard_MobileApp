@@ -9,12 +9,14 @@ import 'favorites_screen.dart';
 import 'services/auth_service.dart';
 import 'rfid_library_card_screen.dart';
 import 'entry_login_screen.dart';
+import 'noise_detection_screen.dart';
 import 'library_service_guide_screen.dart';
 import 'library_rules_screen.dart';
 import 'library_staff_screen.dart';
 import 'services/book_service.dart';
 import 'services/favorite_service.dart';
 import 'services/notification_setup.dart';
+import 'services/notification_service.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'notification_screen.dart';
 
@@ -89,9 +91,10 @@ Set<String> _selectedGenres = {};
   Map<String, dynamic>? _userProfile;
 
   int _occupancyCount = 0;
-  int _maxCapacity = 100;
+  int _maxCapacity = 300;
   int _notificationCount = 0;
   Timer? _occupancyTimer;
+  bool _wasCapacityNotificationShown = false;
 
   @override
   void initState() {
@@ -115,7 +118,9 @@ Set<String> _selectedGenres = {};
   }
 
   Future<void> _loadNotificationCount() async {
-    final count = await AuthService().getNotificationCount();
+    final int unread = await NotificationService.instance.getUnreadCount();
+    final bool is2FAEnabled = await AuthService().is2FAEnabled();
+    final int count = unread + (is2FAEnabled ? 0 : 1);
     if (mounted) {
       setState(() => _notificationCount = count);
     }
@@ -183,9 +188,20 @@ final books = await _bookService.fetchBooks();
     if (mounted) {
       setState(() {
         _occupancyCount = data['count'] as int? ?? 0;
-        _maxCapacity = data['maxCapacity'] as int? ?? 100;
-        if (_maxCapacity <= 0) _maxCapacity = 100;
+        _maxCapacity = data['maxCapacity'] as int? ?? 300;
+        if (_maxCapacity <= 0) _maxCapacity = 300;
       });
+
+      if (_occupancyCount >= _maxCapacity) {
+        if (!_wasCapacityNotificationShown) {
+          _wasCapacityNotificationShown = true;
+          try {
+            NotificationService.instance.showLibraryFullNotification();
+          } catch (_) {}
+        }
+      } else {
+        _wasCapacityNotificationShown = false;
+      }
     }
   }
 
@@ -419,7 +435,7 @@ final imgData = _userProfile?['image'] ??
                           minHeight: 16,
                         ),
                         child: Text(
-                          '$_notificationCount',
+                          _notificationCount > 9 ? '9+' : '$_notificationCount',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 8,
@@ -764,60 +780,81 @@ Builder(builder: (context) {
   }
 
   Widget _buildQuickActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildActionIcon(
-            Icons.library_books, 'Borrow Books', _selectedQuickAction == 0, () {
-          setState(() => _selectedQuickAction = 0);
-          Future.delayed(const Duration(milliseconds: 150), () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const BookListScreen()),
-            ).then((_) {
-              if (mounted) setState(() => _selectedQuickAction = -1);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _buildActionIcon(
+              Icons.library_books, 'Borrow Books', _selectedQuickAction == 0, () {
+            setState(() => _selectedQuickAction = 0);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BookListScreen()),
+              ).then((_) {
+                if (mounted) setState(() => _selectedQuickAction = -1);
+              });
             });
-          });
-        }),
-        _buildActionIcon(
-            Icons.desktop_mac, 'Reserve PC', _selectedQuickAction == 1, () {
-          setState(() => _selectedQuickAction = 1);
-          Future.delayed(const Duration(milliseconds: 150), () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const PcReservationRulesScreen()),
-            ).then((_) {
-              if (mounted) setState(() => _selectedQuickAction = -1);
+          }),
+          const SizedBox(width: 20),
+          _buildActionIcon(
+              Icons.desktop_mac, 'Reserve PC', _selectedQuickAction == 1, () {
+            setState(() => _selectedQuickAction = 1);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const PcReservationRulesScreen()),
+              ).then((_) {
+                if (mounted) setState(() => _selectedQuickAction = -1);
+              });
             });
-          });
-        }),
-        _buildActionIcon(Icons.badge, 'Create RFID', _selectedQuickAction == 2,
-            () {
-          setState(() => _selectedQuickAction = 2);
-          Future.delayed(const Duration(milliseconds: 150), () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const RfidLibraryCardScreen()),
-            ).then((_) {
-              if (mounted) setState(() => _selectedQuickAction = -1);
+          }),
+          const SizedBox(width: 20),
+          _buildActionIcon(Icons.badge, 'Create RFID', _selectedQuickAction == 2,
+              () {
+            setState(() => _selectedQuickAction = 2);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const RfidLibraryCardScreen()),
+              ).then((_) {
+                if (mounted) setState(() => _selectedQuickAction = -1);
+              });
             });
-          });
-        }),
-        _buildActionIcon(Icons.sensor_door_outlined, 'Entry Login',
-            _selectedQuickAction == 3, () {
-          setState(() => _selectedQuickAction = 3);
-          Future.delayed(const Duration(milliseconds: 150), () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const EntryLoginScreen()),
-            ).then((_) {
-              if (mounted) setState(() => _selectedQuickAction = -1);
+          }),
+          const SizedBox(width: 20),
+          _buildActionIcon(Icons.sensor_door_outlined, 'Entry Login',
+              _selectedQuickAction == 3, () {
+            setState(() => _selectedQuickAction = 3);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const EntryLoginScreen()),
+              ).then((_) {
+                if (mounted) setState(() => _selectedQuickAction = -1);
+              });
             });
-          });
-        }),
-      ],
+          }),
+          const SizedBox(width: 20),
+          _buildActionIcon(Icons.hearing_outlined, 'Noise Guide',
+              _selectedQuickAction == 4, () {
+            setState(() => _selectedQuickAction = 4);
+            Future.delayed(const Duration(milliseconds: 150), () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const NoiseDetectionScreen()),
+              ).then((_) {
+                if (mounted) setState(() => _selectedQuickAction = -1);
+              });
+            });
+          }),
+        ],
+      ),
     );
   }
 
@@ -1055,7 +1092,7 @@ switch (_selectedSort) {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.55,
+                childAspectRatio: 0.62,
               ),
               itemCount: filtered.length,
               itemBuilder: (context, index) {
@@ -1119,7 +1156,6 @@ switch (_selectedSort) {
         ? Colors.white.withOpacity(0.25)
         : Colors.black.withOpacity(0.15);
     return Container(
-      height: 280,
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -1134,61 +1170,64 @@ switch (_selectedSort) {
       padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            height: 115,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: coverColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: book.imageUrl != null && book.imageUrl!.isNotEmpty
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            book.imageUrl!,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                Icon(Icons.menu_book_rounded,
-                                    color: iconColor, size: 36),
-                          ),
-                        )
-                      : Icon(Icons.menu_book_rounded,
-                          color: iconColor, size: 36),
-                ),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: GestureDetector(
-                    onTap: () async {
-                      final isNowFavorite =
-                          await _favoriteService.toggleFavorite(book.id);
-                      setState(() {
-                        book.isFavorite = isNowFavorite;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        book.isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: theme.colorScheme.secondary,
-                        size: 12,
+          AspectRatio(
+            aspectRatio: 1.3,
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: coverColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: book.imageUrl != null && book.imageUrl!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              book.imageUrl!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  Icon(Icons.menu_book_rounded,
+                                      color: iconColor, size: 36),
+                            ),
+                          )
+                        : Icon(Icons.menu_book_rounded,
+                            color: iconColor, size: 36),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () async {
+                        final isNowFavorite =
+                            await _favoriteService.toggleFavorite(book.id);
+                        setState(() {
+                          book.isFavorite = isNowFavorite;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          book.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: theme.colorScheme.secondary,
+                          size: 12,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -1198,14 +1237,13 @@ switch (_selectedSort) {
               color: _textColor.withOpacity(0.5),
               fontSize: 8,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             book.title,
             style: TextStyle(
-              color: theme.colorScheme.secondary,
+              color: _accentColor,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -1223,34 +1261,71 @@ switch (_selectedSort) {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 9),
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: book.isAvailable
-                      ? const Color(0xFF4ADE80)
-                      : theme.colorScheme.secondary,
-                  shape: BoxShape.circle,
-                ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? (book.availableCopies > 0
+                      ? const Color(0x1F4ADE80)
+                      : const Color(0x1FEF4444))
+                  : (book.availableCopies > 0
+                      ? const Color(0xFFE8F5E9)
+                      : const Color(0xFFFFEBEE)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? (book.availableCopies > 0
+                        ? const Color(0x3D4ADE80)
+                        : const Color(0x3DEF4444))
+                    : (book.availableCopies > 0
+                        ? const Color(0xFFC8E6C9)
+                        : const Color(0xFFFFCDD2)),
+                width: 1,
               ),
-              const SizedBox(width: 6),
-              Text(
-                book.isAvailable ? 'AVAILABLE' : 'BORROWED',
-                style: TextStyle(
-                  color: _textColor.withOpacity(0.5),
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? (book.availableCopies > 0
+                            ? const Color(0xFF4ADE80)
+                            : const Color(0xFFF87171))
+                        : (book.availableCopies > 0
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFFC62828)),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    '${book.availableCopies} / ${book.totalCopies} copies available',
+                    style: TextStyle(
+                      color: isDark
+                          ? (book.availableCopies > 0
+                              ? const Color(0xFF4ADE80)
+                              : const Color(0xFFF87171))
+                          : (book.availableCopies > 0
+                              ? const Color(0xFF1B5E20)
+                              : const Color(0xFFB71C1C)),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 21),
           SizedBox(
             width: double.infinity,
-            height: 28,
+            height: 26,
             child: OutlinedButton(
               onPressed: () {
                 Navigator.push(
@@ -1266,6 +1341,8 @@ switch (_selectedSort) {
                       imageUrl: book.imageUrl,
                       publishedIn: book.publishedIn,
                       isbn: book.isbn,
+                      totalCopies: book.totalCopies,
+                      availableCopies: book.availableCopies,
                     ),
                   ),
                 );

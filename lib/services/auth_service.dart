@@ -42,25 +42,84 @@ class AuthService {
     return token;
   }
 
-  Future<void> logout() async {
-    await cancelBackgroundPollTasks();
-    await NotificationService.instance.cancelAll();
-    await NotificationCacheService().clearAll();
-
-    await _secureStorage.deleteToken();
+  Future<void> saveFcmTokenLocally(String token) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('fcm_device_token', token);
+  }
 
-    await prefs.remove('jwt_token');
-    await prefs.remove('first_name');
-    await prefs.remove('user_profile');
+  Future<String?> getFcmTokenLocally() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('fcm_device_token');
+  }
 
-    await prefs.remove('2fa_enabled');
-    await prefs.remove('cached_2fa_setup');
+  Future<void> syncFcmTokenWithServer(String token) async {
+    final jwt = await getToken();
+    if (jwt == null || jwt.isEmpty) return;
 
-    await prefs.remove('cached_gate_logs');
-    await prefs.remove('cached_pc_sessions');
-    await prefs.remove('cached_pc_list');
-    await prefs.remove('cached_transactions_list');
+    final body = jsonEncode({'fcmToken': token});
+
+    // Try multiple endpoints to support either user profile update or fcm-token update
+    final endpoints = [
+      '$baseUrl/users/profile',
+      '$baseUrl/users/fcm-token',
+    ];
+
+    for (final url in endpoints) {
+      try {
+        final uri = Uri.parse(url);
+        final patchRes = await http.patch(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $jwt',
+            'Content-Type': 'application/json',
+          },
+          body: body,
+        );
+
+        if (patchRes.statusCode == 200 || patchRes.statusCode == 204) {
+          print('DEBUG: Sync FCM token success with $url');
+          return;
+        }
+
+        final putRes = await http.put(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $jwt',
+            'Content-Type': 'application/json',
+          },
+          body: body,
+        );
+
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) {
+          print('DEBUG: Sync FCM token success with $url');
+          return;
+        }
+      } catch (e) {
+        print('DEBUG: Failed to sync FCM token with $url: $e');
+      }
+    }
+  }
+
+  Future<void> logout() async {
+    try { await cancelBackgroundPollTasks(); } catch (_) {}
+    try { await NotificationService.instance.cancelAll(); } catch (_) {}
+    try { await NotificationCacheService().clearAll(); } catch (_) {}
+
+    try { await _secureStorage.deleteToken(); } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('jwt_token');
+      await prefs.remove('first_name');
+      await prefs.remove('user_profile');
+      await prefs.remove('fcm_device_token');
+      await prefs.remove('2fa_enabled');
+      await prefs.remove('cached_2fa_setup');
+      await prefs.remove('cached_gate_logs');
+      await prefs.remove('cached_pc_sessions');
+      await prefs.remove('cached_pc_list');
+      await prefs.remove('cached_transactions_list');
+    } catch (_) {}
   }
 
   Future<void> saveFirstName(String name) async {
@@ -244,6 +303,7 @@ class AuthService {
     required String email,
     required String password,
     required String idNumber,
+    String? age,
     String? department,
     String? yearLevel,
     String? accessCode,
@@ -259,6 +319,7 @@ class AuthService {
           'password': password,
           'idNumber': idNumber,
           'role': role,
+          if (age != null && age.isNotEmpty) 'age': int.tryParse(age) ?? age,
           if (department != null && department.isNotEmpty) 'dept': department,
           if (yearLevel != null && yearLevel.isNotEmpty) ...{
             'year': yearLevel,
@@ -269,7 +330,7 @@ class AuthService {
         }),
       );
       print(
-          'DEBUG AUTH: register body sent → dept=$department, year=$yearLevel, status=${response.statusCode}');
+          'DEBUG AUTH: register body sent → role=$role, dept=$department, year=$yearLevel, age=$age, status=${response.statusCode}');
       print('DEBUG AUTH: register response → ${response.body}');
 
       final data = jsonDecode(response.body);
@@ -280,10 +341,8 @@ class AuthService {
         if (role.toUpperCase() == 'STUDENT' &&
             (deptVal.isNotEmpty || yearVal.isNotEmpty)) {
           final prefs = await SharedPreferences.getInstance();
-          if (deptVal.isNotEmpty)
-            await prefs.setString('pending_dept', deptVal);
-          if (yearVal.isNotEmpty)
-            await prefs.setString('pending_year', yearVal);
+          if (deptVal.isNotEmpty) await prefs.setString('pending_dept', deptVal);
+          if (yearVal.isNotEmpty) await prefs.setString('pending_year', yearVal);
         }
 
         final token =
@@ -575,12 +634,12 @@ class AuthService {
         final data = jsonDecode(response.body);
         return {
           'count': data['count'] ?? 0,
-          'maxCapacity': 100,
+          'maxCapacity': 300,
         };
       }
     } catch (_) {}
 
-    return {'count': 0, 'maxCapacity': 100};
+    return {'count': 0, 'maxCapacity': 300};
   }
 
   Future<Map<String, dynamic>> updateProfile({
@@ -588,6 +647,7 @@ class AuthService {
     required String idNumber,
     required String contact,
     required String gender,
+    String? age,
     String? dept,
     String? year,
     String? imageBase64,
@@ -602,6 +662,7 @@ class AuthService {
         'contact': contact,
         'gender': gender,
       };
+      if (age != null && age.isNotEmpty) body['age'] = age;
       if (dept != null) body['dept'] = dept;
       if (year != null) body['year'] = year;
       if (imageBase64 != null) {

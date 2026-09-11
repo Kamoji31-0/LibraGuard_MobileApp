@@ -2,18 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:workmanager/workmanager.dart';
-
 import 'services/background_task.dart';
 import 'services/notification_service.dart';
+import 'services/fcm_service.dart';
 import 'splash_screen.dart';
+import 'notification_screen.dart';
+import 'profile_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.initialize();
-  Workmanager().initialize(callbackDispatcher);
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      await NotificationService.instance.initialize();
+      await FcmService().initialize();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase or Notification init failed: $e');
+      }
+    }
+
+    try {
+      Workmanager().initialize(callbackDispatcher);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Workmanager init failed: $e');
+      }
+    }
+  }
 
   final prefs = await SharedPreferences.getInstance();
   final modeStr = prefs.getString('app_theme_mode') ?? 'system';
@@ -46,11 +66,32 @@ class MyApp extends StatelessWidget {
           title: 'LibraGuard',
           debugShowCheckedModeBanner: false,
           useInheritedMediaQuery: true,
+          navigatorKey: navigatorKey,
+          onGenerateRoute: (settings) {
+            switch (settings.name) {
+              case '/notifications':
+                return MaterialPageRoute(
+                    builder: (_) => const NotificationScreen());
+              case '/profile/borrowing':
+                return MaterialPageRoute(
+                    builder: (_) =>
+                        const ProfileScreen(showBorrowingRecordsOnInit: true));
+              case '/profile/computer':
+                return MaterialPageRoute(
+                    builder: (_) =>
+                        const ProfileScreen(showComputerSessionsOnInit: true));
+              case '/profile/gate':
+                return MaterialPageRoute(
+                    builder: (_) =>
+                        const ProfileScreen(showGateLogsOnInit: true));
+              default:
+                return null;
+            }
+          },
           locale: DevicePreview.locale(context),
           builder: DevicePreview.appBuilder,
           themeMode: currentMode,
-
-theme: ThemeData(
+          theme: ThemeData(
             brightness: Brightness.light,
             primaryColor: const Color(0xFF800000),
             scaffoldBackgroundColor: const Color(0xFFF1F5F9),
@@ -72,12 +113,10 @@ theme: ThemeData(
               ),
             ),
           ),
-
-darkTheme: ThemeData(
+          darkTheme: ThemeData(
             brightness: Brightness.dark,
             primaryColor: const Color(0xFFB21A2D),
-            scaffoldBackgroundColor:
-                const Color(0xFF131518),
+            scaffoldBackgroundColor: const Color(0xFF131518),
             cardColor: const Color(0xFF272B30),
             colorScheme: const ColorScheme.dark(
               primary: Color(0xFFB21A2D),
@@ -87,8 +126,7 @@ darkTheme: ThemeData(
             ),
             textTheme: const TextTheme(
               bodyLarge: TextStyle(color: Colors.white),
-              bodyMedium:
-                  TextStyle(color: Color(0xFF8B8E98)),
+              bodyMedium: TextStyle(color: Color(0xFF8B8E98)),
             ),
             dialogTheme: DialogThemeData(
               backgroundColor: const Color(0xFF272B30),
@@ -127,7 +165,6 @@ darkTheme: ThemeData(
               ),
             ),
           ),
-
           home: const SplashScreen(),
         );
       },

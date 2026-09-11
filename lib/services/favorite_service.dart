@@ -8,10 +8,14 @@ class FavoriteService {
   static const String _baseKey = 'favorite_book_ids';
   final String baseUrl = AuthService.baseUrl;
 
-Future<String> _getStorageKey() async {
+  Future<String> _getStorageKey() async {
     final authService = AuthService();
     final profile = await authService.getCachedProfile();
-    final userId = profile?['id']?.toString() ?? 'guest';
+    final userId = profile?['id']?.toString() ??
+        profile?['_id']?.toString() ??
+        profile?['studentId']?.toString() ??
+        profile?['email']?.toString() ??
+        'guest';
     return '${_baseKey}_$userId';
   }
 

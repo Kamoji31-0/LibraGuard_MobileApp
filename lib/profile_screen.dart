@@ -26,11 +26,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ProfileScreen extends StatefulWidget {
   final bool showComputerSessionsOnInit;
   final bool showBorrowingRecordsOnInit;
+  final bool showGateLogsOnInit;
 
   const ProfileScreen({
     super.key,
     this.showComputerSessionsOnInit = false,
     this.showBorrowingRecordsOnInit = false,
+    this.showGateLogsOnInit = false,
   });
 
   @override
@@ -73,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
   final TextEditingController _deptController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
   final TextEditingController _currentPasswordController =
@@ -122,6 +125,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
+    if (widget.showBorrowingRecordsOnInit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showBorrowingSheet();
+      });
+    } else if (widget.showGateLogsOnInit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showGateLogs();
+      });
+    } else if (widget.showComputerSessionsOnInit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showSessions();
+      });
+    }
   }
 
   Future<void> _loadInitialData() async {
@@ -194,6 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailController.text = profile['email'] ?? profile['emailAddress'] ?? '';
     _idController.text = profile['idNumber'] ?? '';
     _contactController.text = profile['contact'] ?? profile['phone'] ?? '';
+    _ageController.text = profile['age']?.toString() ?? '';
     _deptController.text = profile['dept'] ?? profile['department'] ?? 'N/A';
     _yearController.text = profile['year'] ?? profile['yearLevel'] ?? 'N/A';
     _selectedGender = profile['gender'] ?? 'Unspecified';
@@ -487,6 +504,7 @@ Padding(
       idNumber: _idController.text,
       contact: _contactController.text,
       gender: _selectedGender,
+      age: _ageController.text.isNotEmpty ? _ageController.text : null,
       dept: _deptController.text,
       year: _yearController.text,
       imageBase64:
@@ -505,6 +523,9 @@ Padding(
         if (updatedUser != null) {
           _userProfile = Map<String, dynamic>.from(updatedUser);
           _userProfile!['year'] = yearVal; // Ensure local year remains updated in current state
+          if (_ageController.text.isNotEmpty) {
+            _userProfile!['age'] = _ageController.text;
+          }
         } else {
           _userProfile = {
             ...?_userProfile,
@@ -512,6 +533,7 @@ Padding(
             'idNumber': _idController.text,
             'contact': _contactController.text,
             'gender': _selectedGender,
+            'age': _ageController.text,
             'dept': _deptController.text,
             'year': yearVal,
           };
@@ -974,6 +996,7 @@ SafeArea(
             idNumber: _idController.text,
             contact: _contactController.text,
             gender: _selectedGender,
+            age: _ageController.text.isNotEmpty ? _ageController.text : null,
             dept: _deptController.text,
             year: _yearController.text,
             imageBase64: resizedBase64,
@@ -1574,7 +1597,16 @@ Container(
           );
 
           if (confirm == true) {
-            await AuthService().logout();
+            try {
+              await AuthService().logout();
+            } catch (_) {
+              // Even if background tasks fail to cancel, proceed with logout
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('jwt_token');
+              await prefs.remove('first_name');
+              await prefs.remove('user_profile');
+              await prefs.remove('fcm_device_token');
+            }
             if (mounted) {
               Navigator.pushAndRemoveUntil(
                 context,
@@ -4600,6 +4632,11 @@ bool matchesPc = true;
                       Icons.phone_outlined),
                   const SizedBox(height: 20),
                   _buildEditField(
+                      'Age', _ageController, Icons.cake_outlined,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                  const SizedBox(height: 20),
+                  _buildEditField(
                       'ID Number', _idController, Icons.badge_outlined,
                       enabled: false),
                   const SizedBox(height: 20),
@@ -4679,7 +4716,9 @@ bool matchesPc = true;
 
   Widget _buildEditField(
       String label, TextEditingController controller, IconData icon,
-      {bool enabled = true}) {
+      {bool enabled = true,
+      TextInputType? keyboardType,
+      List<TextInputFormatter>? inputFormatters}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4689,6 +4728,8 @@ bool matchesPc = true;
         TextField(
           controller: controller,
           enabled: enabled,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           style: TextStyle(
             color: enabled ? _textColor : _textColor.withOpacity(0.5),
           ),

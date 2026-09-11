@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/pc_service.dart';
+import 'services/notification_cache_service.dart';
 import 'profile_screen.dart';
 
 class PcSelectionScreen extends StatefulWidget {
@@ -91,6 +92,10 @@ final computers = await _pcService.fetchComputers();
 
     if (res['success'] == true) {
       final session = res['session'] as PcSession?;
+      if (session != null) {
+        await NotificationCacheService()
+            .seedPcStatus(session.id, session.status);
+      }
       _showSuccessSheet(session);
     } else {
       setState(() {

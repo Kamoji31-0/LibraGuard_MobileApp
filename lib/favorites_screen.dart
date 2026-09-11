@@ -608,8 +608,7 @@ switch (_selectedSort) {
                             crossAxisCount: 2,
                             mainAxisSpacing: 16,
                             crossAxisSpacing: 16,
-                            childAspectRatio:
-                                0.51,
+                            childAspectRatio: 0.62,
                           ),
                           itemCount: filteredBooks.length,
                           itemBuilder: (context, index) {
@@ -633,6 +632,12 @@ switch (_selectedSort) {
     required BuildContext context,
     required BookItem book,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final coverColor = _genreCoverColor(book.displayGenre, isDark);
+    final iconColor = isDark
+        ? Colors.white.withOpacity(0.25)
+        : Colors.black.withOpacity(0.15);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -648,6 +653,8 @@ switch (_selectedSort) {
               imageUrl: book.imageUrl,
               publishedIn: book.publishedIn,
               isbn: book.isbn,
+              totalCopies: book.totalCopies,
+              availableCopies: book.availableCopies,
             ),
           ),
         );
@@ -668,63 +675,65 @@ switch (_selectedSort) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 115,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: book.imageUrl != null && book.imageUrl!.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              book.imageUrl!,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(
-                                Icons.menu_book,
-                                color: Colors.white.withOpacity(0.2),
-                                size: 32,
+            AspectRatio(
+              aspectRatio: 1.3,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: coverColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: book.imageUrl != null && book.imageUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                book.imageUrl!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  Icons.menu_book,
+                                  color: iconColor,
+                                  size: 32,
+                                ),
                               ),
+                            )
+                          : Icon(
+                              Icons.menu_book,
+                              color: iconColor,
+                              size: 32,
                             ),
-                          )
-                        : Icon(
-                            Icons.menu_book,
-                            color: Colors.white.withOpacity(0.2),
-                            size: 32,
+                    ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: GestureDetector(
+                        onTap: () async {
+                          await _favoriteService.toggleFavorite(book.id);
+                          _loadFavorites();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.9),
+                            shape: BoxShape.circle,
                           ),
-                  ),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: GestureDetector(
-                      onTap: () async {
-                        await _favoriteService.toggleFavorite(book.id);
-                        _loadFavorites();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.favorite,
-                          color: _accentColor,
-                          size: 12,
+                          child: Icon(
+                            Icons.favorite,
+                            color: _accentColor,
+                            size: 12,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               book.displayGenre.toUpperCase(),
               style: TextStyle(
@@ -755,31 +764,68 @@ switch (_selectedSort) {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: book.isAvailable
-                        ? const Color(0xFF4ADE80)
-                        : _primaryColor,
-                    shape: BoxShape.circle,
-                  ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? (book.availableCopies > 0
+                        ? const Color(0x1F4ADE80)
+                        : const Color(0x1FEF4444))
+                    : (book.availableCopies > 0
+                        ? const Color(0xFFE8F5E9)
+                        : const Color(0xFFFFEBEE)),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark
+                      ? (book.availableCopies > 0
+                          ? const Color(0x3D4ADE80)
+                          : const Color(0x3DEF4444))
+                      : (book.availableCopies > 0
+                          ? const Color(0xFFC8E6C9)
+                          : const Color(0xFFFFCDD2)),
+                  width: 1,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  book.isAvailable ? 'AVAILABLE' : 'BORROWED',
-                  style: TextStyle(
-                    color: _textColor.withOpacity(0.5),
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? (book.availableCopies > 0
+                              ? const Color(0xFF4ADE80)
+                              : const Color(0xFFF87171))
+                          : (book.availableCopies > 0
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFFC62828)),
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      '${book.availableCopies} / ${book.totalCopies} copies available',
+                      style: TextStyle(
+                        color: isDark
+                            ? (book.availableCopies > 0
+                                ? const Color(0xFF4ADE80)
+                                : const Color(0xFFF87171))
+                            : (book.availableCopies > 0
+                                ? const Color(0xFF1B5E20)
+                                : const Color(0xFFB71C1C)),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 21),
             SizedBox(
               width: double.infinity,
               height: 28,
@@ -798,6 +844,8 @@ switch (_selectedSort) {
                         imageUrl: book.imageUrl,
                         publishedIn: book.publishedIn,
                         isbn: book.isbn,
+                        totalCopies: book.totalCopies,
+                        availableCopies: book.availableCopies,
                       ),
                     ),
                   );
@@ -823,5 +871,29 @@ switch (_selectedSort) {
         ),
       ),
     );
+  }
+
+  static Color _genreCoverColor(String genre, bool isDark) {
+    const colors = {
+      'Arts':                   Color(0xFFF7C5D0),
+      'Business & Management':  Color(0xFFFDE7C8),
+      'Criminology':            Color(0xFFD4C5F9),
+      'Culinary Arts':          Color(0xFFFFF3CC),
+      'Education':              Color(0xFFC8E6C9),
+      'Engineering':            Color(0xFFB3E5FC),
+      'Fiction':                Color(0xFFE8D5F5),
+      'Filipino Studies':       Color(0xFFFFCCBC),
+      'History':                Color(0xFFD7ECD0),
+      'Hospitality Management': Color(0xFFFFC1B0),
+      'IT & Programming':       Color(0xFFBBDEFB),
+      'Law, Govt & Social':     Color(0xFFCCE5FF),
+      'Mathematics':            Color(0xFFE1F5C4),
+      'Nursing & Health':       Color(0xFFB2EBF2),
+      'Psychology':             Color(0xFFFFD7E8),
+      'Science':                Color(0xFFDCEDC8),
+      'Others':                 Color(0xFFECEFF1),
+    };
+    final base = colors[genre] ?? const Color(0xFFECEFF1);
+    return isDark ? base.withOpacity(0.22) : base;
   }
 }

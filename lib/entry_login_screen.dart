@@ -14,6 +14,7 @@ class EntryLoginScreen extends StatelessWidget {
     final textColor =
         Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
     final cardColor = Theme.of(context).cardColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget ruleItem(String number, String text) {
       return Row(
@@ -42,10 +43,10 @@ class EntryLoginScreen extends StatelessWidget {
       );
     }
 
-    Widget sectionTitle(IconData icon, String title) {
+    Widget sectionTitle(IconData icon, String title, {Color? iconColor}) {
       return Row(
         children: [
-          Icon(icon, color: textColor, size: 24),
+          Icon(icon, color: iconColor ?? textColor, size: 24),
           const SizedBox(width: 10),
           Text(
             title,
@@ -149,7 +150,8 @@ class EntryLoginScreen extends StatelessWidget {
                     const SizedBox(height: 32),
                     const Divider(),
                     const SizedBox(height: 24),
-                    sectionTitle(Icons.warning_amber_rounded, 'Reminders'),
+                    sectionTitle(Icons.warning_amber_rounded, 'Reminders',
+                        iconColor: isDark ? Colors.white : textColor),
                     const SizedBox(height: 20),
                     ruleItem('01.',
                         'You must be a registered library member with an active RFID card to enter.'),

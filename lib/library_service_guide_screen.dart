@@ -22,6 +22,7 @@ class _LibraryServiceGuideScreenState extends State<LibraryServiceGuideScreen> {
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
   Color get _cardColor => Theme.of(context).cardColor;
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
 int? _expandedIndex;
 
@@ -440,6 +441,75 @@ int? _expandedIndex;
       ],
       'buttonText': 'View My Entry',
     },
+    {
+      'id': '06',
+      'category': 'NOISE MONITORING',
+      'title': 'Noise Detection System',
+      'icon': Icons.hearing_outlined,
+      'detailTitle': 'How it Works',
+      'detailIcon': Icons.sensors,
+      'rules': [
+        {
+          'number': '01.',
+          'text': 'The library has ',
+          'bold': 'sound sensors (EchoGuard)',
+          'text2':
+              ' placed in the Reading Area and Computer Lab to check how loud it gets.',
+        },
+        {
+          'number': '02.',
+          'text': 'These sensors help keep the library ',
+          'bold': 'quiet and comfortable',
+          'text2': ' for everyone studying inside.',
+        },
+        {
+          'number': '03.',
+          'text': 'When the sensors detect noise, they report one of three levels: ',
+          'bold': 'Quiet, Warning, or Violation.',
+        },
+        {
+          'number': '04.',
+          'text': '🟢 ',
+          'bold': 'Quiet',
+          'text2':
+              ' — Everything is fine. The area is within acceptable noise levels.',
+        },
+        {
+          'number': '05.',
+          'text': '🟡 ',
+          'bold': 'Warning',
+          'text2':
+              ' — It is getting too loud. A short beep sounds to remind everyone to keep it down. This is logged in the system.',
+        },
+        {
+          'number': '06.',
+          'text': '🔴 ',
+          'bold': 'Violation',
+          'text2':
+              ' — The noise stayed too loud even after the warning. A longer alarm sounds and the incident is recorded. Repeated violations may affect your library account.',
+        },
+      ],
+      'note': [
+        {
+          'number': '01.',
+          'text': 'Please use a ',
+          'bold': 'whisper',
+          'text2': ' if you need to talk to someone.',
+        },
+        {
+          'number': '02.',
+          'text': 'Set your phone to ',
+          'bold': 'silent or vibrate mode',
+          'text2': ' before entering the library.',
+        },
+        {
+          'number': '03.',
+          'text':
+              'If you are watching a video or listening to audio, please use ',
+          'bold': 'headphones.',
+        },
+      ],
+    },
   ];
 
   @override
@@ -804,8 +874,11 @@ if (item.containsKey('note')) {
           children: [
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: Colors.orange.shade700, size: 20),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: _isDark ? Colors.white : _textColor,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Reminder',
@@ -827,7 +900,7 @@ if (item.containsKey('note')) {
                     Text(
                       note['number'],
                       style: TextStyle(
-                        color: Colors.orange.shade700,
+                        color: _accentColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -870,29 +943,33 @@ if (item.containsKey('buttonText')) {
           padding: const EdgeInsets.only(top: 16.0),
           child: ElevatedButton(
             onPressed: () {
-              if (item['id'] == '01') {
-                Navigator.pushReplacement(
+              if (item['id'] == '02') {
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const BookListScreen()),
                 );
-              } else if (item['id'] == '02') {
-                Navigator.pushReplacement(
+              } else if (item['id'] == '03') {
+                Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const BookListScreen()),
+                      builder: (context) => const ProfileScreen(
+                            showBorrowingRecordsOnInit: true,
+                          )),
                 );
               } else if (item['id'] == '04') {
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (context) => const PcReservationRulesScreen()),
                 );
               } else if (item['id'] == '05') {
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const ProfileScreen()),
+                      builder: (context) => const ProfileScreen(
+                            showGateLogsOnInit: true,
+                          )),
                 );
               }
             },

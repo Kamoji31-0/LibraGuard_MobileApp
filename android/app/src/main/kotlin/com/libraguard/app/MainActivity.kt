@@ -1,4 +1,4 @@
-package com.example.libraguard
+package com.libraguard.app
 
 import io.flutter.embedding.android.FlutterActivity
 

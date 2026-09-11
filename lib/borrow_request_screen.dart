@@ -4,6 +4,7 @@ import 'library_service_guide_screen.dart';
 import 'services/borrow_service.dart';
 import 'services/auth_service.dart';
 import 'services/book_service.dart';
+import 'services/notification_cache_service.dart';
 import 'profile_screen.dart';
 
 class BorrowRequestScreen extends StatefulWidget {
@@ -33,6 +34,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
   }
 
   Color get _cardColor => Theme.of(context).cardColor;
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   int _step = 0;
 
@@ -122,6 +124,10 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     if (!mounted) return;
 
     if (res['success'] == true) {
+      final BorrowTransaction? tx = res['transaction'];
+      if (tx != null) {
+        await NotificationCacheService().seedBorrowStatus(tx.id, tx.status);
+      }
       setState(() {
         _isSubmitting = false;
         _step = 2;
@@ -667,7 +673,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: _textColor, size: 24),
+              Icon(Icons.warning_amber_rounded, color: _isDark ? Colors.white : _textColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Reminder',

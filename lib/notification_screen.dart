@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'profile_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -13,58 +15,121 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final AuthService _authService = AuthService();
   bool _is2FAEnabled = true;
   bool _isLoading = true;
-  List<NotificationData> _notifications = [];
+  List<NotificationItem> _notifications = [];
 
   Color get _primaryColor => const Color(0xFF75111D);
   Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
-  Color get _cardColor => Theme.of(context).cardColor;
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _generateNotifications();
-  }
-
-  void _generateNotifications() {
-    _notifications = [
-      NotificationData(
-        id: '1',
-        title: 'New book added: "The Art of Flutter" is now available.',
-        date: 'June 1, 2026',
-        type: NotificationType.info,
-        avatarIcon: Icons.library_books_outlined,
-      ),
-      NotificationData(
-        id: '2',
-        title: 'Return Reminder: "Data Science 101" is due in 2 days.',
-        date: 'June 1, 2026',
-        type: NotificationType.reminder,
-        avatarIcon: Icons.alarm_outlined,
-        hasAction: true,
-        actionText: 'Renew',
-      ),
-      NotificationData(
-        id: '3',
-        title: 'Gate Entry: Successful entry at Lane 1 recorded.',
-        date: 'June 1, 2026',
-        type: NotificationType.info,
-        avatarIcon: Icons.login_outlined,
-        section: 'Earlier today',
-      ),
-    ];
   }
 
   Future<void> _loadData() async {
     final enabled = await _authService.is2FAEnabled();
+    final list = await NotificationService.instance.getStoredNotifications();
+    
     if (mounted) {
       setState(() {
         _is2FAEnabled = enabled;
+        _notifications = list;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _clearAll() async {
+    await NotificationService.instance.clearAllStored();
+    setState(() {
+      _notifications = [];
+    });
+  }
+
+  Future<void> _deleteItem(String id) async {
+    final list = _notifications.where((n) => n.id != id).toList();
+    // Update local list
+    setState(() {
+      _notifications = list;
+    });
+    // Save updated list to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    // We can write to notification service
+    await NotificationService.instance.clearAllStored();
+    for (final item in list) {
+      await NotificationService.instance.logNotification(item);
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    for (var n in _notifications) {
+      n.isRead = true;
+    }
+    setState(() {});
+    
+    // Save updated list
+    await NotificationService.instance.clearAllStored();
+    for (final item in _notifications) {
+      await NotificationService.instance.logNotification(item);
+    }
+  }
+
+  String _getSection(DateTime firedAt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final itemDate = DateTime(firedAt.year, firedAt.month, firedAt.day);
+
+    if (itemDate == today) {
+      return 'New';
+    } else if (itemDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      return 'Earlier';
+    }
+  }
+
+  IconData _iconFor(String type, String title) {
+    if (type == 'gate') {
+      if (title.toLowerCase().contains('out')) {
+        return Icons.logout_outlined;
+      }
+      return Icons.login_outlined;
+    } else if (type == 'status') {
+      if (title.toLowerCase().contains('borrow')) {
+        return Icons.book_outlined;
+      }
+      return Icons.computer_outlined;
+    } else if (type == 'deadline') {
+      return Icons.alarm_outlined;
+    }
+    return Icons.notifications_none_outlined;
+  }
+
+  Color _iconColorFor(String type) {
+    if (_isDark) {
+      switch (type) {
+        case 'deadline':
+          return const Color(0xFFFB923C);
+        case 'status':
+          return const Color(0xFF60A5FA);
+        case 'gate':
+          return const Color(0xFF34D399);
+      }
+      return Colors.white70;
+    } else {
+      switch (type) {
+        case 'deadline':
+          return const Color(0xFFC2410C);
+        case 'status':
+          return const Color(0xFF1D4ED8);
+        case 'gate':
+          return const Color(0xFF047857);
+      }
+      return Colors.black54;
     }
   }
 
@@ -89,7 +154,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
             icon: Icon(Icons.more_vert, color: _textColor),
             onSelected: (value) {
               if (value == 'clear_all') {
-                setState(() => _notifications.clear());
+                _clearAll();
+              } else if (value == 'read_all') {
+                _markAllAsRead();
               }
             },
             itemBuilder: (context) => [
@@ -102,37 +169,43 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _buildContent(),
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: _buildContent(),
+            ),
     );
   }
 
   Widget _buildContent() {
-    final now = _notifications.where((n) => n.section == 'New').toList();
-    final today =
-        _notifications.where((n) => n.section == 'Earlier today').toList();
-    final yesterday =
-        _notifications.where((n) => n.section == 'Yesterday').toList();
+    final now = _notifications.where((n) => _getSection(n.firedAt) == 'New').toList();
+    final yesterday = _notifications.where((n) => _getSection(n.firedAt) == 'Yesterday').toList();
+    final earlier = _notifications.where((n) => _getSection(n.firedAt) == 'Earlier').toList();
 
     final bool hasAnything = !_is2FAEnabled ||
         now.isNotEmpty ||
-        today.isNotEmpty ||
-        yesterday.isNotEmpty;
+        yesterday.isNotEmpty ||
+        earlier.isNotEmpty;
 
     if (!hasAnything) return _buildEmptyState();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        _buildSectionHeader('New'),
-        if (!_is2FAEnabled) _buildSecurityAlertCard(),
-        ..._buildDismissibleItems(now),
-        if (today.isNotEmpty) ...[
-          _buildSectionHeader('Earlier Today'),
-          ..._buildDismissibleItems(today),
+        if (!_is2FAEnabled) ...[
+          _buildSectionHeader('Security Status'),
+          _buildSecurityAlertCard(),
+        ],
+        if (now.isNotEmpty) ...[
+          _buildSectionHeader('New'),
+          ..._buildDismissibleItems(now),
         ],
         if (yesterday.isNotEmpty) ...[
           _buildSectionHeader('Yesterday'),
           ..._buildDismissibleItems(yesterday),
+        ],
+        if (earlier.isNotEmpty) ...[
+          _buildSectionHeader('Earlier'),
+          ..._buildDismissibleItems(earlier),
         ],
       ],
     );
@@ -153,13 +226,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  List<Widget> _buildDismissibleItems(List<NotificationData> items) {
+  List<Widget> _buildDismissibleItems(List<NotificationItem> items) {
     return items.map((n) {
       return Dismissible(
-        key: Key(n.id),
+        key: Key(n.id + '_' + n.firedAt.millisecondsSinceEpoch.toString()),
         direction: DismissDirection.endToStart,
-        onDismissed: (_) =>
-            setState(() => _notifications.removeWhere((i) => i.id == n.id)),
+        onDismissed: (_) => _deleteItem(n.id),
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 16),
@@ -171,108 +243,133 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }).toList();
   }
 
-  Color _iconColorFor(NotificationType type) {
-    if (_isDark) {
-      switch (type) {
-        case NotificationType.security:
-          return const Color(0xFFF87171);
-        case NotificationType.reminder:
-          return const Color(0xFFFB923C);
-        case NotificationType.info:
-          return const Color(0xFF60A5FA);
+  Future<void> _onItemTap(NotificationItem n) async {
+    if (!n.isRead) {
+      setState(() {
+        n.isRead = true;
+      });
+      await NotificationService.instance.markAsRead(n.id);
+    }
+
+    String? route;
+    if (n.type == 'gate') {
+      route = '/profile/gate';
+    } else if (n.type == 'deadline') {
+      route = '/profile/borrowing';
+    } else if (n.type == 'status') {
+      final titleLower = n.title.toLowerCase();
+      final subtitleLower = (n.subtitle ?? '').toLowerCase();
+      if (titleLower.contains('borrow') || subtitleLower.contains('borrow') || subtitleLower.contains('book')) {
+        route = '/profile/borrowing';
+      } else if (titleLower.contains('pc') || subtitleLower.contains('pc') || titleLower.contains('computer') || subtitleLower.contains('computer') || subtitleLower.contains('session')) {
+        route = '/profile/computer';
       }
-    } else {
-      switch (type) {
-        case NotificationType.security:
-          return const Color(0xFFB21A2D);
-        case NotificationType.reminder:
-          return const Color(0xFFC2410C);
-        case NotificationType.info:
-          return const Color(0xFF1D4ED8);
-      }
+    }
+
+    if (route != null && mounted) {
+      Navigator.pushNamed(context, route);
     }
   }
 
-  Widget _buildListItem(NotificationData n) {
+  Widget _buildListItem(NotificationItem n) {
     final iconColor = _iconColorFor(n.type);
+    final avatarIcon = _iconFor(n.type, n.title);
     final dividerColor = _textColor.withOpacity(0.07);
+
+    final String dateString = _formatDateLabel(n.firedAt);
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(n.avatarIcon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      n.title,
-                      style: TextStyle(
-                        color: _textColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
+        InkWell(
+          onTap: () => _onItemTap(n),
+          child: Container(
+            color: n.isRead ? Colors.transparent : _primaryColor.withOpacity(0.04),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      n.date,
-                      style: TextStyle(
-                        color: _textColor.withOpacity(0.4),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (n.hasAction) ...[
-                const SizedBox(width: 10),
-                OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              '${n.actionText} action triggered for notification ${n.id}')),
-                    );
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: iconColor.withOpacity(0.5),
-                    ),
-                    foregroundColor: iconColor,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
+                    child: Icon(avatarIcon, color: iconColor, size: 20),
                   ),
-                  child: Text(
-                    n.actionText ?? 'Action',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.bold),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                n.title,
+                                style: TextStyle(
+                                  color: _textColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            if (!n.isRead)
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          n.subtitle ?? '',
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.7),
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          dateString,
+                          style: TextStyle(
+                            color: _textColor.withOpacity(0.4),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ],
+                ],
+              ),
+            ),
           ),
         ),
         Divider(height: 1, thickness: 0.8, color: dividerColor),
       ],
     );
+  }
+
+  String _formatDateLabel(DateTime firedAt) {
+    final now = DateTime.now();
+    final difference = now.difference(firedAt);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${firedAt.month}/${firedAt.day}/${firedAt.year}';
+    }
   }
 
   Widget _buildSecurityAlertCard() {
@@ -344,10 +441,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           color: alertAccent.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
+                        child: const Text(
                           'ACTION NEEDED',
                           style: TextStyle(
-                            color: alertText,
+                            color: Colors.white,
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -432,28 +529,4 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
-}
-
-enum NotificationType { security, reminder, info }
-
-class NotificationData {
-  final String id;
-  final String title;
-  final String date;
-  final String section;
-  final NotificationType type;
-  final IconData avatarIcon;
-  final bool hasAction;
-  final String? actionText;
-
-  NotificationData({
-    required this.id,
-    required this.title,
-    required this.date,
-    this.section = 'New',
-    required this.type,
-    required this.avatarIcon,
-    this.hasAction = false,
-    this.actionText,
-  });
 }

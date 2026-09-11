@@ -1,4 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://github.com"> <!-- Added tools namespace -->
+    
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
@@ -6,6 +8,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    
     <application
         android:label="libraguard"
         android:name="${applicationName}"
@@ -46,10 +49,21 @@
             </intent-filter>
         </receiver>
 
+        <!-- FIXED: Forced tools:replace for SystemJobService to avoid merger errors -->
         <service
             android:name="androidx.work.impl.background.systemjob.SystemJobService"
             android:exported="true"
+            tools:replace="android:exported"
             android:permission="android.permission.BIND_JOB_SERVICE"/>
+
+        <!-- FIXED: Changed exported to false and added tools:replace to match Firebase library rules -->
+        <service android:name="com.google.firebase.messaging.FirebaseMessagingService"
+                 android:exported="false"
+                 tools:replace="android:exported">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
     </application>
     
     <queries>

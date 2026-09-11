@@ -14,6 +14,8 @@ class BookItem {
   final String description;
   final String publishedIn;
   final String isbn;
+  final int totalCopies;
+  final int availableCopies;
 
   BookItem({
     required this.id,
@@ -26,6 +28,8 @@ class BookItem {
     this.description = '',
     this.publishedIn = 'Unknown Origins',
     this.isbn = 'Not Available',
+    this.totalCopies = 0,
+    this.availableCopies = 0,
   });
 
   String get displayGenre {
@@ -97,6 +101,8 @@ class BookItem {
       description: (json['description'] ?? json['publicationDescription'])?.toString() ?? '',
       publishedIn: (json['placeOfPublication'] ?? json['publishedIn'] ?? json['publisher'] ?? json['publish_place'] ?? json['publishPlace'] ?? json['publicationPlace'] ?? json['location'])?.toString() ?? 'Unknown Origins',
       isbn: (json['isbn'] ?? json['isbn13'] ?? json['isbn10'] ?? json['identifier'])?.toString() ?? 'Not Available',
+      totalCopies: json['totalCopies'] is int ? json['totalCopies'] : (int.tryParse(json['totalCopies']?.toString() ?? '') ?? 0),
+      availableCopies: json['availableCount'] is int ? json['availableCount'] : (int.tryParse(json['availableCount']?.toString() ?? '') ?? 0),
     );
   }
 }

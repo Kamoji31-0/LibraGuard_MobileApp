@@ -12,7 +12,7 @@ const _gatePollTask = 'lg-gate-poll';
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
-    await NotificationService.instance.initialize();
+    await NotificationService.instance.initialize(handleLaunchDetails: false);
 
     final token = await AuthService().getToken();
     if (token == null) return true;
@@ -48,7 +48,7 @@ Future<void> registerBackgroundPollTasks() async {
     'pollStatusChanges',
     frequency: const Duration(minutes: 15),
     constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingWorkPolicy.keep,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 
   await Workmanager().registerPeriodicTask(
@@ -57,7 +57,7 @@ Future<void> registerBackgroundPollTasks() async {
     frequency: const Duration(minutes: 15),
     initialDelay: const Duration(minutes: 7),
     constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingWorkPolicy.keep,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
   );
 }
 

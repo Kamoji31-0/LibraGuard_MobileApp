@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "326585734757",
+    "project_id": "libraguard-57def",
+    "storage_bucket": "libraguard-57def.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:326585734757:android:3d713e9eb27c478183d88c",
+        "android_client_info": {
+          "package_name": "com.libraguard.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-qSlhnOnxfIARe8IPum9zo5wbR3iBkhQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -13,6 +13,8 @@ class BookDetailsScreen extends StatefulWidget {
   final String? imageUrl;
   final String publishedIn;
   final String isbn;
+  final int totalCopies;
+  final int availableCopies;
 
   const BookDetailsScreen({
     super.key,
@@ -25,6 +27,8 @@ class BookDetailsScreen extends StatefulWidget {
     this.imageUrl,
     this.publishedIn = 'Unknown Origins',
     this.isbn = 'Not Available',
+    this.totalCopies = 0,
+    this.availableCopies = 0,
   });
 
   @override
@@ -158,7 +162,7 @@ final syncedIds = await _favoriteService.getFavoriteIds();
                   Row(
                     children: [
                       Text(
-                        displayGenre.toUpperCase(),
+                        widget.category.toUpperCase(),
                         style: TextStyle(
                           color: _textColor.withOpacity(0.5),
                           fontSize: 11,
@@ -166,25 +170,31 @@ final syncedIds = await _favoriteService.getFavoriteIds();
                           letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        '|',
+                        style: TextStyle(
+                          color: _textColor.withOpacity(0.3),
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Row(
                         children: [
                           Icon(
                             Icons.circle,
-                            color: widget.isAvailable
-                                ? const Color(0xFF4ADE80)
-                                : Colors.orange,
+                            color: widget.availableCopies > 0
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFEF4444),
                             size: 6,
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            widget.isAvailable
-                                ? 'READY FOR PICKUP'
-                                : 'BORROWED',
+                            '${widget.availableCopies} OF ${widget.totalCopies} COPIES AVAILABLE',
                             style: TextStyle(
-                              color: widget.isAvailable
-                                  ? const Color(0xFF4ADE80)
-                                  : _primaryColor,
+                              color: widget.availableCopies > 0
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444),
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.0,
@@ -256,8 +266,13 @@ Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                       const SizedBox(width: 24),
                       SizedBox(
                         width: 100,
-                        child: _buildMetaInfo('LIBRARY UNITS',
-                            widget.isAvailable ? '1 left' : 'Borrowed'),
+                        child: _buildMetaInfo(
+                          'AVAILABLE UNITS',
+                          '${widget.availableCopies} / ${widget.totalCopies}',
+                          valueColor: widget.availableCopies > 0
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                        ),
                       ),
                     ],
                   ),
@@ -265,10 +280,10 @@ Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   const SizedBox(height: 48),
 
-SizedBox(
+                  SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: widget.isAvailable
+                      onPressed: widget.availableCopies > 0
                           ? () {
                               Navigator.push(
                                 context,
@@ -291,10 +306,10 @@ SizedBox(
                             borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      icon: const Icon(Icons.phone_android,
+                      icon: const Icon(Icons.menu_book_rounded,
                           color: Colors.white, size: 20),
                       label: Text(
-                        widget.isAvailable ? 'BORROW BOOK' : 'BORROWED',
+                        widget.availableCopies > 0 ? 'BORROW BOOK' : 'BORROWED',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -305,7 +320,7 @@ SizedBox(
                   ),
                   const SizedBox(height: 16),
 
-SizedBox(
+                  SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _isFavoriteLoading ? null : _toggleFavorite,
@@ -424,7 +439,7 @@ SizedBox(
     );
   }
 
-  Widget _buildMetaInfo(String label, String value) {
+  Widget _buildMetaInfo(String label, String value, {Color? valueColor}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -441,7 +456,7 @@ SizedBox(
         Text(
           value,
           style: TextStyle(
-            color: _textColor,
+            color: valueColor ?? _textColor,
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
