@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_setup.dart';
 import 'services/secure_storage_service.dart';
@@ -84,12 +86,23 @@ _controller.addStatusListener((status) {
 
     if (!mounted) return;
 
+    final prefs = await SharedPreferences.getInstance();
+    final bool hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+
+    final Widget targetScreen;
+    if (hasToken) {
+      targetScreen = HomeScreen(firstName: firstName);
+    } else if (!hasSeenOnboarding) {
+      targetScreen = const OnboardingScreen();
+    } else {
+      targetScreen = const LoginScreen();
+    }
+
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            hasToken
-                ? HomeScreen(firstName: firstName)
-                : const LoginScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -136,8 +149,11 @@ AnimatedBuilder(
             },
           ),
 
-Center(
-            child: Column(
+          Center(
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
 
@@ -225,6 +241,8 @@ FadeTransition(
               ],
             ),
           ),
+        ),
+      ),
         ],
       ),
     );

@@ -73,8 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       if (result['success']) {
-
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('has_seen_onboarding', true);
         if (_rememberMe) {
           await prefs.setString('saved_email', _emailController.text.trim());
           await prefs.setString('saved_password', _passwordController.text);

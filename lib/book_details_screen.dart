@@ -159,7 +159,10 @@ final syncedIds = await _favoriteService.getFavoriteIds();
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Text(
                         widget.category.toUpperCase(),
@@ -170,7 +173,6 @@ final syncedIds = await _favoriteService.getFavoriteIds();
                           letterSpacing: 1.5,
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         '|',
                         style: TextStyle(
@@ -178,8 +180,8 @@ final syncedIds = await _favoriteService.getFavoriteIds();
                           fontSize: 11,
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             Icons.circle,
@@ -251,21 +253,19 @@ Container(
 Divider(height: 1, color: Colors.black.withOpacity(0.06)),
                   const SizedBox(height: 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        width: 110,
+                      Expanded(
                         child: _buildMetaInfo('ISBN', widget.isbn),
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 12),
                       Expanded(
                         child:
                             _buildMetaInfo('PUBLISHED IN', widget.publishedIn),
                       ),
-                      const SizedBox(width: 24),
-                      SizedBox(
-                        width: 100,
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: _buildMetaInfo(
                           'AVAILABLE UNITS',
                           '${widget.availableCopies} / ${widget.totalCopies}',

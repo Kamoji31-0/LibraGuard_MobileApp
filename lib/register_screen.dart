@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'services/auth_service.dart';
+import 'terms_conditions_screen.dart';
 import 'widgets/glow_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -13,25 +15,26 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController     = TextEditingController();
-  final _idController       = TextEditingController();
-  final _emailController    = TextEditingController();
+  final _nameController = TextEditingController();
+  final _idController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmController  = TextEditingController();
-  final _ageController      = TextEditingController();
+  final _confirmController = TextEditingController();
+  final _ageController = TextEditingController();
 
   String? _selectedYearLevel;
   String? _selectedDepartment;
   bool _showPasswordChecklist = false;
   bool _isLoading = false;
+  bool _agreedToTerms = false;
   String _selectedRole = 'STUDENT';
 
   final AuthService _authService = AuthService();
 
   Color get _primaryColor => Theme.of(context).primaryColor;
-  Color get _cardColor    => Theme.of(context).cardColor;
-  Color get _accentColor  => Theme.of(context).colorScheme.secondary;
-  Color get _textColor    =>
+  Color get _cardColor => Theme.of(context).cardColor;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
+  Color get _textColor =>
       Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF1D2939);
 
   @override
@@ -55,27 +58,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Please read and agree to the Terms & Conditions to register.',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.redAccent.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
     setState(() => _isLoading = true);
 
     final result = await _authService.register(
-      name:       _nameController.text.trim(),
-      email:      _emailController.text.trim(),
-      password:   _passwordController.text,
-      idNumber:   _selectedRole == 'STUDENT' ? _idController.text.trim() : '',
-      age:        _ageController.text.trim(),
-      department: _selectedRole == 'STUDENT' ? (_selectedDepartment ?? '') : null,
-      yearLevel:  _selectedRole == 'STUDENT' ? (_selectedYearLevel ?? '') : null,
-      role:       _selectedRole,
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      idNumber: _selectedRole == 'STUDENT' ? _idController.text.trim() : '',
+      age: _ageController.text.trim(),
+      department:
+          _selectedRole == 'STUDENT' ? (_selectedDepartment ?? '') : null,
+      yearLevel: _selectedRole == 'STUDENT' ? (_selectedYearLevel ?? '') : null,
+      role: _selectedRole,
     );
 
     setState(() => _isLoading = false);
     if (!mounted) return;
 
     if (result['success']) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('has_seen_onboarding', true);
+      } catch (_) {}
+
       showDialog(
         context: context,
         builder: (_) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           backgroundColor: _cardColor,
           elevation: 8,
           child: Padding(
@@ -89,12 +113,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: Colors.green.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.check_circle, color: Colors.green.shade600, size: 48),
+                  child: Icon(Icons.check_circle,
+                      color: Colors.green.shade600, size: 48),
                 ),
                 const SizedBox(height: 20),
                 Text('Account Created',
                     style: TextStyle(
-                        color: _textColor, fontSize: 20, fontWeight: FontWeight.bold)),
+                        color: _textColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 Text(
                   'Your $_selectedRole account has been created. Please verify your '
@@ -102,7 +129,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'You can then go back to login.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: _textColor.withOpacity(0.7), fontSize: 14, height: 1.4),
+                      color: _textColor.withOpacity(0.7),
+                      fontSize: 14,
+                      height: 1.4),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -110,8 +139,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.pushReplacement(context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()));
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LoginScreen()));
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _accentColor,
@@ -154,14 +185,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   IconButton(
                     padding: EdgeInsets.zero,
                     alignment: Alignment.centerLeft,
-                    icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                    icon: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 28),
                     onPressed: () => Navigator.pushReplacement(context,
                         MaterialPageRoute(builder: (_) => const LoginScreen())),
                   ),
@@ -173,12 +206,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text('Register to access the library system.',
-                      style:
-                          TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16)),
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.8), fontSize: 16)),
                 ],
               ),
             ),
-
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -206,9 +238,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: double.infinity,
                           height: 56,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white.withOpacity(0.05)
-                                : const Color(0xFFF1F5F9),
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white.withOpacity(0.05)
+                                    : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(children: [
@@ -230,7 +263,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Please enter your full name';
                             if (v.trim().length < 2)
                               return 'Name must be at least 2 characters';
-                            if (!RegExp(r"^[a-zA-Z\s.''-]+$").hasMatch(v.trim()))
+                            if (!RegExp(r"^[a-zA-Z\s.''-]+$")
+                                .hasMatch(v.trim()))
                               return 'Name must contain letters only';
                             return null;
                           },
@@ -353,7 +387,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         const SizedBox(height: 24),
 
-                       // Visitor banner
+                        // Visitor banner
                         if (_selectedRole == 'VISITOR') ...[
                           _buildInfoBanner(
                             icon: Icons.info_outline_rounded,
@@ -377,7 +411,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           textColor: const Color(0xFF842029),
                         ),
 
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
+
+                        // Terms & Conditions Checkbox & Link
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _agreedToTerms,
+                                  activeColor: _accentColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  onChanged: (val) =>
+                                      setState(() => _agreedToTerms = val ?? false),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final agreed = await Navigator.push<bool>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => TermsConditionsScreen(
+                                          showAcceptButton: true,
+                                          onAccepted: () {
+                                            setState(() => _agreedToTerms = true);
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                    if (agreed == true && mounted) {
+                                      setState(() => _agreedToTerms = true);
+                                    }
+                                  },
+                                  child: RichText(
+                                    text: TextSpan(
+                                      style: TextStyle(
+                                        color: _textColor.withOpacity(0.8),
+                                        fontSize: 13,
+                                        height: 1.35,
+                                      ),
+                                      children: [
+                                        const TextSpan(text: 'I agree to the '),
+                                        TextSpan(
+                                          text: 'Terms and Conditions',
+                                          style: TextStyle(
+                                            color: _accentColor,
+                                            fontWeight: FontWeight.bold,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                        const TextSpan(text: ' of LibraGuard.'),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
 
                         // Register button
                         SizedBox(
@@ -424,7 +525,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     color: _textColor.withOpacity(0.6),
                                     fontSize: 14)),
                             GestureDetector(
-                              onTap: () => Navigator.pushReplacement(context,
+                              onTap: () => Navigator.pushReplacement(
+                                  context,
                                   MaterialPageRoute(
                                       builder: (_) => const LoginScreen())),
                               child: Text('Sign In',
@@ -488,10 +590,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildLabel(String text) => Text(text,
-      style:
-          TextStyle(color: _textColor, fontSize: 14, fontWeight: FontWeight.bold));
+      style: TextStyle(
+          color: _textColor, fontSize: 14, fontWeight: FontWeight.bold));
 
- Widget _buildInfoBanner({
+  Widget _buildInfoBanner({
     required IconData icon,
     String? boldPrefix,
     required String text,
@@ -533,8 +635,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       fillColor:
           isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF8FAFC),
       filled: true,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       prefixIcon: Icon(icon, color: _textColor.withOpacity(0.5)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -588,19 +689,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   static const List<Map<String, String>> _departments = [
-    {'code': 'BSA',    'name': 'Bachelor of Science in Accountancy'},
-    {'code': 'BSAIS',  'name': 'Bachelor of Science in Accounting Information System'},
-    {'code': 'BSAB',   'name': 'Bachelor of Science in Agribusiness'},
-    {'code': 'BSBA',   'name': 'Bachelor of Science in Business Administration'},
-    {'code': 'BSCE',   'name': 'Bachelor of Science in Civil Engineering'},
+    {'code': 'BSA', 'name': 'Bachelor of Science in Accountancy'},
+    {
+      'code': 'BSAIS',
+      'name': 'Bachelor of Science in Accounting Information System'
+    },
+    {'code': 'BSAB', 'name': 'Bachelor of Science in Agribusiness'},
+    {'code': 'BSBA', 'name': 'Bachelor of Science in Business Administration'},
+    {'code': 'BSCE', 'name': 'Bachelor of Science in Civil Engineering'},
     {'code': 'BSCRIM', 'name': 'Bachelor of Science in Criminology'},
-    {'code': 'BECED',  'name': 'Bachelor of Early Childhood Education'},
-    {'code': 'BEED',   'name': 'Bachelor of Elementary Education'},
-    {'code': 'BSHM',   'name': 'Bachelor of Science in Hospitality Management'},
-    {'code': 'BSISM',  'name': 'Bachelor of Science in Industrial Security Management'},
-    {'code': 'BSIT',   'name': 'Bachelor of Science in Information Technology'},
-    {'code': 'BSMID',  'name': 'Bachelor of Science in Midwifery'},
-    {'code': 'BSED',   'name': 'Bachelor of Secondary Education'},
+    {'code': 'BECED', 'name': 'Bachelor of Early Childhood Education'},
+    {'code': 'BEED', 'name': 'Bachelor of Elementary Education'},
+    {'code': 'BSHM', 'name': 'Bachelor of Science in Hospitality Management'},
+    {
+      'code': 'BSISM',
+      'name': 'Bachelor of Science in Industrial Security Management'
+    },
+    {'code': 'BSIT', 'name': 'Bachelor of Science in Information Technology'},
+    {'code': 'BSMID', 'name': 'Bachelor of Science in Midwifery'},
+    {'code': 'BSED', 'name': 'Bachelor of Secondary Education'},
   ];
 
   Widget _buildDepartmentDropdown() {
@@ -641,11 +748,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           _checkItem('At least 8 characters', p.length >= 8),
           const SizedBox(height: 6),
-          _checkItem('At least one uppercase letter',
-              p.contains(RegExp(r'[A-Z]'))),
+          _checkItem(
+              'At least one uppercase letter', p.contains(RegExp(r'[A-Z]'))),
           const SizedBox(height: 6),
-          _checkItem('At least one lowercase letter',
-              p.contains(RegExp(r'[a-z]'))),
+          _checkItem(
+              'At least one lowercase letter', p.contains(RegExp(r'[a-z]'))),
           const SizedBox(height: 6),
           _checkItem('At least one number', p.contains(RegExp(r'[0-9]'))),
         ],
@@ -657,8 +764,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           Icon(
             met ? Icons.check_circle : Icons.radio_button_unchecked,
-            color:
-                met ? Colors.green.shade600 : _textColor.withOpacity(0.3),
+            color: met ? Colors.green.shade600 : _textColor.withOpacity(0.3),
             size: 18,
           ),
           const SizedBox(width: 10),

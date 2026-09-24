@@ -390,6 +390,7 @@ void _showFilterSheet() {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(builder: (ctx, setSheetState) {
@@ -399,78 +400,82 @@ void _showFilterSheet() {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(28)),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Sort By',
-                          style: TextStyle(
-                              color: _textDark,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        color: _textDark,
-                        onPressed: () => Navigator.pop(ctx),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ],
-                  ),
-                ),
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Column(
-                    children: _sortOptions.map((opt) {
-                      return RadioListTile<String>(
-                        value: opt,
-                        groupValue: tempSort,
-                        title: Text(opt,
-                            style: TextStyle(color: _textDark, fontSize: 14)),
-                        activeColor: _primary,
-                        onChanged: (val) {
-                          setSheetState(() => tempSort = val!);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() => _selectedSort = tempSort);
-                        _applyAll();
-                        Navigator.pop(ctx);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: const Text('Apply',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Sort By',
+                              style: TextStyle(
+                                  color: _textDark,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            color: _textDark,
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        children: _sortOptions.map((opt) {
+                          return RadioListTile<String>(
+                            value: opt,
+                            groupValue: tempSort,
+                            title: Text(opt,
+                                style: TextStyle(color: _textDark, fontSize: 14)),
+                            activeColor: _primary,
+                            onChanged: (val) {
+                              setSheetState(() => tempSort = val!);
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() => _selectedSort = tempSort);
+                            _applyAll();
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: const Text('Apply',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         });
@@ -719,20 +724,28 @@ Expanded(
                                       ],
                                     ),
                                   )
-                                : GridView.builder(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        20, 4, 20, 16),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: 16,
-                                      mainAxisSpacing: 16,
-                                      childAspectRatio:
-                                          0.58,
-                                    ),
-                                    itemCount: _pageBooks.length,
-                                    itemBuilder: (ctx, i) =>
-                                        _buildBookCard(_pageBooks[i]),
+                                : Builder(
+                                    builder: (context) {
+                                      final screenWidth = MediaQuery.of(context).size.width;
+                                      final int crossAxisCount = screenWidth >= 900 ? 4 : (screenWidth >= 600 ? 3 : 2);
+                                      final double cardWidth = (screenWidth - 40 - (crossAxisCount - 1) * 16) / crossAxisCount;
+                                      final double imageHeight = (cardWidth - 20) / 1.3;
+                                      final double mainAxisExtent = imageHeight + 148;
+                                      return GridView.builder(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            20, 4, 20, 16),
+                                        gridDelegate:
+                                            SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: crossAxisCount,
+                                          crossAxisSpacing: 16,
+                                          mainAxisSpacing: 16,
+                                          mainAxisExtent: mainAxisExtent,
+                                        ),
+                                        itemCount: _pageBooks.length,
+                                        itemBuilder: (ctx, i) =>
+                                            _buildBookCard(_pageBooks[i]),
+                                      );
+                                    },
                                   ),
                           ),
 
@@ -942,6 +955,7 @@ Widget _headerChipButton({
       padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
         children: [
           AspectRatio(
             aspectRatio: 1.3,
@@ -1092,7 +1106,7 @@ Widget _headerChipButton({
               ],
             ),
           ),
-          const SizedBox(height: 22),
+          const Spacer(),
           SizedBox(
             width: double.infinity,
             height: 28,

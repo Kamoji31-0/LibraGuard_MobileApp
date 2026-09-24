@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'terms_conditions_screen.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -60,6 +61,9 @@ _buildStaffSection(context),
             const SizedBox(height: 32),
 
 _buildHoursCard(),
+            const SizedBox(height: 32),
+
+            _buildTermsCard(context),
             const SizedBox(height: 32),
           ],
         ),
@@ -397,6 +401,84 @@ Column(
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTermsCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(
+          color: _accentColor.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.description_outlined, color: _accentColor, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Terms & Conditions',
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Review the official user agreement, library RFID credential policies, borrowing rules, and data privacy terms.',
+            style: TextStyle(
+              color: _textColor.withOpacity(0.75),
+              fontSize: 13.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TermsConditionsScreen(),
+                  ),
+                );
+              },
+              icon: Icon(Icons.arrow_forward, color: _accentColor, size: 18),
+              label: Text(
+                'Read Official Agreement',
+                style: TextStyle(
+                  color: _accentColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: _accentColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

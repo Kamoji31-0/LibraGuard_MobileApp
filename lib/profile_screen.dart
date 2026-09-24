@@ -21,6 +21,7 @@ import 'about_screen.dart';
 import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
 import 'library_service_guide_screen.dart';
+import 'terms_conditions_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -879,7 +880,7 @@ SafeArea(
                             ),
                             const SizedBox(height: 24),
                             _buildSection(
-                              title: 'Support',
+                              title: 'Legal & Support',
                               items: [
                                 _buildSettingsTile(
                                   icon: Icons.help_outline,
@@ -890,6 +891,18 @@ SafeArea(
                                       MaterialPageRoute(
                                           builder: (context) =>
                                               const HelpSupportScreen()),
+                                    );
+                                  },
+                                ),
+                                _buildSettingsTile(
+                                  icon: Icons.description_outlined,
+                                  title: 'Terms & Conditions',
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const TermsConditionsScreen()),
                                     );
                                   },
                                 ),
@@ -1691,109 +1704,114 @@ Container(
   void _showThemeSettings() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Container(
           decoration: BoxDecoration(
             color: _cardColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(2),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Text(
-                'App Theme',
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose your preferred display mode.',
-                style: TextStyle(
-                    color: _textColor.withOpacity(0.55), fontSize: 13),
-              ),
-              const SizedBox(height: 24),
-              ValueListenableBuilder<ThemeMode>(
-                valueListenable: themeNotifier,
-                builder: (_, currentMode, __) => Column(
-                  children: [
-                    _buildThemeOption(
-                      icon: Icons.light_mode_outlined,
-                      label: 'Light Mode',
-                      description: 'Bright, clean interface',
-                      isSelected: currentMode == ThemeMode.light,
-                      onTap: () async {
-                        themeNotifier.value = ThemeMode.light;
-                        final email = (_userProfile?['email'] ??
-                                _userProfile?['emailAddress'] ??
-                                _userProfile?['username'])
-                            ?.toString();
-                        if (email != null) {
-                          await AuthService()
-                              .saveThemePreference(email, 'light');
-                        }
-                        setSheetState(() {});
-                      },
+                  Text(
+                    'App Theme',
+                    style: TextStyle(
+                      color: _textColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 12),
-                    _buildThemeOption(
-                      icon: Icons.dark_mode_outlined,
-                      label: 'Dark Mode',
-                      description: 'Easy on the eyes at night',
-                      isSelected: currentMode == ThemeMode.dark,
-                      onTap: () async {
-                        themeNotifier.value = ThemeMode.dark;
-                        final email = (_userProfile?['email'] ??
-                                _userProfile?['emailAddress'] ??
-                                _userProfile?['username'])
-                            ?.toString();
-                        if (email != null) {
-                          await AuthService()
-                              .saveThemePreference(email, 'dark');
-                        }
-                        setSheetState(() {});
-                      },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Choose your preferred display mode.',
+                    style: TextStyle(
+                        color: _textColor.withOpacity(0.55), fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  ValueListenableBuilder<ThemeMode>(
+                    valueListenable: themeNotifier,
+                    builder: (_, currentMode, __) => Column(
+                      children: [
+                        _buildThemeOption(
+                          icon: Icons.light_mode_outlined,
+                          label: 'Light Mode',
+                          description: 'Bright, clean interface',
+                          isSelected: currentMode == ThemeMode.light,
+                          onTap: () async {
+                            themeNotifier.value = ThemeMode.light;
+                            final email = (_userProfile?['email'] ??
+                                    _userProfile?['emailAddress'] ??
+                                    _userProfile?['username'])
+                                ?.toString();
+                            if (email != null) {
+                              await AuthService()
+                                  .saveThemePreference(email, 'light');
+                            }
+                            setSheetState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildThemeOption(
+                          icon: Icons.dark_mode_outlined,
+                          label: 'Dark Mode',
+                          description: 'Easy on the eyes at night',
+                          isSelected: currentMode == ThemeMode.dark,
+                          onTap: () async {
+                            themeNotifier.value = ThemeMode.dark;
+                            final email = (_userProfile?['email'] ??
+                                    _userProfile?['emailAddress'] ??
+                                    _userProfile?['username'])
+                                ?.toString();
+                            if (email != null) {
+                              await AuthService()
+                                  .saveThemePreference(email, 'dark');
+                            }
+                            setSheetState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildThemeOption(
+                          icon: Icons.settings_brightness_outlined,
+                          label: 'System Default',
+                          description: 'Follow device settings',
+                          isSelected: currentMode == ThemeMode.system,
+                          onTap: () async {
+                            themeNotifier.value = ThemeMode.system;
+                            final email = (_userProfile?['email'] ??
+                                    _userProfile?['emailAddress'] ??
+                                    _userProfile?['username'])
+                                ?.toString();
+                            if (email != null) {
+                              await AuthService()
+                                  .saveThemePreference(email, 'system');
+                            }
+                            setSheetState(() {});
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildThemeOption(
-                      icon: Icons.settings_brightness_outlined,
-                      label: 'System Default',
-                      description: 'Follow device settings',
-                      isSelected: currentMode == ThemeMode.system,
-                      onTap: () async {
-                        themeNotifier.value = ThemeMode.system;
-                        final email = (_userProfile?['email'] ??
-                                _userProfile?['emailAddress'] ??
-                                _userProfile?['username'])
-                            ?.toString();
-                        if (email != null) {
-                          await AuthService()
-                              .saveThemePreference(email, 'system');
-                        }
-                        setSheetState(() {});
-                      },
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
         ),
       ),
@@ -1882,96 +1900,103 @@ Container(
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setFilterState) => Container(
-          padding: const EdgeInsets.all(24),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
           decoration: BoxDecoration(
             color: _cardColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                        color: _textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      onApply(localValues);
-                      Navigator.pop(context);
-                    },
-                    child: Text('Apply',
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
                         style: TextStyle(
-                            color: _primaryColor, fontWeight: FontWeight.bold)),
+                            color: _textColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          onApply(localValues);
+                          Navigator.pop(context);
+                        },
+                        child: Text('Apply',
+                            style: TextStyle(
+                                color: _primaryColor, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 16),
+                  ...options.entries.map((entry) {
+                    final category = entry.key;
+                    final values = entry.value;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                                color: _textColor.withOpacity(0.5),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5),
+                          ),
+                        ),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: values.map((val) {
+                            final bool isSelected = localValues[category] == val;
+                            return ChoiceChip(
+                              label: Text(val),
+                              selected: isSelected,
+                              checkmarkColor: _primaryColor,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setFilterState(() => localValues[category] = val);
+                                }
+                              },
+                              backgroundColor: _textColor.withOpacity(0.05),
+                              selectedColor: _primaryColor.withOpacity(0.1),
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? _primaryColor
+                                    : _textColor.withOpacity(0.6),
+                                fontSize: 12,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? _primaryColor.withOpacity(0.2)
+                                      : Colors.transparent,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  }).toList(),
+                  const SizedBox(height: 12),
                 ],
               ),
-              const SizedBox(height: 16),
-              ...options.entries.map((entry) {
-                final category = entry.key;
-                final values = entry.value;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                            color: _textColor.withOpacity(0.5),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: values.map((val) {
-                        final bool isSelected = localValues[category] == val;
-                        return ChoiceChip(
-                          label: Text(val),
-                          selected: isSelected,
-                          checkmarkColor: _primaryColor,
-                          onSelected: (selected) {
-                            if (selected) {
-                              setFilterState(() => localValues[category] = val);
-                            }
-                          },
-                          backgroundColor: _textColor.withOpacity(0.05),
-                          selectedColor: _primaryColor.withOpacity(0.1),
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? _primaryColor
-                                : _textColor.withOpacity(0.6),
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? _primaryColor.withOpacity(0.2)
-                                  : Colors.transparent,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              }).toList(),
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
         ),
       ),
