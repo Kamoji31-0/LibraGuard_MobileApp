@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 import 'services/background_task.dart';
 import 'services/notification_service.dart';
 import 'services/fcm_service.dart';
+import 'firebase_options.dart';
 import 'splash_screen.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
@@ -17,7 +18,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       await NotificationService.instance.initialize();
       await FcmService().initialize();
     } catch (e) {
@@ -31,6 +34,17 @@ void main() async {
     } catch (e) {
       if (kDebugMode) {
         print('Workmanager init failed: $e');
+      }
+    }
+  } else {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      await FcmService().initialize();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Web Firebase or FCM init failed: $e');
       }
     }
   }

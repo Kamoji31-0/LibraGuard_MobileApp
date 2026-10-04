@@ -148,7 +148,7 @@ class NotificationService {
     // 2. PC Session Alarm Channel (max priority + custom sound/buzzer via system alarm)
     const AndroidNotificationChannel pcAlarmChannel =
         AndroidNotificationChannel(
-      'lg_pc_alarm',
+      'lg_pc_alarm_v2',
       'PC Session Alarm',
       description: 'High priority alerts when computer sessions are ending',
       importance: Importance.max,
@@ -156,6 +156,7 @@ class NotificationService {
       playSound: true,
       sound:
           UriAndroidNotificationSound("content://settings/system/alarm_alert"),
+      audioAttributesUsage: AudioAttributesUsage.alarm,
     );
 
     // 3. Status Updates Channel
@@ -499,10 +500,11 @@ class NotificationService {
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'lg_pc_alarm',
+      'lg_pc_alarm_v2',
       'PC Session Alarm',
       importance: Importance.max,
       priority: Priority.max,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
       fullScreenIntent: true,
       sound:
           UriAndroidNotificationSound("content://settings/system/alarm_alert"),
@@ -565,8 +567,88 @@ class NotificationService {
     return '${_notificationsLogKey}_$userId';
   }
 
+  static const String _deletedNotificationsKey = 'deleted_notifications_ids';
+
+  Future<String> _getDeletedLogKey() async {
+    final userId = await _getCurrentUserId();
+    if (userId == null || userId.isEmpty) {
+      return _deletedNotificationsKey;
+    }
+    return '${_deletedNotificationsKey}_$userId';
+  }
+
+  Future<Set<String>> getDeletedNotificationIds() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String key = await _getDeletedLogKey();
+      final List<String>? list = prefs.getStringList(key);
+      if (list != null) {
+        return list.toSet();
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<void> _recordDeletedNotificationId(String id) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String key = await _getDeletedLogKey();
+      final Set<String> deleted = await getDeletedNotificationIds();
+      deleted.add(id);
+      if (id.startsWith('sync_borrow_')) {
+        deleted.add(id.replaceFirst('sync_borrow_', ''));
+      } else {
+        deleted.add('sync_borrow_$id');
+      }
+      if (id.startsWith('sync_pc_')) {
+        deleted.add(id.replaceFirst('sync_pc_', ''));
+      } else {
+        deleted.add('sync_pc_$id');
+      }
+      final list = deleted.toList();
+      if (list.length > 500) {
+        list.removeRange(0, list.length - 500);
+      }
+      await prefs.setStringList(key, list);
+    } catch (_) {}
+  }
+
+  Future<void> deleteNotification(String id) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String key = await _getLogKey();
+      final List<NotificationItem> currentList = await getStoredNotifications();
+
+      final updatedList = currentList.where((n) {
+        if (n.id == id) return false;
+        if (n.id == 'sync_borrow_$id' || id == 'sync_borrow_${n.id}') return false;
+        if (n.id == 'sync_pc_$id' || id == 'sync_pc_${n.id}') return false;
+        return true;
+      }).toList();
+
+      final String rawJson =
+          jsonEncode(updatedList.map((e) => e.toJson()).toList());
+      await prefs.setString(key, rawJson);
+
+      await _recordDeletedNotificationId(id);
+    } catch (_) {}
+  }
+
   Future<void> logNotification(NotificationItem item) async {
     try {
+      final Set<String> deletedIds = await getDeletedNotificationIds();
+      if (deletedIds.contains(item.id)) {
+        return;
+      }
+      if (item.id.startsWith('sync_borrow_') &&
+          deletedIds.contains(item.id.replaceFirst('sync_borrow_', ''))) {
+        return;
+      }
+      if (item.id.startsWith('sync_pc_') &&
+          deletedIds.contains(item.id.replaceFirst('sync_pc_', ''))) {
+        return;
+      }
+
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final String key = await _getLogKey();
       final List<NotificationItem> currentList = await getStoredNotifications();
@@ -576,11 +658,13 @@ class NotificationService {
         return;
       }
 
-      currentList.insert(0, item); // Keep latest at top
+      currentList.add(item);
+      // Ensure latest / most recent notifications are placed at the top
+      currentList.sort((a, b) => b.firedAt.compareTo(a.firedAt));
 
       // Cap at 100 history items to save space
       if (currentList.length > 100) {
-        currentList.removeLast();
+        currentList.removeRange(100, currentList.length);
       }
 
       final String rawJson =
@@ -597,9 +681,12 @@ class NotificationService {
       if (data == null) return [];
 
       final List<dynamic> rawList = jsonDecode(data) as List;
-      return rawList
+      final list = rawList
           .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))
           .toList();
+      // Always sort newest on top (most recent date first)
+      list.sort((a, b) => b.firedAt.compareTo(a.firedAt));
+      return list;
     } catch (_) {
       return [];
     }
@@ -613,6 +700,10 @@ class NotificationService {
   Future<void> clearAllStored() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final List<NotificationItem> currentList = await getStoredNotifications();
+      for (final item in currentList) {
+        await _recordDeletedNotificationId(item.id);
+      }
       final String key = await _getLogKey();
       await prefs.remove(key);
     } catch (_) {}
@@ -638,43 +729,101 @@ class NotificationService {
     } catch (_) {}
   }
 
+  Future<void> markAllAsRead() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String key = await _getLogKey();
+      final List<NotificationItem> currentList = await getStoredNotifications();
+      for (final item in currentList) {
+        item.isRead = true;
+      }
+      final String rawJson =
+          jsonEncode(currentList.map((e) => e.toJson()).toList());
+      await prefs.setString(key, rawJson);
+    } catch (_) {}
+  }
+
   Future<void> syncNotificationsWithAccount() async {
     try {
       final userId = await _getCurrentUserId();
       if (userId == null || userId.isEmpty) return;
 
+      final Set<String> deletedIds = await getDeletedNotificationIds();
       final SharedPreferences prefs = await SharedPreferences.getInstance();
 
       // 1. Reconstruct from Borrow Transactions
       try {
         final txs = await BorrowService().getPersistentCachedTransactions();
         for (final tx in txs) {
-          String bodyText = '';
-          if (tx.status.toLowerCase().contains('approved') || tx.status.toLowerCase().contains('checked out')) {
-            bodyText = 'Your request for "${tx.bookTitle}" has been approved!';
-          } else if (tx.status.toLowerCase().contains('rejected')) {
-            bodyText = 'Your request for "${tx.bookTitle}" was rejected.';
-          } else if (tx.status.toLowerCase().contains('cancelled')) {
-            bodyText = 'Your request for "${tx.bookTitle}" was cancelled.';
-          } else if (tx.status.toLowerCase().contains('pending')) {
-            bodyText = 'Your request for "${tx.bookTitle}" is pending review.';
-          } else {
-            continue;
+          final syncId = 'sync_borrow_${tx.id}';
+          if (!deletedIds.contains(syncId) && !deletedIds.contains(tx.id)) {
+            String bodyText = '';
+            if (tx.status.toLowerCase().contains('approved') || tx.status.toLowerCase().contains('checked out')) {
+              bodyText = 'Your request for "${tx.bookTitle}" has been approved!';
+            } else if (tx.status.toLowerCase().contains('rejected')) {
+              bodyText = 'Your request for "${tx.bookTitle}" was rejected.';
+            } else if (tx.status.toLowerCase().contains('cancelled')) {
+              bodyText = 'Your request for "${tx.bookTitle}" was cancelled.';
+            } else if (tx.status.toLowerCase().contains('pending')) {
+              bodyText = 'Your request for "${tx.bookTitle}" is pending review.';
+            }
+
+            if (bodyText.isNotEmpty) {
+              DateTime fired = DateTime.now();
+              if (tx.borrowDate.isNotEmpty) {
+                fired = DateTime.tryParse(tx.borrowDate) ?? DateTime.now();
+              }
+
+              await logNotification(NotificationItem(
+                id: syncId,
+                title: 'Borrow Update',
+                subtitle: bodyText,
+                type: 'status',
+                firedAt: fired,
+                isRead: true,
+              ));
+            }
           }
 
-          DateTime fired = DateTime.now();
-          if (tx.borrowDate.isNotEmpty) {
-            fired = DateTime.tryParse(tx.borrowDate) ?? DateTime.now();
+          // Also check for pickup reminder if reached
+          if (tx.status.toLowerCase().contains('pending') && tx.pickupDeadline.isNotEmpty) {
+            try {
+              final DateTime deadline = DateTime.parse(tx.pickupDeadline).toLocal();
+              final syncDeadlineId = 'sync_pickup_${tx.id}';
+              if (!deletedIds.contains(syncDeadlineId) && !deletedIds.contains(tx.id)) {
+                if (DateTime.now().isAfter(deadline.subtract(const Duration(days: 1)))) {
+                  await logNotification(NotificationItem(
+                    id: syncDeadlineId,
+                    title: '⏰ Pickup Reminder',
+                    subtitle: 'Don\'t forget to pick up "${tx.bookTitle}".',
+                    type: 'deadline',
+                    firedAt: deadline.subtract(const Duration(days: 1)),
+                    isRead: true,
+                  ));
+                }
+              }
+            } catch (_) {}
           }
 
-          await logNotification(NotificationItem(
-            id: 'sync_borrow_${tx.id}',
-            title: 'Borrow Update',
-            subtitle: bodyText,
-            type: 'status',
-            firedAt: fired,
-            isRead: true,
-          ));
+          // Also check for due date reminder if reached
+          if ((tx.status.toLowerCase().contains('approved') || tx.status.toLowerCase().contains('checked out')) && tx.dueDate.isNotEmpty) {
+            try {
+              final DateTime due = DateTime.parse(tx.dueDate).toLocal();
+              final syncDueId = 'sync_due_${tx.id}';
+              if (!deletedIds.contains(syncDueId) && !deletedIds.contains(tx.id)) {
+                if (DateTime.now().isAfter(due.subtract(const Duration(days: 1)))) {
+                  await logNotification(NotificationItem(
+                    id: syncDueId,
+                    title: '🚨 Book Due Reminder',
+                    subtitle: '"${tx.bookTitle}" is due for return.',
+                    type: 'deadline',
+                    firedAt: due.subtract(const Duration(days: 1)),
+                    isRead: true,
+                  ));
+                }
+              }
+            } catch (_) {}
+          }
         }
       } catch (_) {}
 
@@ -682,34 +831,56 @@ class NotificationService {
       try {
         final sessions = await PcService().getPersistentCachedSessions();
         for (final sess in sessions) {
-          String bodyText = '';
-          if (sess.status.toLowerCase().contains('active')) {
-            bodyText = 'Your PC session for "${sess.computerName}" is now active!';
-          } else if (sess.status.toLowerCase().contains('completed')) {
-            bodyText = 'Your PC session for "${sess.computerName}" has completed.';
-          } else if (sess.status.toLowerCase().contains('cancelled')) {
-            bodyText = 'Your PC reservation for "${sess.computerName}" was cancelled.';
-          } else if (sess.status.toLowerCase().contains('pending')) {
-            bodyText = 'Your PC reservation for "${sess.computerName}" is pending.';
-          } else {
-            continue;
+          final syncId = 'sync_pc_${sess.id}';
+          if (!deletedIds.contains(syncId) && !deletedIds.contains(sess.id)) {
+            String bodyText = '';
+            if (sess.status.toLowerCase().contains('active')) {
+              bodyText = 'Your PC session for "${sess.computerName}" is now active!';
+            } else if (sess.status.toLowerCase().contains('completed')) {
+              bodyText = 'Your PC session for "${sess.computerName}" has completed.';
+            } else if (sess.status.toLowerCase().contains('cancelled')) {
+              bodyText = 'Your PC reservation for "${sess.computerName}" was cancelled.';
+            } else if (sess.status.toLowerCase().contains('pending')) {
+              bodyText = 'Your PC reservation for "${sess.computerName}" is pending.';
+            }
+
+            if (bodyText.isNotEmpty) {
+              DateTime fired = DateTime.now();
+              if (sess.startTime != null && sess.startTime!.isNotEmpty) {
+                fired = DateTime.tryParse(sess.startTime!) ?? DateTime.now();
+              } else if (sess.createdAt != null && sess.createdAt!.isNotEmpty) {
+                fired = DateTime.tryParse(sess.createdAt!) ?? DateTime.now();
+              }
+
+              await logNotification(NotificationItem(
+                id: syncId,
+                title: 'PC Session Update',
+                subtitle: bodyText,
+                type: 'status',
+                firedAt: fired,
+                isRead: true,
+              ));
+            }
           }
 
-          DateTime fired = DateTime.now();
-          if (sess.startTime != null && sess.startTime!.isNotEmpty) {
-            fired = DateTime.tryParse(sess.startTime!) ?? DateTime.now();
-          } else if (sess.createdAt != null && sess.createdAt!.isNotEmpty) {
-            fired = DateTime.tryParse(sess.createdAt!) ?? DateTime.now();
+          if (sess.endTime != null && sess.endTime!.isNotEmpty) {
+            try {
+              final DateTime end = DateTime.parse(sess.endTime!).toLocal();
+              final syncEndId = 'sync_pc_end_${sess.id}';
+              if (!deletedIds.contains(syncEndId) && !deletedIds.contains(sess.id)) {
+                if (DateTime.now().isAfter(end.subtract(const Duration(minutes: 5)))) {
+                  await logNotification(NotificationItem(
+                    id: syncEndId,
+                    title: '⚠️ PC Session Alert',
+                    subtitle: 'Session for "${sess.computerName}" ending/ended.',
+                    type: 'status',
+                    firedAt: end.subtract(const Duration(minutes: 5)),
+                    isRead: true,
+                  ));
+                }
+              }
+            } catch (_) {}
           }
-
-          await logNotification(NotificationItem(
-            id: 'sync_pc_${sess.id}',
-            title: 'PC Session Update',
-            subtitle: bodyText,
-            type: 'status',
-            firedAt: fired,
-            isRead: true,
-          ));
         }
       } catch (_) {}
 
@@ -729,11 +900,14 @@ class NotificationService {
             final timeOut = logMap['timeOut']?.toString();
             final lane = logMap['lane']?.toString() ?? 'N/A';
 
-            if (timeIn.isNotEmpty) {
+            final syncInId = 'sync_gate_${logId}_in';
+            final syncOutId = 'sync_gate_${logId}_out';
+
+            if (timeIn.isNotEmpty && !deletedIds.contains(syncInId) && !deletedIds.contains(logId)) {
               DateTime fired = DateTime.tryParse(timeIn) ?? DateTime.now();
               final timeStr = _formatTimeString(timeIn);
               await logNotification(NotificationItem(
-                id: 'sync_gate_${logId}_in',
+                id: syncInId,
                 title: '🚪 Library Check-In',
                 subtitle: 'Welcome to the library! Checked in at Lane $lane — $timeStr.',
                 type: 'gate',
@@ -742,11 +916,11 @@ class NotificationService {
               ));
             }
 
-            if (timeOut != null && timeOut.isNotEmpty && timeOut != 'null' && timeOut != 'Active') {
+            if (timeOut != null && timeOut.isNotEmpty && timeOut != 'null' && timeOut != 'Active' && !deletedIds.contains(syncOutId) && !deletedIds.contains(logId)) {
               DateTime fired = DateTime.tryParse(timeOut) ?? DateTime.now();
               final timeStr = _formatTimeString(timeOut);
               await logNotification(NotificationItem(
-                id: 'sync_gate_${logId}_out',
+                id: syncOutId,
                 title: '🚪 Library Check-Out',
                 subtitle: 'Thank you for visiting! Checked out at Lane $lane — $timeStr.',
                 type: 'gate',

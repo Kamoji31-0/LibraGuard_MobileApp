@@ -120,7 +120,30 @@ Set<String> _selectedGenres = {};
   Future<void> _loadNotificationCount() async {
     final int unread = await NotificationService.instance.getUnreadCount();
     final bool is2FAEnabled = await AuthService().is2FAEnabled();
-    final int count = unread + (is2FAEnabled ? 0 : 1);
+
+    // Check for missing profile credentials
+    int missingCount = 0;
+    final cachedProfile = await AuthService().getCachedProfile();
+    if (cachedProfile != null) {
+      final name = (cachedProfile['name'] ?? cachedProfile['fullName'] ?? '').toString().trim();
+      final idNumber = (cachedProfile['idNumber'] ?? '').toString().trim();
+      final contact = (cachedProfile['contact'] ?? cachedProfile['phone'] ?? '').toString().trim();
+      final age = (cachedProfile['age'] ?? '').toString().trim();
+      final dept = (cachedProfile['dept'] ?? cachedProfile['department'] ?? '').toString().trim();
+      final year = (cachedProfile['year'] ?? cachedProfile['yearLevel'] ?? '').toString().trim();
+
+      if (name.isEmpty) missingCount++;
+      if (idNumber.isEmpty) missingCount++;
+      if (contact.isEmpty) missingCount++;
+      if (age.isEmpty || age == '0') missingCount++;
+      if (dept.isEmpty || dept == 'N/A') missingCount++;
+      if (year.isEmpty || year == 'N/A') missingCount++;
+    }
+
+    // Badge = unread notifications + 1 per security issue
+    final int securityIssues = (is2FAEnabled ? 0 : 1) + (missingCount > 0 ? 1 : 0);
+    final int count = unread + securityIssues;
+
     if (mounted) {
       setState(() => _notificationCount = count);
     }

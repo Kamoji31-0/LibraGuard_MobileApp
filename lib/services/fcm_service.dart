@@ -4,11 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'notification_service.dart';
 import 'auth_service.dart';
 
+/// Public VAPID key generated from Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates.
+const String fcmVapidKey =
+    'BHTC0CpFjtDXOYkOgKge3MW6d1AQkThMrEywQQs9PoC1ilSwSqFitcFt3mDNGbhVU9H9je73NaD8vX5msa1EUAg';
+
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `initializeApp` before using other Firebase services.
-  await Firebase.initializeApp();
+  if (!kIsWeb) {
+    // If you're going to use other Firebase services in the background, such as Firestore,
+    // make sure you call `initializeApp` before using other Firebase services.
+    await Firebase.initializeApp();
+  }
 
   if (kDebugMode) {
     print('Handling a background message: ${message.messageId}');
@@ -22,6 +28,7 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 void _handleIncomingMessage(RemoteMessage message) {
   final Map<String, dynamic> data = message.data;
   final String? type = data['type']?.toString();
+  bool handled = false;
 
   if (type == 'status_change') {
     final String? entityType = data['entity']?.toString(); // 'borrow' | 'pc'
@@ -30,12 +37,23 @@ void _handleIncomingMessage(RemoteMessage message) {
     final String? title = data['title']?.toString();
 
     if (entityType != null && status != null && id != null && title != null) {
-      NotificationService.instance.showStatusNotification(
-        type: entityType,
-        status: status,
-        itemTitle: title,
-        id: id,
-      );
+      if (!kIsWeb) {
+        NotificationService.instance.showStatusNotification(
+          type: entityType,
+          status: status,
+          itemTitle: title,
+          id: id,
+        );
+      } else {
+        NotificationService.instance.logNotification(NotificationItem(
+          id: id,
+          title: entityType == 'borrow' ? 'Borrow Update' : 'PC Session Update',
+          subtitle: 'Status updated to: $status for $title',
+          type: 'status',
+          firedAt: DateTime.now(),
+        ));
+      }
+      handled = true;
     }
   } else if (type == 'gate_log') {
     final String? logId = data['logId']?.toString();
@@ -45,13 +63,49 @@ void _handleIncomingMessage(RemoteMessage message) {
 
     if (logId != null && timeIn != null && lane != null) {
       final bool isOut = timeOut != null && timeOut != 'null' && timeOut.isNotEmpty && timeOut != 'Active';
-      NotificationService.instance.showGateNotification(
-        timeIn: timeIn,
-        timeOut: timeOut == 'null' ? null : timeOut,
-        lane: lane,
-        logId: logId,
-        isTimeOut: isOut,
-      );
+      if (!kIsWeb) {
+        NotificationService.instance.showGateNotification(
+          timeIn: timeIn,
+          timeOut: timeOut == 'null' ? null : timeOut,
+          lane: lane,
+          logId: logId,
+          isTimeOut: isOut,
+        );
+      } else {
+        NotificationService.instance.logNotification(NotificationItem(
+          id: logId,
+          title: isOut ? 'Gate Exit Logged' : 'Gate Entry Logged',
+          subtitle: 'Lane: $lane | ${isOut ? "Exit: $timeOut" : "Entry: $timeIn"}',
+          type: 'gate',
+          firedAt: DateTime.now(),
+        ));
+      }
+      handled = true;
+    }
+  }
+
+  // Fallback: If message wasn't structured as status_change or gate_log,
+  // capture the notification so it still appears in the in-app notification center.
+  if (!handled) {
+    final String? fallbackTitle = message.notification?.title ??
+        data['title']?.toString() ??
+        data['header']?.toString();
+    final String? fallbackBody = message.notification?.body ??
+        data['body']?.toString() ??
+        data['message']?.toString() ??
+        data['content']?.toString();
+
+    if (fallbackTitle != null && fallbackTitle.isNotEmpty) {
+      final String msgId = message.messageId ??
+          data['id']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString();
+      NotificationService.instance.logNotification(NotificationItem(
+        id: msgId,
+        title: fallbackTitle,
+        subtitle: fallbackBody,
+        type: data['type']?.toString() ?? 'status',
+        firedAt: message.sentTime ?? DateTime.now(),
+      ));
     }
   }
 }
@@ -60,10 +114,12 @@ class FcmService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   Future<void> initialize() async {
-    // 1. Set background message handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    // 1. Set background message handler (Mobile only; Web uses firebase-messaging-sw.js)
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+    }
 
-    // 2. Request permissions for iOS / Android 13+
+    // 2. Request permissions for iOS / Android 13+ / Web PWA
     await _fcm.requestPermission(
       alert: true,
       badge: true,
@@ -71,12 +127,14 @@ class FcmService {
       provisional: false,
     );
 
-    // 3. Configure foreground presentation options (show head-up notification even if app is in foreground)
-    await _fcm.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    // 3. Configure foreground presentation options (Mobile only)
+    if (!kIsWeb) {
+      await _fcm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
 
     // 4. Set foreground message handler
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -114,7 +172,14 @@ class FcmService {
 
   Future<void> refreshAndSaveToken() async {
     try {
-      final String? token = await _fcm.getToken();
+      final String? token;
+      if (kIsWeb) {
+        token = await _fcm.getToken(
+          vapidKey: fcmVapidKey.isNotEmpty ? fcmVapidKey : null,
+        );
+      } else {
+        token = await _fcm.getToken();
+      }
       if (token != null) {
         await _uploadToken(token);
       }

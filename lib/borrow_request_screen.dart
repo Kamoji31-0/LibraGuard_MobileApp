@@ -673,7 +673,8 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: _isDark ? Colors.white : _textColor, size: 24),
+              Icon(Icons.warning_amber_rounded,
+                  color: _isDark ? Colors.white : _textColor, size: 24),
               const SizedBox(width: 12),
               Text(
                 'Reminder',

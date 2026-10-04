@@ -3,6 +3,7 @@ import 'auth_service.dart';
 import 'background_task.dart';
 import 'borrow_service.dart';
 import 'favorite_service.dart';
+import 'fcm_service.dart';
 import 'notification_cache_service.dart';
 import 'notification_service.dart';
 import 'pc_service.dart';
@@ -12,6 +13,9 @@ Future<void> setupNotificationsAfterLogin() async {
   if (kIsWeb) return;
   final token = await AuthService().getToken();
   if (token == null) return;
+
+  // Sync active FCM token with the backend now that user is authenticated
+  await FcmService().refreshAndSaveToken();
 
   await NotificationService.instance.requestPermissions();
 

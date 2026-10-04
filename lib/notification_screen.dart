@@ -16,6 +16,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   bool _is2FAEnabled = true;
   bool _isLoading = true;
   List<NotificationItem> _notifications = [];
+  List<String> _missingFields = [];
 
   Color get _primaryColor => const Color(0xFF75111D);
   Color get _textColor =>
@@ -32,11 +33,32 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Future<void> _loadData() async {
     final enabled = await _authService.is2FAEnabled();
     final list = await NotificationService.instance.getStoredNotifications();
-    
+    list.sort((a, b) => b.firedAt.compareTo(a.firedAt));
+
+    // Detect missing profile credentials
+    final missing = <String>[];
+    final cachedProfile = await _authService.getCachedProfile();
+    if (cachedProfile != null) {
+      final name = (cachedProfile['name'] ?? cachedProfile['fullName'] ?? '').toString().trim();
+      final idNumber = (cachedProfile['idNumber'] ?? '').toString().trim();
+      final contact = (cachedProfile['contact'] ?? cachedProfile['phone'] ?? '').toString().trim();
+      final age = (cachedProfile['age'] ?? '').toString().trim();
+      final dept = (cachedProfile['dept'] ?? cachedProfile['department'] ?? '').toString().trim();
+      final year = (cachedProfile['year'] ?? cachedProfile['yearLevel'] ?? '').toString().trim();
+
+      if (name.isEmpty) missing.add('Full Name');
+      if (idNumber.isEmpty) missing.add('ID Number');
+      if (contact.isEmpty) missing.add('Contact Number');
+      if (age.isEmpty || age == '0') missing.add('Age');
+      if (dept.isEmpty || dept == 'N/A') missing.add('Department');
+      if (year.isEmpty || year == 'N/A') missing.add('Year Level');
+    }
+
     if (mounted) {
       setState(() {
         _is2FAEnabled = enabled;
         _notifications = list;
+        _missingFields = missing;
         _isLoading = false;
       });
     }
@@ -50,31 +72,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Future<void> _deleteItem(String id) async {
-    final list = _notifications.where((n) => n.id != id).toList();
-    // Update local list
     setState(() {
-      _notifications = list;
+      _notifications.removeWhere((n) => n.id == id);
     });
-    // Save updated list to SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    // We can write to notification service
-    await NotificationService.instance.clearAllStored();
-    for (final item in list) {
-      await NotificationService.instance.logNotification(item);
-    }
+    await NotificationService.instance.deleteNotification(id);
   }
 
   Future<void> _markAllAsRead() async {
-    for (var n in _notifications) {
-      n.isRead = true;
-    }
-    setState(() {});
-    
-    // Save updated list
-    await NotificationService.instance.clearAllStored();
-    for (final item in _notifications) {
-      await NotificationService.instance.logNotification(item);
-    }
+    setState(() {
+      for (var n in _notifications) {
+        n.isRead = true;
+      }
+    });
+    await NotificationService.instance.markAllAsRead();
   }
 
   String _getSection(DateTime firedAt) {
@@ -181,7 +191,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final yesterday = _notifications.where((n) => _getSection(n.firedAt) == 'Yesterday').toList();
     final earlier = _notifications.where((n) => _getSection(n.firedAt) == 'Earlier').toList();
 
-    final bool hasAnything = !_is2FAEnabled ||
+    final bool hasSecurityAlert = !_is2FAEnabled || _missingFields.isNotEmpty;
+    final bool hasAnything = hasSecurityAlert ||
         now.isNotEmpty ||
         yesterday.isNotEmpty ||
         earlier.isNotEmpty;
@@ -191,9 +202,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        if (!_is2FAEnabled) ...[
+        if (!_is2FAEnabled || _missingFields.isNotEmpty) ...[
           _buildSectionHeader('Security Status'),
-          _buildSecurityAlertCard(),
+          if (_missingFields.isNotEmpty) _buildMissingCredentialsCard(),
+          if (!_is2FAEnabled) _build2FAAlertCard(),
         ],
         if (now.isNotEmpty) ...[
           _buildSectionHeader('New'),
@@ -372,7 +384,123 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  Widget _buildSecurityAlertCard() {
+  /// Card shown when the user has missing profile fields.
+  Widget _buildMissingCredentialsCard() {
+    final Color accentColor = _isDark ? const Color(0xFFFB923C) : const Color(0xFFC2410C);
+    final Color subText = _isDark
+        ? Colors.white.withOpacity(0.85)
+        : const Color(0xFF7C2D12);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: _isDark
+              ? [accentColor.withOpacity(0.30), accentColor.withOpacity(0.12)]
+              : [accentColor.withOpacity(0.10), accentColor.withOpacity(0.04)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: accentColor.withOpacity(_isDark ? 0.60 : 0.35),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.manage_accounts_outlined, color: accentColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Incomplete Profile',
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: accentColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${_missingFields.length} MISSING',
+                          style: TextStyle(
+                            color: _isDark ? Colors.white : accentColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Missing: ${_missingFields.join(', ')}.',
+                    style: TextStyle(
+                      color: subText,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 30,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ProfileScreen()),
+                        ).then((_) => _loadData());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 13, color: Colors.white),
+                      label: const Text(
+                        'Update Account',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Card shown when 2FA is disabled.
+  Widget _build2FAAlertCard() {
     final Color alertAccent = _isDark ? Colors.white : _primaryColor;
     final Color alertText = _isDark ? Colors.white : _primaryColor;
     final Color subText = _isDark
@@ -380,18 +508,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         : _primaryColor.withOpacity(0.8);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isDark
-              ? [
-                  _primaryColor.withOpacity(0.55),
-                  _primaryColor.withOpacity(0.25),
-                ]
-              : [
-                  _primaryColor.withOpacity(0.12),
-                  _primaryColor.withOpacity(0.06),
-                ],
+              ? [_primaryColor.withOpacity(0.55), _primaryColor.withOpacity(0.25)]
+              : [_primaryColor.withOpacity(0.12), _primaryColor.withOpacity(0.06)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -414,8 +536,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 color: alertAccent.withOpacity(_isDark ? 0.15 : 0.1),
                 shape: BoxShape.circle,
               ),
-              child:
-                  Icon(Icons.security_outlined, color: alertAccent, size: 20),
+              child: Icon(Icons.security_outlined, color: alertAccent, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -435,16 +556,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: alertAccent.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
+                        child: Text(
                           'ACTION NEEDED',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: _isDark ? _primaryColor : Colors.white,
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -453,7 +573,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Your account has low security. Enable Two-Factor Authentication to protect your resources and data.',
                     style: TextStyle(
@@ -465,7 +585,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   const SizedBox(height: 10),
                   SizedBox(
                     height: 30,
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -476,14 +596,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isDark ? Colors.white : _primaryColor,
                         foregroundColor: _isDark ? _primaryColor : Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                         elevation: 0,
                       ),
-                      child: const Text('Enable 2FA Now',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
+                      icon: Icon(
+                        Icons.shield_outlined,
+                        size: 13,
+                        color: _isDark ? _primaryColor : Colors.white,
+                      ),
+                      label: const Text(
+                        'Enable 2FA Now',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
