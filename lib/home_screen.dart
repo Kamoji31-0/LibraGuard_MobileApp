@@ -17,6 +17,7 @@ import 'services/book_service.dart';
 import 'services/favorite_service.dart';
 import 'services/notification_setup.dart';
 import 'services/notification_service.dart';
+import 'services/notification_cache_service.dart';
 import 'widgets/app_bottom_nav.dart';
 import 'notification_screen.dart';
 
@@ -91,10 +92,9 @@ Set<String> _selectedGenres = {};
   Map<String, dynamic>? _userProfile;
 
   int _occupancyCount = 0;
-  int _maxCapacity = 300;
+  int _maxCapacity = 70;
   int _notificationCount = 0;
   Timer? _occupancyTimer;
-  bool _wasCapacityNotificationShown = false;
 
   @override
   void initState() {
@@ -209,22 +209,18 @@ final books = await _bookService.fetchBooks();
   Future<void> _fetchOccupancy() async {
     final data = await AuthService().getLibraryOccupancy();
     if (mounted) {
+      final int count = data['count'] as int? ?? 0;
+      int maxCap = data['maxCapacity'] as int? ?? 70;
+      if (maxCap <= 0) maxCap = 70;
+
       setState(() {
-        _occupancyCount = data['count'] as int? ?? 0;
-        _maxCapacity = data['maxCapacity'] as int? ?? 300;
-        if (_maxCapacity <= 0) _maxCapacity = 300;
+        _occupancyCount = count;
+        _maxCapacity = maxCap;
       });
 
-      if (_occupancyCount >= _maxCapacity) {
-        if (!_wasCapacityNotificationShown) {
-          _wasCapacityNotificationShown = true;
-          try {
-            NotificationService.instance.showLibraryFullNotification();
-          } catch (_) {}
-        }
-      } else {
-        _wasCapacityNotificationShown = false;
-      }
+      try {
+        await NotificationCacheService().checkOccupancyChanges(count, maxCap);
+      } catch (_) {}
     }
   }
 

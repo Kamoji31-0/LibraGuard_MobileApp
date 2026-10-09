@@ -31,6 +31,13 @@ void callbackDispatcher() {
             await NotificationService.instance.schedulePcSessionAlarm(s);
           }
         }
+
+        try {
+          final occData = await AuthService().getLibraryOccupancy();
+          final int occCount = occData['count'] as int? ?? 0;
+          final int maxCap = occData['maxCapacity'] as int? ?? 70;
+          await NotificationCacheService().checkOccupancyChanges(occCount, maxCap);
+        } catch (_) {}
         break;
 
       case 'pollGateLogs':

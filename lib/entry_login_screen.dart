@@ -34,7 +34,7 @@ class EntryLoginScreen extends StatelessWidget {
               text,
               style: TextStyle(
                 color: textColor.withOpacity(0.8),
-                fontSize: 15,
+                fontSize: 14,
                 height: 1.5,
               ),
             ),
@@ -46,13 +46,13 @@ class EntryLoginScreen extends StatelessWidget {
     Widget sectionTitle(IconData icon, String title, {Color? iconColor}) {
       return Row(
         children: [
-          Icon(icon, color: iconColor ?? textColor, size: 24),
+          Icon(icon, color: iconColor ?? textColor, size: 22),
           const SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
               color: textColor,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -69,6 +69,15 @@ class EntryLoginScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Library Entry Login',
+          style: TextStyle(
+            color: primaryColor,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        titleSpacing: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -76,41 +85,7 @@ class EntryLoginScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Library Entry Login',
-                style: TextStyle(
-                  color: primaryColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'HOW TO ENTER THE LIBRARY',
-                style: TextStyle(
-                  color: textColor.withOpacity(0.6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.sensor_door_outlined,
-                      color: textColor.withOpacity(0.8), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Gate Entry Process',
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.8),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(28),
@@ -222,4 +197,3 @@ class EntryLoginScreen extends StatelessWidget {
     );
   }
 }
-

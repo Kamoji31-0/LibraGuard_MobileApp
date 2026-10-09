@@ -42,9 +42,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Color get _primaryColor => Theme.of(context).primaryColor;
-  Color get _accentColor => Theme.of(context)
-      .colorScheme
-      .secondary;
+  Color get _accentColor => Theme.of(context).colorScheme.secondary;
   Color get _backgroundColor => Theme.of(context).scaffoldBackgroundColor;
   Color get _textColor {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -112,7 +110,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (email.isEmpty) return null;
     try {
       final prefs = await SharedPreferences.getInstance();
-      String? localYear = prefs.getString('local_year_${email.toLowerCase().trim()}');
+      String? localYear =
+          prefs.getString('local_year_${email.toLowerCase().trim()}');
       if (localYear == null || localYear.isEmpty || localYear == 'N/A') {
         localYear = prefs.getString('pending_year');
       }
@@ -142,7 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadInitialData() async {
-
     final results = await Future.wait([
       BorrowService().getPersistentCachedTransactions(),
       AuthService().getCachedGateLogs(),
@@ -162,11 +160,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (cachedProfile != null) {
           _userProfile = cachedProfile;
           _updateControllers(cachedProfile);
-          
-          final email = cachedProfile['email'] ?? cachedProfile['emailAddress'] ?? '';
+
+          final email =
+              cachedProfile['email'] ?? cachedProfile['emailAddress'] ?? '';
           _getLocalYear(email).then((localYear) {
             if (mounted && localYear != null && localYear.isNotEmpty) {
-              if (_yearController.text == 'N/A' || _yearController.text.isEmpty) {
+              if (_yearController.text == 'N/A' ||
+                  _yearController.text.isEmpty) {
                 setState(() {
                   _yearController.text = localYear;
                   if (_userProfile != null) {
@@ -197,9 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _2faOtpauthUri = setup['otpauthUri'];
             });
           }
-        }).catchError((e) {
-
-        });
+        }).catchError((e) {});
       }
     }
 
@@ -296,13 +294,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-
                         RepaintBoundary(
                           key: boundaryKey,
                           child: Container(
@@ -333,7 +329,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-
                         IgnorePointer(
                           child: SizedBox(
                             width: 300,
@@ -366,7 +361,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-
                         Positioned(
                           top: 20,
                           child: Container(
@@ -393,8 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-
-Padding(
+                  Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 30, vertical: 20),
                     child: Row(
@@ -426,7 +419,6 @@ Padding(
                       ],
                     ),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
@@ -438,8 +430,7 @@ Padding(
                   ),
                   const SizedBox(height: 10),
                   const Divider(color: Colors.white12),
-
-Padding(
+                  Padding(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -454,7 +445,6 @@ Padding(
                         ElevatedButton(
                           onPressed: () async {
                             try {
-
                               final RenderRepaintBoundary boundary =
                                   boundaryKey.currentContext!.findRenderObject()
                                       as RenderRepaintBoundary;
@@ -523,7 +513,8 @@ Padding(
       setState(() {
         if (updatedUser != null) {
           _userProfile = Map<String, dynamic>.from(updatedUser);
-          _userProfile!['year'] = yearVal; // Ensure local year remains updated in current state
+          _userProfile!['year'] =
+              yearVal; // Ensure local year remains updated in current state
           if (_ageController.text.isNotEmpty) {
             _userProfile!['age'] = _ageController.text;
           }
@@ -543,11 +534,11 @@ Padding(
         _isSaving = false;
       });
 
-if (Navigator.of(context, rootNavigator: true).canPop()) {
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
-Future.delayed(const Duration(milliseconds: 100), () {
+      Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) _showSuccessDialog('Profile updated successfully!');
       });
     } else {
@@ -701,7 +692,6 @@ Future.delayed(const Duration(milliseconds: 100), () {
   }
 
   Future<void> _openAuthenticatorApp() async {
-
     if (_2faSecret != null) {
       final String email = (_userProfile?['email'] ??
               _userProfile?['emailAddress'] ??
@@ -713,7 +703,6 @@ Future.delayed(const Duration(milliseconds: 100), () {
       final Uri fullUri = Uri.parse(fullUriString);
 
       try {
-
         await launchUrl(fullUri, mode: LaunchMode.externalApplication);
         return;
       } catch (e) {
@@ -721,7 +710,7 @@ Future.delayed(const Duration(milliseconds: 100), () {
       }
     }
 
-final Uri otpauthUri = Uri.parse('otpauth://');
+    final Uri otpauthUri = Uri.parse('otpauth://');
     final Uri googleAuthUri = Uri.parse('googleauthenticator://');
 
     try {
@@ -730,7 +719,6 @@ final Uri otpauthUri = Uri.parse('otpauth://');
       } else if (await canLaunchUrl(googleAuthUri)) {
         await launchUrl(googleAuthUri, mode: LaunchMode.externalApplication);
       } else {
-
         try {
           await launchUrl(otpauthUri, mode: LaunchMode.externalApplication);
         } catch (_) {
@@ -755,7 +743,6 @@ final Uri otpauthUri = Uri.parse('otpauth://');
 
   @override
   Widget build(BuildContext context) {
-
     final mode = themeNotifier.value;
     final themeLabel = mode == ThemeMode.system
         ? 'System'
@@ -772,7 +759,6 @@ final Uri otpauthUri = Uri.parse('otpauth://');
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Stack(
                   children: [
-
                     Container(
                       height: 350,
                       decoration: BoxDecoration(
@@ -781,8 +767,7 @@ final Uri otpauthUri = Uri.parse('otpauth://');
                             bottom: Radius.circular(20)),
                       ),
                     ),
-
-SafeArea(
+                    SafeArea(
                       bottom: false,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -790,7 +775,6 @@ SafeArea(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -809,12 +793,10 @@ SafeArea(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(
-                                    width: 48),
+                                const SizedBox(width: 48),
                               ],
                             ),
                             const SizedBox(height: 24),
-
                             _buildProfileBanner(),
                             const SizedBox(height: 32),
                             _buildSection(
@@ -996,7 +978,6 @@ SafeArea(
     );
 
     if (image != null && mounted) {
-
       final Uint8List bytes = await image.readAsBytes();
       final String? resizedBase64 = await _showResizeDialog(bytes);
 
@@ -1037,7 +1018,6 @@ SafeArea(
             });
           }
         } else {
-
           setState(() {
             _base64Image = resizedBase64.split(',').last;
             _profileImageUrl = null;
@@ -1053,10 +1033,10 @@ SafeArea(
         _userProfile?['name'] ?? _userProfile?['fullName'] ?? 'LibraGuard User';
     final role = _userProfile?['role'] ?? 'Member';
     final email = _userProfile?['email'] ?? 'user@libraguard.edu';
-    final rawDept = _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
-    final department = rawDept.contains(' - ')
-        ? rawDept.split(' - ').first.trim()
-        : rawDept;
+    final rawDept =
+        _userProfile?['dept'] ?? _userProfile?['department'] ?? 'N/A';
+    final department =
+        rawDept.contains(' - ') ? rawDept.split(' - ').first.trim() : rawDept;
     final year = _userProfile?['year'] ?? _userProfile?['yearLevel'] ?? 'N/A';
 
     return Container(
@@ -1076,7 +1056,6 @@ SafeArea(
         padding: const EdgeInsets.only(top: 24, bottom: 24),
         child: Column(
           children: [
-
             Stack(
               alignment: Alignment.center,
               clipBehavior: Clip.none,
@@ -1146,9 +1125,7 @@ SafeArea(
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .secondary,
+                        color: Theme.of(context).colorScheme.secondary,
                         shape: BoxShape.circle,
                         border: Border.all(color: _cardColor, width: 2),
                       ),
@@ -1159,10 +1136,8 @@ SafeArea(
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
-Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(width: 24),
@@ -1182,25 +1157,20 @@ Row(
                 ),
               ],
             ),
-
             const SizedBox(height: 4),
-
-Text(
+            Text(
               email,
               style: TextStyle(
                 color: _textColor.withOpacity(0.5),
                 fontSize: 14,
               ),
             ),
-
             const SizedBox(height: 24),
-
-Container(
+            Container(
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               decoration: BoxDecoration(
-                color: _textColor
-                    .withOpacity(0.03),
+                color: _textColor.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -1220,8 +1190,7 @@ Container(
 
   Widget _buildProfileBadge(IconData icon, String value, String label) {
     final theme = Theme.of(context);
-    final accentColor =
-        theme.colorScheme.secondary;
+    final accentColor = theme.colorScheme.secondary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1398,8 +1367,7 @@ Container(
                                         _currentPasswordController.clear();
                                         _newPasswordController.clear();
                                         _confirmPasswordController.clear();
-                                        Navigator.pop(
-                                            context);
+                                        Navigator.pop(context);
                                         _showSuccessDialog(res['message'] ??
                                             'Password updated successfully!');
                                       } else {
@@ -1931,7 +1899,8 @@ Container(
                         },
                         child: Text('Apply',
                             style: TextStyle(
-                                color: _primaryColor, fontWeight: FontWeight.bold)),
+                                color: _primaryColor,
+                                fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -1957,14 +1926,16 @@ Container(
                           spacing: 10,
                           runSpacing: 10,
                           children: values.map((val) {
-                            final bool isSelected = localValues[category] == val;
+                            final bool isSelected =
+                                localValues[category] == val;
                             return ChoiceChip(
                               label: Text(val),
                               selected: isSelected,
                               checkmarkColor: _primaryColor,
                               onSelected: (selected) {
                                 if (selected) {
-                                  setFilterState(() => localValues[category] = val);
+                                  setFilterState(
+                                      () => localValues[category] = val);
                                 }
                               },
                               backgroundColor: _textColor.withOpacity(0.05),
@@ -2062,7 +2033,6 @@ Container(
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -2095,7 +2065,8 @@ Container(
                                 boxShadow: isSearchFocused
                                     ? [
                                         BoxShadow(
-                                          color: _primaryColor.withOpacity(0.08),
+                                          color:
+                                              _primaryColor.withOpacity(0.08),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -2105,7 +2076,8 @@ Container(
                               child: TextField(
                                 onChanged: (val) =>
                                     setSheetState(() => searchQuery = val),
-                                style: TextStyle(color: _textColor, fontSize: 14),
+                                style:
+                                    TextStyle(color: _textColor, fontSize: 14),
                                 cursorColor: _primaryColor,
                                 decoration: InputDecoration(
                                   hintText: 'Search books or authors...',
@@ -2199,7 +2171,8 @@ Container(
                   const SizedBox(height: 16),
                   Expanded(
                     child: FutureBuilder<List<BorrowTransaction>>(
-                      future: BorrowService().fetchMyTransactions(forceRefresh: true),
+                      future: BorrowService()
+                          .fetchMyTransactions(forceRefresh: true),
                       initialData: _cachedTransactions,
                       builder: (context, snapshot) {
                         final transactions =
@@ -2213,16 +2186,16 @@ Container(
                                   color: _primaryColor));
                         }
 
-List<BorrowTransaction> filtered =
+                        List<BorrowTransaction> filtered =
                             transactions.where((tx) {
                           final query = searchQuery.toLowerCase();
                           final bookTitle = tx.bookTitle.toLowerCase();
                           final borrower = tx.borrowerName.toLowerCase();
 
-bool matchesSearch = bookTitle.contains(query) ||
+                          bool matchesSearch = bookTitle.contains(query) ||
                               borrower.contains(query);
 
-bool matchesStatus = true;
+                          bool matchesStatus = true;
                           if (selectedStatus == 'Borrowed') {
                             matchesStatus =
                                 tx.returnDate == null && !tx.isCancelled;
@@ -2232,7 +2205,7 @@ bool matchesStatus = true;
                             matchesStatus = tx.isCancelled;
                           }
 
-bool matchesTime = true;
+                          bool matchesTime = true;
                           if (selectedTimeframe != 'All Time') {
                             try {
                               final borrowDate = DateTime.parse(tx.borrowDate);
@@ -2250,7 +2223,7 @@ bool matchesTime = true;
                           return matchesSearch && matchesStatus && matchesTime;
                         }).toList();
 
-if (selectedSort == 'Newest First') {
+                        if (selectedSort == 'Newest First') {
                           filtered.sort(
                               (a, b) => b.borrowDate.compareTo(a.borrowDate));
                         } else if (selectedSort == 'Oldest First') {
@@ -2411,21 +2384,46 @@ if (selectedSort == 'Newest First') {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        tx.status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (tx.borrowType != null &&
+                            tx.borrowType!.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: _accentColor.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tx.borrowType!,
+                              style: TextStyle(
+                                color: _accentColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            tx.status,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -2659,7 +2657,8 @@ if (selectedSort == 'Newest First') {
                       ],
                     ),
                     ElevatedButton(
-                      onPressed: () => _showPcSessionDetailDialog(context, sess),
+                      onPressed: () =>
+                          _showPcSessionDetailDialog(context, sess),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentColor,
                         foregroundColor: Colors.white,
@@ -2711,6 +2710,60 @@ if (selectedSort == 'Newest First') {
       } catch (_) {
         return raw.isNotEmpty ? raw : '---';
       }
+    }
+
+    String fmtTime(String raw) {
+      try {
+        final dt = DateTime.parse(raw).toLocal();
+        final int hour12 =
+            dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+        final minuteStr = dt.minute.toString().padLeft(2, '0');
+        final amPm = dt.hour >= 12 ? 'PM' : 'AM';
+        return '${hour12.toString().padLeft(2, '0')}:$minuteStr $amPm';
+      } catch (_) {
+        return raw;
+      }
+    }
+
+    String formatPickupSchedule(BorrowTransaction tx) {
+      final type = tx.borrowType;
+      if (type == 'Library Room Use' || type == 'Class Use') {
+        return 'Immediately after approval';
+      } else if (type == 'Overnight') {
+        return 'From 3:00 PM today';
+      } else if (type == 'Weekend') {
+        return 'Friday from 3:00 PM only';
+      } else if (type == 'Instructor') {
+        return 'Immediately after approval';
+      }
+      if (tx.pickupDeadline.isNotEmpty) {
+        return fmtDate(tx.pickupDeadline);
+      }
+      return 'Within 3 working days';
+    }
+
+    String formatReturnDeadline(BorrowTransaction tx) {
+      final type = tx.borrowType;
+      if (tx.dueDateISO != null && tx.dueDateISO!.isNotEmpty) {
+        try {
+          final dt = DateTime.parse(tx.dueDateISO!).toLocal();
+          final int hour12 =
+              dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+          final minuteStr = dt.minute.toString().padLeft(2, '0');
+          final amPm = dt.hour >= 12 ? 'PM' : 'AM';
+          return "${dt.month}/${dt.day}/${dt.year} ($hour12:$minuteStr $amPm)";
+        } catch (_) {}
+      }
+      if (tx.dueDate.isNotEmpty) {
+        final base = fmtDate(tx.dueDate);
+        if (type == 'Library Room Use') {
+          return '$base (4:00 PM)';
+        } else if (type == 'Overnight' || type == 'Weekend') {
+          return '$base (8:00 AM)';
+        }
+        return base;
+      }
+      return '---';
     }
 
     showDialog(
@@ -2783,8 +2836,7 @@ if (selectedSort == 'Newest First') {
                           ],
                         ),
                         const SizedBox(height: 32),
-
-_buildDialogSection(
+                        _buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,
                           hasOutline: true,
@@ -2799,7 +2851,8 @@ _buildDialogSection(
                                 (_userProfile?['role'] ?? 'STUDENT')
                                     .toString()
                                     .toUpperCase()),
-                            _buildDialogRow('Department',
+                            _buildDialogRow(
+                                'Department',
                                 _deptController.text.contains(' - ')
                                     ? _deptController.text
                                         .split(' - ')
@@ -2810,8 +2863,7 @@ _buildDialogSection(
                           ],
                         ),
                         const SizedBox(height: 16),
-
-FutureBuilder<BookItem?>(
+                        FutureBuilder<BookItem?>(
                           future: BookService().fetchBookById(tx.bookId),
                           builder: (context, snapshot) {
                             final book = snapshot.data;
@@ -2931,24 +2983,23 @@ FutureBuilder<BookItem?>(
                           },
                         ),
                         const SizedBox(height: 12),
-
-_buildDialogSection(
+                        _buildDialogSection(
                           title: 'SCHEDULE',
                           showIcon: false,
                           children: [
                             _buildDialogRow(
                                 'Requested On', fmtDate(tx.borrowDate)),
-                            _buildDialogRow(
-                                'Pickup Deadline',
-                                tx.pickupDeadline.isNotEmpty
-                                    ? fmtDate(tx.pickupDeadline)
-                                    : '---',
+                            if (tx.borrowType != null &&
+                                tx.borrowType!.isNotEmpty)
+                              _buildDialogRow('Type of Use', tx.borrowType!,
+                                  valueColor: _accentColor),
+                            if (tx.classStart != null && tx.classEnd != null)
+                              _buildDialogRow('Class Schedule',
+                                  '${fmtTime(tx.classStart!)} – ${fmtTime(tx.classEnd!)}'),
+                            _buildDialogRow('Pickup', formatPickupSchedule(tx),
                                 valueColor: const Color(0xFFF59E0B)),
                             _buildDialogRow(
-                                'Return By',
-                                tx.dueDate.isNotEmpty
-                                    ? fmtDate(tx.dueDate)
-                                    : '---',
+                                'Return By', formatReturnDeadline(tx),
                                 valueColor: const Color(0xFF16A34A)),
                             if (tx.returnDate != null &&
                                 tx.returnDate!.isNotEmpty)
@@ -2957,8 +3008,7 @@ _buildDialogSection(
                           ],
                         ),
                         const SizedBox(height: 12),
-
-if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
+                        if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           _buildDialogSection(
                             title: 'PENALTY',
                             showIcon: false,
@@ -2968,7 +3018,6 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                             ],
                           ),
                         ],
-
                         const SizedBox(height: 3),
                         _buildDialogSection(
                           title: 'Reminders',
@@ -2976,9 +3025,9 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           titleColor: _accentColor,
                           children: [
                             _buildReminderItem(
-                                'Pick up within 3 working days.'),
+                                'Pick up your book/s after the approval of your request.'),
                             _buildReminderItem(
-                                'Bring your RFID card for pickup.'),
+                                'Bring your RFID card for book pickup.'),
                             _buildReminderItem(
                                 'Return the book on or before the due date.'),
                             _buildReminderItem(
@@ -3030,7 +3079,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   context: ctx,
                                   builder: (cctx) => Dialog(
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24)),
+                                        borderRadius:
+                                            BorderRadius.circular(24)),
                                     backgroundColor: _cardColor,
                                     elevation: 8,
                                     child: Padding(
@@ -3041,7 +3091,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                           Container(
                                             padding: const EdgeInsets.all(16),
                                             decoration: BoxDecoration(
-                                              color: _accentColor.withOpacity(0.12),
+                                              color: _accentColor
+                                                  .withOpacity(0.12),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -3064,7 +3115,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                             'Are you sure you want to cancel this borrow request? This action cannot be undone.',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              color: _textColor.withOpacity(0.65),
+                                              color:
+                                                  _textColor.withOpacity(0.65),
                                               fontSize: 14,
                                               height: 1.5,
                                             ),
@@ -3074,34 +3126,60 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                             children: [
                                               Expanded(
                                                 child: OutlinedButton(
-                                                  onPressed: () => Navigator.pop(cctx, false),
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: _textColor.withOpacity(0.8),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          cctx, false),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    foregroundColor: _textColor
+                                                        .withOpacity(0.8),
                                                     side: BorderSide(
-                                                        color: _textColor.withOpacity(0.12),
+                                                        color: _textColor
+                                                            .withOpacity(0.12),
                                                         width: 1.5),
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                    shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12)),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 14),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12)),
                                                   ),
                                                   child: const Text('Keep',
-                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                                 ),
                                               ),
                                               const SizedBox(width: 16),
                                               Expanded(
                                                 child: ElevatedButton(
-                                                  onPressed: () => Navigator.pop(cctx, true),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: _accentColor,
-                                                    foregroundColor: Colors.white,
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                    shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12)),
+                                                  onPressed: () =>
+                                                      Navigator.pop(cctx, true),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        _accentColor,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 14),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12)),
                                                     elevation: 0,
                                                   ),
-                                                  child: const Text('Yes, Cancel',
-                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                  child: const Text(
+                                                      'Yes, Cancel',
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                                 ),
                                               ),
                                             ],
@@ -3120,10 +3198,10 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                       SnackBar(
                                         content: Text(result['message'] ??
                                             'Request cancelled.'),
-                                        backgroundColor: result['success'] ==
-                                                true
-                                            ? const Color(0xFF16A34A)
-                                            : Colors.redAccent,
+                                        backgroundColor:
+                                            result['success'] == true
+                                                ? const Color(0xFF16A34A)
+                                                : Colors.redAccent,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -3148,8 +3226,12 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                                foregroundColor: isDark ? Colors.grey.shade100 : Colors.grey.shade800,
+                                backgroundColor: isDark
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade200,
+                                foregroundColor: isDark
+                                    ? Colors.grey.shade100
+                                    : Colors.grey.shade800,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
@@ -3281,10 +3363,12 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                             children: [
                               // Connection Status Header
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'CONNECTION STATUS',
@@ -3297,9 +3381,13 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        sess.status.toLowerCase().contains('pending')
+                                        sess.status
+                                                .toLowerCase()
+                                                .contains('pending')
                                             ? 'Awaiting Approval'
-                                            : sess.status.toLowerCase().contains('active')
+                                            : sess.status
+                                                    .toLowerCase()
+                                                    .contains('active')
                                                 ? 'Session Active'
                                                 : 'Session ${sess.status}',
                                         style: TextStyle(
@@ -3327,27 +3415,34 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                               const SizedBox(height: 16),
                               Divider(color: _textColor.withOpacity(0.08)),
                               const SizedBox(height: 16),
-                              
+
                               // Computer & Time Remaining side-by-side boxes
                               Row(
                                 children: [
                                   Expanded(
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
                                       decoration: BoxDecoration(
-                                        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF9FAFB),
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.04)
+                                            : const Color(0xFFF9FAFB),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.06)
+                                              : Colors.black.withOpacity(0.03),
                                         ),
                                       ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'COMPUTER',
                                             style: TextStyle(
-                                              color: _textColor.withOpacity(0.4),
+                                              color:
+                                                  _textColor.withOpacity(0.4),
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 0.8,
@@ -3369,21 +3464,28 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
                                       decoration: BoxDecoration(
-                                        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF9FAFB),
+                                        color: isDark
+                                            ? Colors.white.withOpacity(0.04)
+                                            : const Color(0xFFF9FAFB),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.06)
+                                              : Colors.black.withOpacity(0.03),
                                         ),
                                       ),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'TIME REMAINING',
                                             style: TextStyle(
-                                              color: _textColor.withOpacity(0.4),
+                                              color:
+                                                  _textColor.withOpacity(0.4),
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 0.8,
@@ -3405,9 +3507,10 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              
+
                               // Divider and QR Code row (only if reference is available)
-                              if (sess.reference != null && sess.reference!.isNotEmpty) ...[
+                              if (sess.reference != null &&
+                                  sess.reference!.isNotEmpty) ...[
                                 const SizedBox(height: 16),
                                 Divider(color: _textColor.withOpacity(0.08)),
                                 const SizedBox(height: 16),
@@ -3418,7 +3521,9 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.black.withOpacity(0.08)),
+                                        border: Border.all(
+                                            color:
+                                                Colors.black.withOpacity(0.08)),
                                       ),
                                       child: QrImageView(
                                         data: sess.reference!,
@@ -3430,12 +3535,14 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Session Reference',
                                             style: TextStyle(
-                                              color: _textColor.withOpacity(0.4),
+                                              color:
+                                                  _textColor.withOpacity(0.4),
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 0.8,
@@ -3480,7 +3587,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                             if (deptAcronym.isNotEmpty)
                               _buildDialogRow('Department', deptAcronym),
                             if (_yearController.text.isNotEmpty)
-                              _buildDialogRow('Year Level', _yearController.text),
+                              _buildDialogRow(
+                                  'Year Level', _yearController.text),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -3566,7 +3674,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   context: ctx,
                                   builder: (cctx) => Dialog(
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(24)),
+                                        borderRadius:
+                                            BorderRadius.circular(24)),
                                     backgroundColor: _cardColor,
                                     elevation: 8,
                                     child: Padding(
@@ -3577,7 +3686,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                           Container(
                                             padding: const EdgeInsets.all(16),
                                             decoration: BoxDecoration(
-                                              color: _accentColor.withOpacity(0.12),
+                                              color: _accentColor
+                                                  .withOpacity(0.12),
                                               shape: BoxShape.circle,
                                             ),
                                             child: Icon(
@@ -3600,7 +3710,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                             'Are you sure you want to cancel this computer reservation? This action cannot be undone.',
                                             textAlign: TextAlign.center,
                                             style: TextStyle(
-                                              color: _textColor.withOpacity(0.65),
+                                              color:
+                                                  _textColor.withOpacity(0.65),
                                               fontSize: 14,
                                               height: 1.5,
                                             ),
@@ -3610,34 +3721,60 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                             children: [
                                               Expanded(
                                                 child: OutlinedButton(
-                                                  onPressed: () => Navigator.pop(cctx, false),
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: _textColor.withOpacity(0.8),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          cctx, false),
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    foregroundColor: _textColor
+                                                        .withOpacity(0.8),
                                                     side: BorderSide(
-                                                        color: _textColor.withOpacity(0.12),
+                                                        color: _textColor
+                                                            .withOpacity(0.12),
                                                         width: 1.5),
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                    shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12)),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 14),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12)),
                                                   ),
                                                   child: const Text('Keep',
-                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                                 ),
                                               ),
                                               const SizedBox(width: 16),
                                               Expanded(
                                                 child: ElevatedButton(
-                                                  onPressed: () => Navigator.pop(cctx, true),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: _accentColor,
-                                                    foregroundColor: Colors.white,
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                    shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(12)),
+                                                  onPressed: () =>
+                                                      Navigator.pop(cctx, true),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        _accentColor,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 14),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12)),
                                                     elevation: 0,
                                                   ),
-                                                  child: const Text('Yes, Cancel',
-                                                      style: TextStyle(fontWeight: FontWeight.bold)),
+                                                  child: const Text(
+                                                      'Yes, Cancel',
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                                 ),
                                               ),
                                             ],
@@ -3648,18 +3785,18 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                   ),
                                 );
                                 if (confirm == true && mounted) {
-                                  final result =
-                                      await PcService().cancelReservation(sess.id);
+                                  final result = await PcService()
+                                      .cancelReservation(sess.id);
                                   if (mounted) {
                                     Navigator.pop(ctx);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(result['message'] ??
                                             'Reservation cancelled.'),
-                                        backgroundColor: result['success'] ==
-                                                true
-                                            ? const Color(0xFF16A34A)
-                                            : Colors.redAccent,
+                                        backgroundColor:
+                                            result['success'] == true
+                                                ? const Color(0xFF16A34A)
+                                                : Colors.redAccent,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -3683,8 +3820,12 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                                foregroundColor: isDark ? Colors.grey.shade100 : Colors.grey.shade800,
+                                backgroundColor: isDark
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade200,
+                                foregroundColor: isDark
+                                    ? Colors.grey.shade100
+                                    : Colors.grey.shade800,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
@@ -3908,7 +4049,6 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -3941,7 +4081,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                                 boxShadow: isSearchFocused
                                     ? [
                                         BoxShadow(
-                                          color: _primaryColor.withOpacity(0.08),
+                                          color:
+                                              _primaryColor.withOpacity(0.08),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -3951,7 +4092,8 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                               child: TextField(
                                 onChanged: (val) =>
                                     setSheetState(() => searchQuery = val),
-                                style: TextStyle(color: _textColor, fontSize: 14),
+                                style:
+                                    TextStyle(color: _textColor, fontSize: 14),
                                 cursorColor: _primaryColor,
                                 decoration: InputDecoration(
                                   hintText: 'Search by date or lane...',
@@ -4041,7 +4183,6 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                   Expanded(
                     child: Builder(
                       builder: (context) {
-
                         final filtered = localLogs.where((log) {
                           final query = searchQuery.toLowerCase();
                           final timeIn =
@@ -4049,10 +4190,10 @@ if (tx.penalty.isNotEmpty && tx.penalty != '₱0.00') ...[
                           final laneVal =
                               log['lane']?.toString().toLowerCase() ?? '';
 
-bool matchesSearch =
+                          bool matchesSearch =
                               timeIn.contains(query) || laneVal.contains(query);
 
-bool matchesPresence = true;
+                          bool matchesPresence = true;
                           final bool isAtLibrary = log['timeOut'] == null ||
                               log['timeOut'].toString().isEmpty ||
                               log['timeOut'].toString() == 'null';
@@ -4062,14 +4203,14 @@ bool matchesPresence = true;
                             matchesPresence = !isAtLibrary;
                           }
 
-bool matchesLane = true;
+                          bool matchesLane = true;
                           if (selectedLane != 'All') {
                             matchesLane = selectedLane
                                 .toLowerCase()
                                 .contains(laneVal.toLowerCase());
                           }
 
-bool matchesTime = true;
+                          bool matchesTime = true;
                           if (selectedTimeframe != 'All Time') {
                             try {
                               final timeInStr = log['timeIn']?.toString() ?? '';
@@ -4218,7 +4359,6 @@ bool matchesTime = true;
   }
 
   void _showSessions() {
-
     PcService().fetchComputers().then((pcs) {
       if (mounted && pcs.isNotEmpty) {
         setState(() => _cachedComputers = pcs);
@@ -4315,7 +4455,8 @@ bool matchesTime = true;
                                 boxShadow: isSearchFocused
                                     ? [
                                         BoxShadow(
-                                          color: _primaryColor.withOpacity(0.08),
+                                          color:
+                                              _primaryColor.withOpacity(0.08),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -4325,7 +4466,8 @@ bool matchesTime = true;
                               child: TextField(
                                 onChanged: (val) =>
                                     setSheetState(() => searchQuery = val),
-                                style: TextStyle(color: _textColor, fontSize: 14),
+                                style:
+                                    TextStyle(color: _textColor, fontSize: 14),
                                 cursorColor: _primaryColor,
                                 decoration: InputDecoration(
                                   hintText: 'Search PC or reference...',
@@ -4376,7 +4518,6 @@ bool matchesTime = true;
                                     : _textColor.withOpacity(0.6),
                                 size: 20),
                             onPressed: () {
-
                               final historyPcs = _cachedSessions
                                   .map((s) => s.computerName)
                                   .toSet();
@@ -4440,15 +4581,15 @@ bool matchesTime = true;
                                   color: _primaryColor));
                         }
 
-final filtered = sessions.where((s) {
+                        final filtered = sessions.where((s) {
                           final query = searchQuery.toLowerCase();
                           final pcName = s.computerName.toLowerCase();
                           final ref = s.reference?.toLowerCase() ?? '';
 
-bool matchesSearch =
+                          bool matchesSearch =
                               pcName.contains(query) || ref.contains(query);
 
-bool matchesStatus = true;
+                          bool matchesStatus = true;
                           if (selectedStatus != 'All') {
                             final sStatus = s.status.toLowerCase();
                             final selSt = selectedStatus.toLowerCase();
@@ -4460,7 +4601,7 @@ bool matchesStatus = true;
                             }
                           }
 
-bool matchesDuration = true;
+                          bool matchesDuration = true;
                           if (selectedDuration != 'All') {
                             final dur = s.duration.toLowerCase();
                             final sel = selectedDuration.toLowerCase();
@@ -4478,7 +4619,7 @@ bool matchesDuration = true;
                             }
                           }
 
-bool matchesPc = true;
+                          bool matchesPc = true;
                           if (selectedPc != 'All') {
                             matchesPc = s.computerName
                                 .toLowerCase()
@@ -4656,10 +4797,11 @@ bool matchesPc = true;
                   _buildEditField('Contact Number', _contactController,
                       Icons.phone_outlined),
                   const SizedBox(height: 20),
-                  _buildEditField(
-                      'Age', _ageController, Icons.cake_outlined,
+                  _buildEditField('Age', _ageController, Icons.cake_outlined,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly
+                      ]),
                   const SizedBox(height: 20),
                   _buildEditField(
                       'ID Number', _idController, Icons.badge_outlined,
@@ -4705,7 +4847,10 @@ bool matchesPc = true;
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isSaving ? null : () => _saveProfileChanges(setModalState: setModalState),
+                      onPressed: _isSaving
+                          ? null
+                          : () =>
+                              _saveProfileChanges(setModalState: setModalState),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentColor,
                         shape: RoundedRectangleBorder(
@@ -4869,16 +5014,13 @@ bool matchesPc = true;
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         children: [
-
           ListTile(
             onTap: () async {
               setState(() => _is2FAExpanded = !_is2FAExpanded);
 
               if (_is2FAExpanded && !_is2FAEnabled && _2faQrCodeUrl == null) {
-
                 try {
-                  final setup = await AuthService()
-                      .get2FASetup();
+                  final setup = await AuthService().get2FASetup();
                   if (mounted) {
                     setState(() {
                       _2faQrCodeUrl = setup['qrCodeUrl'];
@@ -4945,8 +5087,7 @@ bool matchesPc = true;
               ],
             ),
           ),
-
-if (_is2FAExpanded)
+          if (_is2FAExpanded)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               decoration: BoxDecoration(
@@ -4985,12 +5126,10 @@ if (_is2FAExpanded)
               color: _textColor.withOpacity(0.6), fontSize: 13, height: 1.5),
         ),
         const SizedBox(height: 24),
-
-_build2FAStep(1, "Open Account Settings",
+        _build2FAStep(1, "Open Account Settings",
             "Navigate to Profile → Account Settings → tap \"Two-Factor Authentication\""),
         _build2FAStep(2, "View the Setup Panel",
             "The section expands to show a QR code and a Manual Entry Key"),
-
         const SizedBox(height: 24),
         Center(
           child: Container(
@@ -5018,10 +5157,8 @@ _build2FAStep(1, "Open Account Settings",
           ),
         ),
         const SizedBox(height: 24),
-
         _build2FAStep(3, "Scan or Enter Manually",
             "Open your authenticator app and choose one of the options below"),
-
         GestureDetector(
           onLongPress: () {
             final key = _2faManualKey ?? _2faSecret;
@@ -5089,7 +5226,6 @@ _build2FAStep(1, "Open Account Settings",
           ),
         ),
         const SizedBox(height: 24),
-
         _build2FAStep(4, "Confirm Security Code",
             "Enter the 6-digit code generated by your app below to finalize"),
         const SizedBox(height: 12),
@@ -5118,7 +5254,6 @@ _build2FAStep(1, "Open Account Settings",
           ),
         ),
         const SizedBox(height: 24),
-
         SizedBox(
           width: double.infinity,
           height: 50,

@@ -634,12 +634,12 @@ class AuthService {
         final data = jsonDecode(response.body);
         return {
           'count': data['count'] ?? 0,
-          'maxCapacity': 300,
+          'maxCapacity': data['maxCapacity'] ?? 70,
         };
       }
     } catch (_) {}
 
-    return {'count': 0, 'maxCapacity': 300};
+    return {'count': 0, 'maxCapacity': 70};
   }
 
   Future<Map<String, dynamic>> updateProfile({

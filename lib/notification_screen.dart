@@ -109,8 +109,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
       return Icons.login_outlined;
     } else if (type == 'status') {
-      if (title.toLowerCase().contains('borrow')) {
+      final t = title.toLowerCase();
+      if (t.contains('borrow')) {
         return Icons.book_outlined;
+      } else if (t.contains('seat') || t.contains('capacity')) {
+        return Icons.chair_outlined;
       }
       return Icons.computer_outlined;
     } else if (type == 'deadline') {
@@ -119,8 +122,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Icons.notifications_none_outlined;
   }
 
-  Color _iconColorFor(String type) {
+  Color _iconColorFor(String type, [String title = '']) {
+    final t = title.toLowerCase();
     if (_isDark) {
+      if (t.contains('seat') || t.contains('available')) {
+        return const Color(0xFF34D399);
+      }
       switch (type) {
         case 'deadline':
           return const Color(0xFFFB923C);
@@ -131,6 +138,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
       return Colors.white70;
     } else {
+      if (t.contains('seat') || t.contains('available')) {
+        return const Color(0xFF047857);
+      }
       switch (type) {
         case 'deadline':
           return const Color(0xFFC2410C);
@@ -284,7 +294,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Widget _buildListItem(NotificationItem n) {
-    final iconColor = _iconColorFor(n.type);
+    final iconColor = _iconColorFor(n.type, n.title);
     final avatarIcon = _iconFor(n.type, n.title);
     final dividerColor = _textColor.withOpacity(0.07);
 

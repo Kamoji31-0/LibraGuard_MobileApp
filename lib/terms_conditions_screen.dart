@@ -122,7 +122,8 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                   BoxShadow(
                     color: isDark
                         ? const Color(0xFFD72036).withOpacity(0.12)
-                        : const Color(0xFF800000).withOpacity(0.08),
+                        : const Color.fromARGB(255, 242, 212, 212)
+                            .withOpacity(0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -144,19 +145,6 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _accentColor.withOpacity(isDark ? 0.2 : 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.verified_user_outlined,
-                          color: _accentColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,

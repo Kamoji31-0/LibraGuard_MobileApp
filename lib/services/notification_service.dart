@@ -111,6 +111,9 @@ class NotificationService {
       case 'gate':
         navigatorKey.currentState?.pushNamed('/profile/gate');
         break;
+      case 'capacity':
+        navigatorKey.currentState?.pushNamed('/notifications');
+        break;
       default:
         navigatorKey.currentState?.pushNamed('/notifications');
     }
@@ -177,10 +180,22 @@ class NotificationService {
       enableVibration: true,
     );
 
+    // 5. Library Capacity Channel
+    const AndroidNotificationChannel capacityChannel =
+        AndroidNotificationChannel(
+      'lg_capacity',
+      'Capacity Alerts',
+      description: 'Alerts when library is full or seats become available',
+      importance: Importance.high,
+      enableVibration: true,
+      playSound: true,
+    );
+
     await androidImplementation.createNotificationChannel(deadlinesChannel);
     await androidImplementation.createNotificationChannel(pcAlarmChannel);
     await androidImplementation.createNotificationChannel(statusChannel);
     await androidImplementation.createNotificationChannel(gateChannel);
+    await androidImplementation.createNotificationChannel(capacityChannel);
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -934,19 +949,21 @@ class NotificationService {
     } catch (_) {}
   }
 
-  Future<void> showLibraryFullNotification() async {
+  Future<void> showLibraryFullNotification({int maxCapacity = 70}) async {
     const int notifId = 50000;
     const String title = '🚨 Library Capacity Alert';
-    const String bodyText =
-        'The library has reached its maximum capacity of 300 seats.';
+    final String bodyText =
+        'The library has reached its maximum capacity of $maxCapacity seats.';
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'lg_capacity',
       'Capacity Alerts',
-      channelDescription: 'Alerts when library is full',
+      channelDescription: 'Alerts when library is full or seats become available',
       importance: Importance.high,
       priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
     );
 
     const NotificationDetails details =
@@ -957,11 +974,53 @@ class NotificationService {
       title: title,
       body: bodyText,
       notificationDetails: details,
+      payload: 'capacity',
     );
 
     await logNotification(NotificationItem(
       id: 'capacity_full_${DateTime.now().millisecondsSinceEpoch}',
       title: 'Library Capacity Full',
+      subtitle: bodyText,
+      type: 'status',
+      firedAt: DateTime.now(),
+    ));
+  }
+
+  Future<void> showSeatsAvailableNotification({
+    required int availableSeats,
+    int maxCapacity = 70,
+  }) async {
+    const int notifId = 50001;
+    const String title = '🪑 Seats Available!';
+    final String bodyText = availableSeats == 1
+        ? 'A seat is now available in the library! ($availableSeats of $maxCapacity seats vacant).'
+        : 'Seats are now available in the library! ($availableSeats of $maxCapacity seats vacant).';
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'lg_capacity',
+      'Capacity Alerts',
+      channelDescription: 'Alerts when library is full or seats become available',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const NotificationDetails details =
+        NotificationDetails(android: androidDetails);
+
+    await _notifications.show(
+      id: notifId,
+      title: title,
+      body: bodyText,
+      notificationDetails: details,
+      payload: 'capacity',
+    );
+
+    await logNotification(NotificationItem(
+      id: 'capacity_avail_${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Seats Available',
       subtitle: bodyText,
       type: 'status',
       firedAt: DateTime.now(),

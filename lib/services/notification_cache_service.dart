@@ -228,10 +228,36 @@ class NotificationCacheService {
     await prefs.setString(_gateKey, jsonEncode(updated));
   }
 
+  static const _occupancyWasFullKey = 'lg_cache_occupancy_was_full';
+
+  Future<void> checkOccupancyChanges(int count, int maxCapacity) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool wasFull = prefs.getBool(_occupancyWasFullKey) ?? false;
+
+    if (count >= maxCapacity) {
+      if (!wasFull) {
+        await prefs.setBool(_occupancyWasFullKey, true);
+        await NotificationService.instance
+            .showLibraryFullNotification(maxCapacity: maxCapacity);
+      }
+    } else {
+      if (wasFull) {
+        // Library was at maximum capacity and a student got out, freeing up seats!
+        await prefs.setBool(_occupancyWasFullKey, false);
+        final int available = maxCapacity - count;
+        await NotificationService.instance.showSeatsAvailableNotification(
+          availableSeats: available > 0 ? available : 1,
+          maxCapacity: maxCapacity,
+        );
+      }
+    }
+  }
+
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_borrowKey);
     await prefs.remove(_pcKey);
     await prefs.remove(_gateKey);
+    await prefs.remove(_occupancyWasFullKey);
   }
 }

@@ -24,7 +24,7 @@ class NoiseDetectionScreen extends StatelessWidget {
             number,
             style: TextStyle(
               color: accentColor,
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -34,7 +34,7 @@ class NoiseDetectionScreen extends StatelessWidget {
               text,
               style: TextStyle(
                 color: textColor.withOpacity(0.8),
-                fontSize: 15,
+                fontSize: 14,
                 height: 1.5,
               ),
             ),
@@ -46,13 +46,13 @@ class NoiseDetectionScreen extends StatelessWidget {
     Widget sectionTitle(IconData icon, String title, {Color? iconColor}) {
       return Row(
         children: [
-          Icon(icon, color: iconColor ?? textColor, size: 24),
+          Icon(icon, color: iconColor ?? textColor, size: 22),
           const SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
               color: textColor,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -117,6 +117,15 @@ class NoiseDetectionScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Noise Detection',
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        titleSpacing: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -124,41 +133,7 @@ class NoiseDetectionScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Noise Detection',
-                style: TextStyle(
-                  color: accentColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'ECHOGUARD SOUND MONITORING SYSTEM',
-                style: TextStyle(
-                  color: textColor.withOpacity(0.6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.sensors,
-                      color: textColor.withOpacity(0.8), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Reading Area & Computer Lab',
-                    style: TextStyle(
-                      color: textColor.withOpacity(0.8),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
 
               // ── How It Works Card ──────────────────────────────────────────
               Container(

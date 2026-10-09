@@ -11,10 +11,14 @@ class BorrowTransaction {
   final String borrowerName;
   final String borrowDate;
   final String dueDate;
+  final String? dueDateISO;
   final String pickupDeadline;
   final String? returnDate;
   final String status;
   final String penalty;
+  final String? borrowType;
+  final String? classStart;
+  final String? classEnd;
 
   BorrowTransaction({
     required this.id,
@@ -24,10 +28,14 @@ class BorrowTransaction {
     required this.borrowerName,
     required this.borrowDate,
     required this.dueDate,
+    this.dueDateISO,
     required this.pickupDeadline,
     this.returnDate,
     required this.status,
     required this.penalty,
+    this.borrowType,
+    this.classStart,
+    this.classEnd,
   });
 
   factory BorrowTransaction.fromJson(Map<String, dynamic> json) {
@@ -41,10 +49,14 @@ class BorrowTransaction {
       borrowerName: json['name']?.toString() ?? '',
       borrowDate: json['borrowDate']?.toString() ?? '',
       dueDate: json['dueDate']?.toString() ?? '',
+      dueDateISO: json['dueDateISO']?.toString(),
       pickupDeadline: json['pickupDeadline']?.toString() ?? '',
       returnDate: json['returnDate']?.toString(),
       status: json['status']?.toString() ?? 'Unknown',
       penalty: json['penalty']?.toString() ?? '₱0.00',
+      borrowType: json['borrowType']?.toString(),
+      classStart: json['classStart']?.toString(),
+      classEnd: json['classEnd']?.toString(),
     );
   }
 
@@ -137,10 +149,14 @@ final results = currentUserId.isNotEmpty
             'borrowerName': e.borrowerName,
             'borrowDate': e.borrowDate,
             'dueDate': e.dueDate,
+            'dueDateISO': e.dueDateISO,
             'pickupDeadline': e.pickupDeadline,
             'returnDate': e.returnDate,
             'status': e.status,
             'penalty': e.penalty,
+            'borrowType': e.borrowType,
+            'classStart': e.classStart,
+            'classEnd': e.classEnd,
           }).toList());
         }
 
@@ -158,6 +174,9 @@ _cachedTransactions = results;
 Future<Map<String, dynamic>> submitBorrowRequest({
     required String bookId,
     DateTime? dueDate,
+    String? borrowType,
+    String? classStart,
+    String? classEnd,
   }) async {
     final authService = AuthService();
     final token = await authService.getToken();
@@ -176,17 +195,22 @@ final profileRes = await authService.getProfile();
     final due = dueDate ?? DateTime.now().add(const Duration(days: 7));
 
     try {
+      final Map<String, dynamic> requestBody = {
+        'userId': userId,
+        'bookId': bookId,
+        'dueDate': due.toUtc().toIso8601String(),
+        if (borrowType != null && borrowType.isNotEmpty) 'borrowType': borrowType,
+        if (classStart != null && classStart.isNotEmpty) 'classStart': classStart,
+        if (classEnd != null && classEnd.isNotEmpty) 'classEnd': classEnd,
+      };
+
       final response = await http.post(
         Uri.parse('$_baseUrl/transactions'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'userId': userId,
-          'bookId': bookId,
-          'dueDate': due.toIso8601String(),
-        }),
+        body: jsonEncode(requestBody),
       );
 
       final data = jsonDecode(response.body);

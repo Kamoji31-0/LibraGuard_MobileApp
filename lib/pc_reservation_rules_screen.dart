@@ -31,6 +31,15 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
           icon: Icon(Icons.arrow_back, color: _textColor),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Computer Reservation',
+          style: TextStyle(
+            color: _accentColor,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        titleSpacing: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -38,41 +47,7 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Computer Reservation',
-                style: TextStyle(
-                  color: _accentColor,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'RESERVE A LIBRARY COMPUTER',
-                style: TextStyle(
-                  color: _textColor.withOpacity(0.6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Icon(Icons.desktop_windows_outlined,
-                      color: _textColor.withOpacity(0.8), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Computer Lab',
-                    style: TextStyle(
-                      color: _textColor.withOpacity(0.8),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
@@ -99,7 +74,7 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                           'Usage Rules',
                           style: TextStyle(
                             color: _textColor,
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -108,6 +83,9 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                     const SizedBox(height: 32),
                     _buildRuleItem('01.',
                         'Reserve a computer through the library system and arrive before your scheduled time.'),
+                    const SizedBox(height: 16),
+                    _buildRuleItem('02.',
+                        'Allow app notifications on your device to receive timely reminders and alerts when your session is ending.'),
                     const SizedBox(height: 16),
                     _buildRuleItem('03.',
                         'Tap your RFID card to log in and start your session.'),
@@ -120,13 +98,14 @@ class _PcReservationRulesScreenState extends State<PcReservationRulesScreen> {
                     Row(
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            color: _isDark ? Colors.white : _textColor, size: 20),
+                            color: _isDark ? Colors.white : _textColor,
+                            size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Reminder',
                           style: TextStyle(
                             color: _textColor.withOpacity(0.8),
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
