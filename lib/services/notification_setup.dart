@@ -10,23 +10,28 @@ import 'pc_service.dart';
 
 /// Call after successful login or when restoring an existing session.
 Future<void> setupNotificationsAfterLogin() async {
-  if (kIsWeb) return;
   final token = await AuthService().getToken();
   if (token == null) return;
 
-  // Sync active FCM token with the backend now that user is authenticated
+  // Sync active FCM token with the backend now that user is authenticated (Web & Mobile)
   await FcmService().refreshAndSaveToken();
 
-  await NotificationService.instance.requestPermissions();
+  if (!kIsWeb) {
+    await NotificationService.instance.requestPermissions();
+  }
 
   final txs = await BorrowService().fetchMyTransactions(forceRefresh: true);
-  await NotificationService.instance.scheduleBookDeadlines(txs);
+  if (!kIsWeb) {
+    await NotificationService.instance.scheduleBookDeadlines(txs);
+  }
   await NotificationCacheService().checkBorrowChanges(txs);
 
   final sessions = await PcService().fetchMySessions();
-  for (final s in sessions) {
-    if (s.isActive) {
-      await NotificationService.instance.schedulePcSessionAlarm(s);
+  if (!kIsWeb) {
+    for (final s in sessions) {
+      if (s.isActive) {
+        await NotificationService.instance.schedulePcSessionAlarm(s);
+      }
     }
   }
   await NotificationCacheService().checkPcChanges(sessions);
@@ -39,24 +44,29 @@ Future<void> setupNotificationsAfterLogin() async {
   // Sync favorites from the account
   await FavoriteService().getFavoriteIds();
 
-  await registerBackgroundPollTasks();
+  if (!kIsWeb) {
+    await registerBackgroundPollTasks();
+  }
 }
 
 /// Immediate diff check when app is open or resumed.
 Future<void> checkStatusChangesNow() async {
-  if (kIsWeb) return;
   final token = await AuthService().getToken();
   if (token == null) return;
 
   final txs = await BorrowService().fetchMyTransactions(forceRefresh: true);
   await NotificationCacheService().checkBorrowChanges(txs);
-  await NotificationService.instance.scheduleBookDeadlines(txs);
+  if (!kIsWeb) {
+    await NotificationService.instance.scheduleBookDeadlines(txs);
+  }
 
   final sessions = await PcService().fetchMySessions();
   await NotificationCacheService().checkPcChanges(sessions);
-  for (final s in sessions) {
-    if (s.isActive) {
-      await NotificationService.instance.schedulePcSessionAlarm(s);
+  if (!kIsWeb) {
+    for (final s in sessions) {
+      if (s.isActive) {
+        await NotificationService.instance.schedulePcSessionAlarm(s);
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -336,6 +337,7 @@ class NotificationService {
   }
 
   Future<void> cancelBookSchedule(String txId) async {
+    if (kIsWeb) return;
     final int hash = txId.hashCode.abs() % 8000;
     await _notifications.cancel(id: 10000 + hash);
     await _notifications.cancel(id: 11000 + hash);
@@ -344,6 +346,7 @@ class NotificationService {
   }
 
   Future<void> cancelPcAlarm(String sessId) async {
+    if (kIsWeb) return;
     final int hash = sessId.hashCode.abs() % 8000;
     await _notifications.cancel(id: 20000 + hash);
     await _notifications.cancel(id: 21000 + hash);
@@ -385,27 +388,29 @@ class NotificationService {
       }
     }
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'lg_status',
-      'Status Updates',
-      channelDescription: 'Approval/rejection updates',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    if (!kIsWeb) {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'lg_status',
+        'Status Updates',
+        channelDescription: 'Approval/rejection updates',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
 
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
+      const NotificationDetails details =
+          NotificationDetails(android: androidDetails);
 
-    await _notifications.show(
-      id: notifId,
-      title: type == 'borrow'
-          ? '📚 Borrow Request Update'
-          : '💻 PC Reservation Update',
-      body: bodyText,
-      notificationDetails: details,
-      payload: type == 'borrow' ? 'status_borrow' : 'status_pc',
-    );
+      await _notifications.show(
+        id: notifId,
+        title: type == 'borrow'
+            ? '📚 Borrow Request Update'
+            : '💻 PC Reservation Update',
+        body: bodyText,
+        notificationDetails: details,
+        payload: type == 'borrow' ? 'status_borrow' : 'status_pc',
+      );
+    }
 
     // Save to dynamic log list
     await logNotification(NotificationItem(
@@ -438,25 +443,27 @@ class NotificationService {
         ? 'Welcome to the library! Checked in at Lane $lane — $timeStr.'
         : 'Thank you for visiting! Checked out at Lane $lane — $timeStr.';
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'lg_gate',
-      'Gate Logs',
-      channelDescription: 'RFID entry/exit notifications',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    if (!kIsWeb) {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'lg_gate',
+        'Gate Logs',
+        channelDescription: 'RFID entry/exit notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
 
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
+      const NotificationDetails details =
+          NotificationDetails(android: androidDetails);
 
-    await _notifications.show(
-      id: notifId,
-      title: title,
-      body: bodyText,
-      notificationDetails: details,
-      payload: 'gate',
-    );
+      await _notifications.show(
+        id: notifId,
+        title: title,
+        body: bodyText,
+        notificationDetails: details,
+        payload: 'gate',
+      );
+    }
 
     await logNotification(NotificationItem(
       id: logId,
@@ -552,6 +559,7 @@ class NotificationService {
   }
 
   Future<void> cancelAll() async {
+    if (kIsWeb) return;
     await _notifications.cancelAll();
   }
 
@@ -955,27 +963,29 @@ class NotificationService {
     final String bodyText =
         'The library has reached its maximum capacity of $maxCapacity seats.';
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'lg_capacity',
-      'Capacity Alerts',
-      channelDescription: 'Alerts when library is full or seats become available',
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    );
+    if (!kIsWeb) {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'lg_capacity',
+        'Capacity Alerts',
+        channelDescription: 'Alerts when library is full or seats become available',
+        importance: Importance.high,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+      );
 
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
+      const NotificationDetails details =
+          NotificationDetails(android: androidDetails);
 
-    await _notifications.show(
-      id: notifId,
-      title: title,
-      body: bodyText,
-      notificationDetails: details,
-      payload: 'capacity',
-    );
+      await _notifications.show(
+        id: notifId,
+        title: title,
+        body: bodyText,
+        notificationDetails: details,
+        payload: 'capacity',
+      );
+    }
 
     await logNotification(NotificationItem(
       id: 'capacity_full_${DateTime.now().millisecondsSinceEpoch}',
@@ -996,27 +1006,29 @@ class NotificationService {
         ? 'A seat is now available in the library! ($availableSeats of $maxCapacity seats vacant).'
         : 'Seats are now available in the library! ($availableSeats of $maxCapacity seats vacant).';
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'lg_capacity',
-      'Capacity Alerts',
-      channelDescription: 'Alerts when library is full or seats become available',
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    );
+    if (!kIsWeb) {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'lg_capacity',
+        'Capacity Alerts',
+        channelDescription: 'Alerts when library is full or seats become available',
+        importance: Importance.high,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+      );
 
-    const NotificationDetails details =
-        NotificationDetails(android: androidDetails);
+      const NotificationDetails details =
+          NotificationDetails(android: androidDetails);
 
-    await _notifications.show(
-      id: notifId,
-      title: title,
-      body: bodyText,
-      notificationDetails: details,
-      payload: 'capacity',
-    );
+      await _notifications.show(
+        id: notifId,
+        title: title,
+        body: bodyText,
+        notificationDetails: details,
+        payload: 'capacity',
+      );
+    }
 
     await logNotification(NotificationItem(
       id: 'capacity_avail_${DateTime.now().millisecondsSinceEpoch}',
