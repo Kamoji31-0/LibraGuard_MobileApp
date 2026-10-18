@@ -1039,6 +1039,46 @@ class NotificationService {
     ));
   }
 
+  Future<void> showGenericNotification({
+    required String title,
+    required String body,
+    String? payload,
+    String? type,
+  }) async {
+    final int notifId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+    if (!kIsWeb) {
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'lg_status',
+        'Status Updates',
+        channelDescription: 'Library notifications',
+        importance: Importance.high,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const NotificationDetails details =
+          NotificationDetails(android: androidDetails);
+
+      await _notifications.show(
+        id: notifId,
+        title: title,
+        body: body,
+        notificationDetails: details,
+        payload: payload ?? 'general',
+      );
+    }
+
+    await logNotification(NotificationItem(
+      id: notifId.toString(),
+      title: title,
+      subtitle: body,
+      type: type ?? 'status',
+      firedAt: DateTime.now(),
+    ));
+  }
+
   String _formatTimeString(String rawIso) {
     try {
       final DateTime dt = DateTime.parse(rawIso).toLocal();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 import 'services/auth_service.dart';
 import 'terms_conditions_screen.dart';
@@ -56,6 +57,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _openEmailApp() async {
+    final Uri gmailUri = Uri.parse('googlegmail:///');
+    final Uri mailtoUri = Uri.parse('mailto:');
+    final Uri webGmailUri = Uri.parse('https://mail.google.com');
+
+    try {
+      if (await canLaunchUrl(gmailUri)) {
+        await launchUrl(gmailUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      if (await canLaunchUrl(mailtoUri)) {
+        await launchUrl(mailtoUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      await launchUrl(webGmailUri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+
   void _register() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedToTerms) {
@@ -83,7 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       department:
           _selectedRole == 'STUDENT' ? (_selectedDepartment ?? '') : null,
       yearLevel: _selectedRole == 'STUDENT' ? (_selectedYearLevel ?? '') : null,
-      role: _selectedRole,
+      role: _selectedRole == 'STUDENT' ? 'Student' : 'Visitor',
     );
 
     setState(() => _isLoading = false);
@@ -94,9 +119,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('has_seen_onboarding', true);
       } catch (_) {}
+      if (!mounted) return;
+
+      final registeredEmail = _emailController.text.trim();
 
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (_) => Dialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -110,52 +139,109 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: _accentColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.check_circle,
-                      color: Colors.green.shade600, size: 48),
+                  child: Icon(Icons.mark_email_read_outlined,
+                      color: _accentColor, size: 48),
                 ),
                 const SizedBox(height: 20),
-                Text('Account Created',
-                    style: TextStyle(
-                        color: _textColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold)),
+                Text(
+                  'Email Sent',
+                  style: TextStyle(
+                    color: _textColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Text(
-                  'Your $_selectedRole account has been created. Please verify your '
-                  'account by checking your email for the verification link. '
-                  'You can then go back to login.',
+                  'Please verify your account and back in app to re-login.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: _textColor.withOpacity(0.7),
-                      fontSize: 14,
-                      height: 1.4),
+                    color: _textColor.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: 32),
+                if (registeredEmail.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _textColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      registeredEmail,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _textColor.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 28),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.mail_outline_rounded, size: 20),
+                    label: const Text(
+                      'OPEN GMAIL',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    onPressed: () async {
                       Navigator.of(context).pop();
                       Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LoginScreen()));
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                      await _openEmailApp();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _accentColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 2,
                     ),
-                    child: const Text('BACK TO LOGIN',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: _textColor.withValues(alpha: 0.7),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'BACK TO LOGIN',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -233,7 +319,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Role selector
+                        
+                        
                         Container(
                           width: double.infinity,
                           height: 56,
@@ -245,11 +332,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(children: [
-                            _buildRoleTab('STUDENT'),
-                            _buildRoleTab('VISITOR'),
+                            _buildRoleTab('STUDENT', Icons.school_outlined),
+                            _buildRoleTab('VISITOR', Icons.person_outline),
                           ]),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
                         // Full Name
                         _buildLabel('Full Name'),
@@ -263,7 +350,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               return 'Please enter your full name';
                             if (v.trim().length < 2)
                               return 'Name must be at least 2 characters';
-                            if (!RegExp(r"^[a-zA-Z\s.''-]+$")
+                            if (!RegExp(r"^[a-zA-ZñÑ\u00C0-\u017F\s.''-]+$")
                                 .hasMatch(v.trim()))
                               return 'Name must contain letters only';
                             return null;
@@ -282,7 +369,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: (v) {
                               if (v == null || v.trim().isEmpty)
                                 return 'Please enter your Student ID';
-                              if (!RegExp(r'^\d{4}-\d{5}$').hasMatch(v.trim()))
+                              if (!RegExp(r'^\d{4}-\d{4,6}$').hasMatch(v.trim()))
                                 return 'Format must be: 2023-00216';
                               return null;
                             },
@@ -550,17 +637,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildRoleTab(String role) {
+  Widget _buildRoleTab(String role, IconData icon) {
     final isSelected = _selectedRole == role;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() {
-          _selectedRole = role;
-          _idController.clear();
-          _selectedYearLevel = null;
-          _selectedDepartment = null;
-        }),
-        child: Container(
+        onTap: () {
+          if (_selectedRole == role) return;
+          setState(() {
+            _selectedRole = role;
+            _idController.clear();
+            _selectedYearLevel = null;
+            _selectedDepartment = null;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: isSelected ? _accentColor : Colors.transparent,
@@ -575,14 +666,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 : null,
           ),
           alignment: Alignment.center,
-          child: Text(
-            role,
-            style: TextStyle(
-              color: isSelected ? Colors.white : _textColor.withOpacity(0.6),
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-              fontSize: 13,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected ? Colors.white : _textColor.withOpacity(0.6),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                role,
+                style: TextStyle(
+                  color:
+                      isSelected ? Colors.white : _textColor.withOpacity(0.6),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
         ),
       ),

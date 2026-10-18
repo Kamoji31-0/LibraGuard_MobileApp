@@ -55,7 +55,7 @@ Future<void> registerBackgroundPollTasks() async {
     'pollStatusChanges',
     frequency: const Duration(minutes: 15),
     constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
   );
 
   await Workmanager().registerPeriodicTask(
@@ -64,7 +64,7 @@ Future<void> registerBackgroundPollTasks() async {
     frequency: const Duration(minutes: 15),
     initialDelay: const Duration(minutes: 7),
     constraints: Constraints(networkType: NetworkType.connected),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
   );
 }
 

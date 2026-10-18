@@ -969,11 +969,188 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Shows a bottom sheet letting the user choose between the camera (selfie)
+  /// or the photo gallery, then delegates to [_pickImage].
+  void _showImagePickerOptions() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Use the app's actual ThemeData card/surface color as the sheet background.
+    final sheetBg = _cardColor;
+    final textPrimary = _textColor;
+    final textSecondary = _textColor.withOpacity(0.55);
+    // Selfie tile: accent (red/maroon) tint
+    final selfieBg = _accentColor.withOpacity(isDark ? 0.18 : 0.10);
+    final selfieIcon = _accentColor;
+    // Gallery tile: primary muted tint (slightly different from accent)
+    final galleryBg = isDark
+        ? Colors.white.withOpacity(0.07)
+        : _primaryColor.withOpacity(0.07);
+    final galleryIcon = _primaryColor;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: textSecondary.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Update Profile Photo',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Choose how you want to update your photo',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // Take selfie option
+              _imagePickerOptionTile(
+                icon: Icons.camera_front_outlined,
+                label: 'Take a Selfie',
+                subtitle: 'Use your front camera',
+                iconBg: selfieBg,
+                iconColor: selfieIcon,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                borderColor: isDark
+                    ? Colors.white.withOpacity(0.10)
+                    : Colors.black.withOpacity(0.08),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(source: ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Upload from gallery option
+              _imagePickerOptionTile(
+                icon: Icons.photo_library_outlined,
+                label: 'Upload from Gallery',
+                subtitle: 'Choose from your photos',
+                iconBg: galleryBg,
+                iconColor: galleryIcon,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                borderColor: isDark
+                    ? Colors.white.withOpacity(0.10)
+                    : Colors.black.withOpacity(0.08),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(source: ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Cancel
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    foregroundColor: textSecondary,
+                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds a single row option tile used inside [_showImagePickerOptions].
+  Widget _imagePickerOptionTile({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color iconBg,
+    required Color iconColor,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color borderColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _backgroundColor.withOpacity(0.4),
+            border: Border.all(color: borderColor, width: 1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: textSecondary, fontSize: 12)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right,
+                  color: textSecondary.withOpacity(0.5), size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickImage(
-      {bool instantSave = true, Function? onImageSelected}) async {
+      {ImageSource source = ImageSource.gallery,
+      bool instantSave = true,
+      Function? onImageSelected}) async {
     final picker = ImagePicker();
     final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
+      preferredCameraDevice: source == ImageSource.camera
+          ? CameraDevice.front
+          : CameraDevice.rear,
       imageQuality: 50,
     );
 
@@ -1121,7 +1298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   bottom: -4,
                   right: -4,
                   child: GestureDetector(
-                    onTap: () => _pickImage(),
+                    onTap: () => _showImagePickerOptions(),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(

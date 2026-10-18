@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 import 'services/auth_service.dart';
@@ -55,6 +56,30 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openEmailApp() async {
+    final Uri gmailUri = Uri.parse('googlegmail:///');
+    final Uri mailtoUri = Uri.parse('mailto:');
+    final Uri webGmailUri = Uri.parse('https://mail.google.com');
+
+    try {
+      if (await canLaunchUrl(gmailUri)) {
+        await launchUrl(gmailUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      if (await canLaunchUrl(mailtoUri)) {
+        await launchUrl(mailtoUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    try {
+      await launchUrl(webGmailUri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 
   void _login() async {
@@ -224,13 +249,24 @@ final bool is2FARequiredByServer = result['require2fa'] == true;
         );
       } else {
         if (!mounted) return;
+        final isUnverified = result['isUnverified'] == true;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message']),
+            content: Text(result['message'] ?? 'Login failed'),
             backgroundColor: Theme.of(context).brightness == Brightness.dark
                 ? const Color(0xFFB21A2D)
                 : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
+            duration: isUnverified
+                ? const Duration(seconds: 6)
+                : const Duration(seconds: 4),
+            action: isUnverified
+                ? SnackBarAction(
+                    label: 'OPEN GMAIL',
+                    textColor: Colors.white,
+                    onPressed: _openEmailApp,
+                  )
+                : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),

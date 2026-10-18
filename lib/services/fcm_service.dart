@@ -11,9 +11,10 @@ const String fcmVapidKey =
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   if (!kIsWeb) {
-    // If you're going to use other Firebase services in the background, such as Firestore,
-    // make sure you call `initializeApp` before using other Firebase services.
-    await Firebase.initializeApp();
+    try {
+      await Firebase.initializeApp();
+      await NotificationService.instance.initialize(handleLaunchDetails: false);
+    } catch (_) {}
   }
 
   if (kDebugMode) {
@@ -22,10 +23,10 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   }
 
   // Handle parsing FCM background payload
-  _handleIncomingMessage(message);
+  await _handleIncomingMessage(message);
 }
 
-void _handleIncomingMessage(RemoteMessage message) {
+Future<void> _handleIncomingMessage(RemoteMessage message) async {
   final Map<String, dynamic> data = message.data;
   final String? type = data['type']?.toString();
   bool handled = false;
@@ -38,14 +39,14 @@ void _handleIncomingMessage(RemoteMessage message) {
 
     if (entityType != null && status != null && id != null && title != null) {
       if (!kIsWeb) {
-        NotificationService.instance.showStatusNotification(
+        await NotificationService.instance.showStatusNotification(
           type: entityType,
           status: status,
           itemTitle: title,
           id: id,
         );
       } else {
-        NotificationService.instance.logNotification(NotificationItem(
+        await NotificationService.instance.logNotification(NotificationItem(
           id: id,
           title: entityType == 'borrow' ? 'Borrow Update' : 'PC Session Update',
           subtitle: 'Status updated to: $status for $title',
@@ -64,7 +65,7 @@ void _handleIncomingMessage(RemoteMessage message) {
     if (logId != null && timeIn != null && lane != null) {
       final bool isOut = timeOut != null && timeOut != 'null' && timeOut.isNotEmpty && timeOut != 'Active';
       if (!kIsWeb) {
-        NotificationService.instance.showGateNotification(
+        await NotificationService.instance.showGateNotification(
           timeIn: timeIn,
           timeOut: timeOut == 'null' ? null : timeOut,
           lane: lane,
@@ -72,7 +73,7 @@ void _handleIncomingMessage(RemoteMessage message) {
           isTimeOut: isOut,
         );
       } else {
-        NotificationService.instance.logNotification(NotificationItem(
+        await NotificationService.instance.logNotification(NotificationItem(
           id: logId,
           title: isOut ? 'Gate Exit Logged' : 'Gate Entry Logged',
           subtitle: 'Lane: $lane | ${isOut ? "Exit: $timeOut" : "Entry: $timeIn"}',
@@ -85,7 +86,7 @@ void _handleIncomingMessage(RemoteMessage message) {
   }
 
   // Fallback: If message wasn't structured as status_change or gate_log,
-  // capture the notification so it still appears in the in-app notification center.
+  // display the notification banner and save to notification center.
   if (!handled) {
     final String? fallbackTitle = message.notification?.title ??
         data['title']?.toString() ??
@@ -96,16 +97,24 @@ void _handleIncomingMessage(RemoteMessage message) {
         data['content']?.toString();
 
     if (fallbackTitle != null && fallbackTitle.isNotEmpty) {
-      final String msgId = message.messageId ??
-          data['id']?.toString() ??
-          DateTime.now().millisecondsSinceEpoch.toString();
-      NotificationService.instance.logNotification(NotificationItem(
-        id: msgId,
-        title: fallbackTitle,
-        subtitle: fallbackBody,
-        type: data['type']?.toString() ?? 'status',
-        firedAt: message.sentTime ?? DateTime.now(),
-      ));
+      if (!kIsWeb) {
+        await NotificationService.instance.showGenericNotification(
+          title: fallbackTitle,
+          body: fallbackBody ?? '',
+          type: data['type']?.toString() ?? 'status',
+        );
+      } else {
+        final String msgId = message.messageId ??
+            data['id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString();
+        await NotificationService.instance.logNotification(NotificationItem(
+          id: msgId,
+          title: fallbackTitle,
+          subtitle: fallbackBody,
+          type: data['type']?.toString() ?? 'status',
+          firedAt: message.sentTime ?? DateTime.now(),
+        ));
+      }
     }
   }
 }

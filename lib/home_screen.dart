@@ -590,13 +590,129 @@ final imgData = _userProfile?['image'] ??
     );
   }
 
+
+  /// Shows a bottom sheet explaining what the Library Capacity (crowd counter) card is for.
+  void _showCapacityInfoSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        // Use ThemeData tokens — card color as sheet bg, text colors from theme
+        final sheetBg = Theme.of(ctx).cardColor;
+        final textPrimary = Theme.of(ctx).textTheme.bodyLarge?.color ??
+            (isDark ? Colors.white : const Color(0xFF1D2939));
+        final textSecondary = textPrimary.withOpacity(0.55);
+        final primaryColor = Theme.of(ctx).primaryColor;
+        final bgColor = Theme.of(ctx).scaffoldBackgroundColor;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: textSecondary.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.people_alt_outlined,
+                  color: primaryColor,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Library Capacity Counter',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This shows how many students are currently inside the library in real time.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Use it to check if the library is too full before heading over — if it's near capacity, consider visiting later for a better study experience.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _infoChip(Icons.update_rounded, 'Updates every ~30s', isDark, bgColor, textSecondary),
+                  const SizedBox(width: 8),
+                  _infoChip(Icons.wifi_rounded, 'Requires internet', isDark, bgColor, textSecondary),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Got it!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Small pill chip used inside the capacity info sheet.
+  Widget _infoChip(IconData icon, String label, bool isDark, Color bgColor, Color fgColor) {
+    final bg = isDark ? Colors.white.withOpacity(0.08) : bgColor.withOpacity(0.6);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: fgColor),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 11, color: fgColor, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
   Widget _buildCapacityCard() {
     final int occupied = _occupancyCount;
     final int total = _maxCapacity;
     final double occupancyPercent =
         total > 0 ? (occupied / total).clamp(0.0, 1.0) : 0;
 
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showCapacityInfoSheet(context),
+      child: Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -795,7 +911,8 @@ Builder(builder: (context) {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildQuickActions() {
@@ -1183,7 +1300,32 @@ switch (_selectedSort) {
     final iconColor = isDark
         ? Colors.white.withOpacity(0.25)
         : Colors.black.withOpacity(0.15);
-    return Container(
+
+    void goToDetails() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BookDetailsScreen(
+            bookId: book.id,
+            title: book.title,
+            author: book.author,
+            category: book.genre,
+            isAvailable: book.isAvailable,
+            description: book.description,
+            imageUrl: book.imageUrl,
+            publishedIn: book.publishedIn,
+            isbn: book.isbn,
+            totalCopies: book.totalCopies,
+            availableCopies: book.availableCopies,
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: goToDetails,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       decoration: BoxDecoration(
         color: _cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -1355,26 +1497,8 @@ switch (_selectedSort) {
             width: double.infinity,
             height: 26,
             child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BookDetailsScreen(
-                      bookId: book.id,
-                      title: book.title,
-                      author: book.author,
-                      category: book.genre,
-                      isAvailable: book.isAvailable,
-                      description: book.description,
-                      imageUrl: book.imageUrl,
-                      publishedIn: book.publishedIn,
-                      isbn: book.isbn,
-                      totalCopies: book.totalCopies,
-                      availableCopies: book.availableCopies,
-                    ),
-                  ),
-                );
-              },
+              onPressed: goToDetails,
+
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: theme.colorScheme.secondary, width: 1.2),
                 shape: RoundedRectangleBorder(
@@ -1393,6 +1517,7 @@ switch (_selectedSort) {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1874,3 +1999,5 @@ switch (_selectedSort) {
   }
 
 }
+
+

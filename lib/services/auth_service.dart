@@ -56,42 +56,34 @@ class AuthService {
     final jwt = await getToken();
     if (jwt == null || jwt.isEmpty) return;
 
-    final body = jsonEncode({'fcmToken': token});
+    final body = jsonEncode({
+      'fcmToken': token,
+      'fcm_token': token,
+      'deviceToken': token,
+    });
 
-    // Try multiple endpoints to support either user profile update or fcm-token update
     final endpoints = [
       '$baseUrl/users/profile',
       '$baseUrl/users/fcm-token',
     ];
 
     for (final url in endpoints) {
-      try {
-        final uri = Uri.parse(url);
-        final patchRes = await http.patch(
-          uri,
-          headers: {
-            'Authorization': 'Bearer $jwt',
-            'Content-Type': 'application/json',
-          },
-          body: body,
-        );
+      final uri = Uri.parse(url);
+      final headers = {
+        'Authorization': 'Bearer $jwt',
+        'Content-Type': 'application/json',
+      };
 
-        if (patchRes.statusCode == 200 || patchRes.statusCode == 204) {
-          print('DEBUG: Sync FCM token success with $url');
+      try {
+        final putRes = await http.put(uri, headers: headers, body: body);
+        if (putRes.statusCode == 200 || putRes.statusCode == 204) {
+          print('DEBUG: Sync FCM token success with PUT $url');
           return;
         }
 
-        final putRes = await http.put(
-          uri,
-          headers: {
-            'Authorization': 'Bearer $jwt',
-            'Content-Type': 'application/json',
-          },
-          body: body,
-        );
-
-        if (putRes.statusCode == 200 || putRes.statusCode == 204) {
-          print('DEBUG: Sync FCM token success with $url');
+        final patchRes = await http.patch(uri, headers: headers, body: body);
+        if (patchRes.statusCode == 200 || patchRes.statusCode == 204) {
+          print('DEBUG: Sync FCM token success with PATCH $url');
           return;
         }
       } catch (e) {
@@ -235,13 +227,32 @@ class AuthService {
         }
         return {'success': true, 'data': data};
       } else {
+        final String errCode = data['error']?.toString().toUpperCase() ?? '';
         final String msg = data['message']?.toString().toLowerCase() ?? '';
+
+        final bool isUnverified = errCode == 'UNVERIFIED_ACCOUNT' ||
+            msg.contains('not verified') ||
+            msg.contains('verify your email') ||
+            msg.contains('verification link');
+
+        if (isUnverified) {
+          return {
+            'success': false,
+            'isUnverified': true,
+            'message': data['message'] ??
+                'Account not verified. Please check your email for the verification link.',
+          };
+        }
+
         final bool is2FARelated = msg.contains('2fa') ||
             msg.contains('mfa') ||
-            msg.contains('verification') ||
             msg.contains('two-factor') ||
             msg.contains('two factor') ||
-            msg.contains('challenge');
+            msg.contains('authenticator') ||
+            (msg.contains('verification') &&
+                (msg.contains('code') ||
+                    msg.contains('otp') ||
+                    msg.contains('challenge')));
 
         if ((response.statusCode == 401 ||
                 response.statusCode == 403 ||
@@ -310,6 +321,12 @@ class AuthService {
     String role = 'Student',
   }) async {
     try {
+      final String normalizedRole = switch (role.trim().toUpperCase()) {
+        'STUDENT' => 'Student',
+        'VISITOR' => 'Visitor',
+        _ => role.trim(),
+      };
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
@@ -318,9 +335,12 @@ class AuthService {
           'email': email,
           'password': password,
           'idNumber': idNumber,
-          'role': role,
+          'role': normalizedRole,
           if (age != null && age.isNotEmpty) 'age': int.tryParse(age) ?? age,
-          if (department != null && department.isNotEmpty) 'dept': department,
+          if (department != null && department.isNotEmpty) ...{
+            'dept': department,
+            'department': department,
+          },
           if (yearLevel != null && yearLevel.isNotEmpty) ...{
             'year': yearLevel,
             'yearLevel': yearLevel,
@@ -330,30 +350,48 @@ class AuthService {
         }),
       );
       print(
-          'DEBUG AUTH: register body sent → role=$role, dept=$department, year=$yearLevel, age=$age, status=${response.statusCode}');
+          'DEBUG AUTH: register body sent → role=$normalizedRole, dept=$department, year=$yearLevel, age=$age, status=${response.statusCode}');
       print('DEBUG AUTH: register response → ${response.body}');
 
-      final data = jsonDecode(response.body);
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        data = null;
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final deptVal = department?.trim() ?? '';
         final yearVal = yearLevel?.trim() ?? '';
-        if (role.toUpperCase() == 'STUDENT' &&
+        if (normalizedRole.toUpperCase() == 'STUDENT' &&
             (deptVal.isNotEmpty || yearVal.isNotEmpty)) {
           final prefs = await SharedPreferences.getInstance();
           if (deptVal.isNotEmpty) await prefs.setString('pending_dept', deptVal);
           if (yearVal.isNotEmpty) await prefs.setString('pending_year', yearVal);
         }
 
-        final token =
-            data['token'] ?? data['data']?['token'] ?? data['user']?['token'];
+        final token = data is Map
+            ? (data['token'] ?? data['data']?['token'] ?? data['user']?['token'])
+            : null;
         if (token != null) await _applyPendingStudentFields(token);
 
-        return {'success': true, 'data': data};
+        return {'success': true, 'data': data ?? {}};
       } else {
+        String message = 'Registration failed';
+        if (data is Map) {
+          message = data['message']?.toString() ??
+              data['error']?.toString() ??
+              'Registration failed';
+        } else if (response.statusCode == 400) {
+          message = 'Invalid registration details. Please verify your information.';
+        } else if (response.statusCode == 409) {
+          message = 'An account with this email or ID number already exists.';
+        } else if (response.statusCode >= 500) {
+          message = 'Server is currently unavailable. Please try again shortly.';
+        }
         return {
           'success': false,
-          'message': data['message'] ?? 'Registration failed',
+          'message': message,
         };
       }
     } catch (e) {
