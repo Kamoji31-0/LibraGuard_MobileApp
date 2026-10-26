@@ -1,4 +1,4 @@
-name: "Deploy Flutter Web to GitHub Pages"
+name: "Build Flutter Web Release"
 
 on:
   workflow_dispatch:
@@ -32,10 +32,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        run: flutter build web --release --base-href "/LibraGuard_MobileApp/"
+        run: flutter build web --release --base-href "/"
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/web
+          name: flutter-web-build
+          path: build/web
+          retention-days: 14
