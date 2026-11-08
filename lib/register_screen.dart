@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,10 +58,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _openEmailApp() async {
+  Future<void> _openEmailApp([String? targetEmail]) async {
+    final email = (targetEmail ?? _emailController.text).trim().toLowerCase();
+
+    Uri webMailUri;
+    if (email.endsWith('@yahoo.com')) {
+      webMailUri = Uri.parse('https://mail.yahoo.com');
+    } else if (email.endsWith('@outlook.com') || email.endsWith('@hotmail.com')) {
+      webMailUri = Uri.parse('https://outlook.live.com');
+    } else if (email.isNotEmpty) {
+      webMailUri = Uri.parse(
+          'https://mail.google.com/mail/u/?authuser=${Uri.encodeComponent(email)}');
+    } else {
+      webMailUri = Uri.parse('https://mail.google.com');
+    }
+
     final Uri gmailUri = Uri.parse('googlegmail:///');
-    final Uri mailtoUri = Uri.parse('mailto:');
-    final Uri webGmailUri = Uri.parse('https://mail.google.com');
+    final Uri mailtoUri =
+        email.isNotEmpty ? Uri.parse('mailto:$email') : Uri.parse('mailto:');
+
+    if (kIsWeb) {
+      try {
+        await launchUrl(webMailUri, mode: LaunchMode.platformDefault);
+        return;
+      } catch (_) {}
+    }
 
     try {
       if (await canLaunchUrl(gmailUri)) {
@@ -77,7 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (_) {}
 
     try {
-      await launchUrl(webGmailUri, mode: LaunchMode.externalApplication);
+      await launchUrl(webMailUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
 
@@ -184,14 +206,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 28),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.amber.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 16,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.amber.shade300
+                              : Colors.amber.shade800),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Don\'t see the email? Please check your Spam or Junk folder.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.amber.shade200
+                                : Colors.amber.shade900,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.mail_outline_rounded, size: 20),
-                    label: const Text(
-                      'OPEN GMAIL',
-                      style: TextStyle(
+                    label: Text(
+                      registeredEmail.toLowerCase().endsWith('@yahoo.com')
+                          ? 'OPEN YAHOO MAIL'
+                          : (registeredEmail.toLowerCase().endsWith('@outlook.com') ||
+                                  registeredEmail.toLowerCase().endsWith('@hotmail.com'))
+                              ? 'OPEN OUTLOOK'
+                              : 'OPEN GMAIL',
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
@@ -203,7 +264,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
-                      await _openEmailApp();
+                      await _openEmailApp(registeredEmail);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _accentColor,

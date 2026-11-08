@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -58,10 +59,31 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _openEmailApp() async {
+  Future<void> _openEmailApp([String? targetEmail]) async {
+    final email = (targetEmail ?? _emailController.text).trim().toLowerCase();
+
+    Uri webMailUri;
+    if (email.endsWith('@yahoo.com')) {
+      webMailUri = Uri.parse('https://mail.yahoo.com');
+    } else if (email.endsWith('@outlook.com') || email.endsWith('@hotmail.com')) {
+      webMailUri = Uri.parse('https://outlook.live.com');
+    } else if (email.isNotEmpty) {
+      webMailUri = Uri.parse(
+          'https://mail.google.com/mail/u/?authuser=${Uri.encodeComponent(email)}');
+    } else {
+      webMailUri = Uri.parse('https://mail.google.com');
+    }
+
     final Uri gmailUri = Uri.parse('googlegmail:///');
-    final Uri mailtoUri = Uri.parse('mailto:');
-    final Uri webGmailUri = Uri.parse('https://mail.google.com');
+    final Uri mailtoUri =
+        email.isNotEmpty ? Uri.parse('mailto:$email') : Uri.parse('mailto:');
+
+    if (kIsWeb) {
+      try {
+        await launchUrl(webMailUri, mode: LaunchMode.platformDefault);
+        return;
+      } catch (_) {}
+    }
 
     try {
       if (await canLaunchUrl(gmailUri)) {
@@ -78,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
 
     try {
-      await launchUrl(webGmailUri, mode: LaunchMode.externalApplication);
+      await launchUrl(webMailUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
   }
 
@@ -264,7 +286,7 @@ final bool is2FARequiredByServer = result['require2fa'] == true;
                 ? SnackBarAction(
                     label: 'OPEN GMAIL',
                     textColor: Colors.white,
-                    onPressed: _openEmailApp,
+                    onPressed: () => _openEmailApp(_emailController.text.trim()),
                   )
                 : null,
             shape: RoundedRectangleBorder(
