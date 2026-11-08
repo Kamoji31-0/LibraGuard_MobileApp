@@ -41,7 +41,6 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
 
   bool _isSubmitting = false;
   String? _errorMessage;
-  bool _hasAuthError = false;
   BorrowTransaction? _resultTransaction;
 
   bool get _isAuthError {
@@ -333,7 +332,6 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
-      _hasAuthError = false;
     });
 
     final calculatedDue = _calculateDueDateTime();
@@ -391,29 +389,10 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         _resultTransaction = res['transaction'];
       });
     } else {
-      String msg = res['message'] ?? 'Something went wrong.';
-      final isSessionExpired = res['isAuthError'] == true ||
-          res['statusCode'] == 401 ||
-          res['statusCode'] == 403 ||
-          msg.toLowerCase().contains('session expired') ||
-          msg.toLowerCase().contains('token') ||
-          msg.toLowerCase().contains('corrupted') ||
-          msg.toLowerCase().contains('unauthorized') ||
-          msg.toLowerCase().contains('not authenticated');
-
-      if (isSessionExpired) {
-        msg = 'Session expired. Please log in again.';
-      }
-
       setState(() {
         _isSubmitting = false;
-        _errorMessage = msg;
-        _hasAuthError = isSessionExpired;
+        _errorMessage = res['message'] ?? 'Something went wrong.';
       });
-
-      if (isSessionExpired && mounted) {
-        _authService.showSessionExpiredDialog(context);
-      }
     }
   }
 
@@ -477,63 +456,33 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF800000).withOpacity(0.05)
+                        ? const Color(0xFF800000).withOpacity(0.12)
                         : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF800000).withOpacity(0.2)
+                            ? const Color(0xFF800000).withOpacity(0.3)
                             : Colors.red.shade200),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.error_outline,
-                              color: Theme.of(context).brightness == Brightness.dark
+                      Icon(Icons.error_outline,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF800000)
+                              : Colors.red.shade700,
+                          size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
                                   ? const Color(0xFF800000)
                                   : Colors.red.shade700,
-                              size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(
-                                  color: Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? const Color(0xFF800000)
-                                      : Colors.red.shade700,
-                                  fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_isAuthError) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF800000),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: _handleLogInAgain,
-                            icon: const Icon(Icons.login, size: 16),
-                            label: const Text(
-                              'Log In Again',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                              fontSize: 13),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),

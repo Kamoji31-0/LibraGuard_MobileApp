@@ -172,7 +172,7 @@ _cachedTransactions = results;
     }
   }
 
-Future<Map<String, dynamic>> submitBorrowRequest({
+  Future<Map<String, dynamic>> submitBorrowRequest({
     required String bookId,
     DateTime? dueDate,
     String? borrowType,
@@ -182,26 +182,10 @@ Future<Map<String, dynamic>> submitBorrowRequest({
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
-      return {
-        'success': false,
-        'statusCode': 401,
-        'isAuthError': true,
-        'message': 'Session expired. Please log in again.',
-      };
+      return {'success': false, 'message': 'You are not logged in.'};
     }
 
-    final profileRes = await authService.getProfile();
-    if (profileRes['isAuthError'] == true ||
-        profileRes['statusCode'] == 401 ||
-        profileRes['statusCode'] == 403) {
-      return {
-        'success': false,
-        'statusCode': profileRes['statusCode'] ?? 401,
-        'isAuthError': true,
-        'message': 'Session expired. Please log in again.',
-      };
-    }
-
+final profileRes = await authService.getProfile();
     final userId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         '';
@@ -224,7 +208,7 @@ Future<Map<String, dynamic>> submitBorrowRequest({
       final response = await http.post(
         Uri.parse('$_baseUrl/transactions'),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer ${token.trim()}',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(requestBody),
@@ -247,32 +231,9 @@ Future<Map<String, dynamic>> submitBorrowRequest({
           'message': 'Borrow request submitted successfully!',
         };
       } else {
-        final rawMsg = data is Map
-            ? (data['message']?.toString() ?? data['error']?.toString())
-            : null;
-        final bool isAuth = response.statusCode == 401 ||
-            response.statusCode == 403 ||
-            (rawMsg != null &&
-                (rawMsg.toLowerCase().contains('token') ||
-                    rawMsg.toLowerCase().contains('jwt') ||
-                    rawMsg.toLowerCase().contains('unauthorized') ||
-                    rawMsg.toLowerCase().contains('expired') ||
-                    rawMsg.toLowerCase().contains('corrupted') ||
-                    rawMsg.toLowerCase().contains('session')));
-
-        if (isAuth) {
-          return {
-            'success': false,
-            'statusCode': response.statusCode,
-            'isAuthError': true,
-            'message': 'Session expired. Please log in again.',
-          };
-        }
-
         return {
           'success': false,
-          'statusCode': response.statusCode,
-          'message': rawMsg ??
+          'message': data['message']?.toString() ??
               'Failed to submit request (${response.statusCode})',
         };
       }
@@ -293,12 +254,16 @@ Future<Map<String, dynamic>> submitBorrowRequest({
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
-      return {'success': false, 'message': 'You are not logged in.'};
+      return {
+        'success': false,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.'
+      };
     }
     try {
       final uri = Uri.parse('$_baseUrl/transactions/$trimmedId/cancel');
       final headers = {
-        'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer ${token.trim()}',
         'Content-Type': 'application/json',
       };
       final body = jsonEncode({'status': 'Cancelled'});
@@ -314,13 +279,10 @@ Future<Map<String, dynamic>> submitBorrowRequest({
         response,
         fallback: 'Failed to cancel request (${response.statusCode})',
       );
-      if (response.statusCode == 401 ||
-          response.statusCode == 403 ||
-          errorMsg.toLowerCase().contains('unauthorized') ||
-          errorMsg.toLowerCase().contains('token') ||
-          errorMsg.toLowerCase().contains('expired') ||
-          errorMsg.toLowerCase().contains('corrupted')) {
+      if (response.statusCode == 401) {
         errorMsg = 'Session expired. Please log in again.';
+      } else if (response.statusCode == 403) {
+        errorMsg = 'You do not have permission to cancel this request.';
       }
       return {'success': false, 'message': errorMsg};
     } catch (e) {

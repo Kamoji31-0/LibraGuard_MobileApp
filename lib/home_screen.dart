@@ -611,76 +611,81 @@ final imgData = _userProfile?['image'] ??
             color: sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: textSecondary.withOpacity(0.35),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.people_alt_outlined,
-                  color: primaryColor,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Library Capacity Counter',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'This shows how many students are currently inside the library in real time.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Use it to check if the library is too full before heading over — if it's near capacity, consider visiting later for a better study experience.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _infoChip(Icons.update_rounded, 'Updates every ~30s', isDark, bgColor, textSecondary),
-                  const SizedBox(width: 8),
-                  _infoChip(Icons.wifi_rounded, 'Requires internet', isDark, bgColor, textSecondary),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: textSecondary.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.people_alt_outlined,
+                      color: primaryColor,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Library Capacity Counter',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'This shows how many students are currently inside the library in real time.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Use it to check if the library is too full before heading over — if it's near capacity, consider visiting later for a better study experience.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textSecondary, fontSize: 14, height: 1.5),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _infoChip(Icons.update_rounded, 'Updates every ~30s', isDark, bgColor, textSecondary),
+                      const SizedBox(width: 8),
+                      _infoChip(Icons.wifi_rounded, 'Requires internet', isDark, bgColor, textSecondary),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Got it!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Got it!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },

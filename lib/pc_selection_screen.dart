@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'services/auth_service.dart';
 import 'services/pc_service.dart';
+import 'services/auth_service.dart';
 import 'services/notification_cache_service.dart';
 import 'profile_screen.dart';
 
@@ -33,27 +34,6 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
 
   bool _isSubmitting = false;
   String? _submitError;
-  bool _hasAuthError = false;
-
-  bool get _isAuthError {
-    if (_hasAuthError) return true;
-    final msg = (_submitError ?? _errorMessage ?? '').toLowerCase();
-    return msg.contains('session expired') ||
-        msg.contains('log in') ||
-        msg.contains('token') ||
-        msg.contains('unauthorized') ||
-        msg.contains('not authenticated');
-  }
-
-  Future<void> _handleLogInAgain() async {
-    await _authService.logout();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
 
   @override
   void initState() {
@@ -105,7 +85,6 @@ final computers = await _pcService.fetchComputers();
     setState(() {
       _isSubmitting = true;
       _submitError = null;
-      _hasAuthError = false;
     });
 
     final res = await _pcService.submitReservation(
@@ -123,29 +102,10 @@ final computers = await _pcService.fetchComputers();
       }
       _showSuccessSheet(session);
     } else {
-      String msg = res['message'] ?? 'Something went wrong.';
-      final isSessionExpired = res['isAuthError'] == true ||
-          res['statusCode'] == 401 ||
-          res['statusCode'] == 403 ||
-          msg.toLowerCase().contains('session expired') ||
-          msg.toLowerCase().contains('token') ||
-          msg.toLowerCase().contains('corrupted') ||
-          msg.toLowerCase().contains('unauthorized') ||
-          msg.toLowerCase().contains('not authenticated');
-
-      if (isSessionExpired) {
-        msg = 'Session expired. Please log in again.';
-      }
-
       setState(() {
         _isSubmitting = false;
-        _submitError = msg;
-        _hasAuthError = isSessionExpired;
+        _submitError = res['message'] ?? 'Something went wrong.';
       });
-
-      if (isSessionExpired && mounted) {
-        _authService.showSessionExpiredDialog(context);
-      }
     }
   }
 
@@ -692,66 +652,36 @@ Text('Session Duration',
             }).toList(),
           ),
 
-if (_submitError != null) ...[
+          if (_submitError != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF800000).withOpacity(0.05)
-                    : Colors.red.withOpacity(0.05),
+                    ? const Color(0xFF800000).withOpacity(0.12)
+                    : Colors.red.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF800000).withOpacity(0.2)
+                        ? const Color(0xFF800000).withOpacity(0.3)
                         : Colors.red.withOpacity(0.2)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.error_outline,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF800000)
-                              : Colors.red.shade700,
-                          size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(_submitError!,
-                            style: TextStyle(
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? const Color(0xFF800000)
-                                    : Colors.red.shade700,
-                                fontSize: 12)),
-                      ),
-                    ],
+                  Icon(Icons.error_outline,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF800000)
+                          : Colors.red.shade700,
+                      size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_submitError!,
+                        style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF800000)
+                                : Colors.red.shade700,
+                            fontSize: 12)),
                   ),
-                  if (_isAuthError) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF800000),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: _handleLogInAgain,
-                        icon: const Icon(Icons.login, size: 16),
-                        label: const Text(
-                          'Log In Again',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

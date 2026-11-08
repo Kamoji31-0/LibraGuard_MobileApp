@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -22,6 +22,7 @@ import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
 import 'library_service_guide_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'borrow_request_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -2491,8 +2492,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
-    } else if (isVoided) {
-      statusColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
@@ -3010,8 +3009,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
-    } else if (isVoided) {
-      statusColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
@@ -3148,12 +3145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        if (isVoided) ...[
-                          const SizedBox(height: 16),
-                          _buildVoidedExplanationBox(isDark: isDark),
-                          const SizedBox(height: 16),
-                        ] else
-                          const SizedBox(height: 32),
+                        const SizedBox(height: 32),
                         _buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,
@@ -3553,6 +3545,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (tx.isVoided) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => BorrowRequestScreen(
+                                      bookId: tx.bookId,
+                                      bookTitle: tx.bookTitle,
+                                      author: '',
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text(
+                                'Request Again',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _accentColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
                             ),
                           ),
@@ -4151,6 +4178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ],
+
                         const SizedBox(height: 24),
                       ],
                     ),

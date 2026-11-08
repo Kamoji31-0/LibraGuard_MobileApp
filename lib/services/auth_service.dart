@@ -13,157 +13,35 @@ class AuthService {
 
   final SecureStorageService _secureStorage = SecureStorageService();
 
-  static bool _isValidJwt(String? token) {
-    if (token == null) return false;
-    final trimmed = token.trim();
-    if (trimmed.isEmpty) return false;
-    final parts = trimmed.split('.');
-    return parts.length == 3 && parts.every((part) => part.isNotEmpty);
-  }
-
-  bool isValidJwt(String? token) => _isValidJwt(token);
-
-  static bool _isSessionExpiredDialogShowing = false;
-
-  Future<void> showSessionExpiredDialog(BuildContext context) async {
-    if (_isSessionExpiredDialogShowing) return;
-    _isSessionExpiredDialogShowing = true;
-
-    try {
-      if (!context.mounted) return;
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
-          return AlertDialog(
-            backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: isDark ? const Color(0xFFEF4444) : Colors.red.shade700,
-                  size: 26,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Session Expired',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            content: Text(
-              'Session expired. Please log in again.',
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? Colors.white70 : Colors.black87,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                  ),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF800000),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: () async {
-                  Navigator.of(dialogContext).pop();
-                  await logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
-                    );
-                  }
-                },
-                child: const Text(
-                  'Log In Again',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      _isSessionExpiredDialogShowing = false;
-    }
-  }
-
   Future<void> saveToken(String token) async {
-    final trimmed = token.trim();
-    if (!_isValidJwt(trimmed)) {
-      print('DEBUG: Invalid JWT token provided to saveToken, skipping save.');
-      return;
-    }
-    print('DEBUG: Attempting to save token: ${trimmed.substring(0, 10)}...');
-    await _secureStorage.saveToken(trimmed);
+    print('DEBUG: Attempting to save token: ${token.substring(0, 10)}...');
+    await _secureStorage.saveToken(token);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('jwt_token', trimmed);
+    await prefs.setString('jwt_token', token);
     print('DEBUG: Token saved successfully to both storage layers');
   }
 
   Future<String?> getToken() async {
     try {
       String? token = await _secureStorage.getToken();
-      if (token != null) {
-        final trimmed = token.trim();
-        if (_isValidJwt(trimmed)) {
-          print('DEBUG: Token found in SecureStorage');
-          return trimmed;
-        } else {
-          print(
-              'DEBUG: Corrupted or malformed token in SecureStorage. Falling back to SharedPreferences.');
-          try {
-            await _secureStorage.deleteToken();
-          } catch (_) {}
-        }
+      if (token != null && token.isNotEmpty) {
+        print('DEBUG: Token found in SecureStorage');
+        return token;
       }
     } catch (e) {
       print('DEBUG: SecureStorage error: $e');
     }
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('jwt_token');
-      if (token != null) {
-        final trimmed = token.trim();
-        if (_isValidJwt(trimmed)) {
-          print('DEBUG: Valid token found in SharedPreferences fallback');
-          try {
-            await _secureStorage.saveToken(trimmed);
-          } catch (_) {}
-          return trimmed;
-        } else {
-          print(
-              'DEBUG: Corrupted or malformed token in SharedPreferences. Clearing.');
-          await prefs.remove('jwt_token');
-        }
-      } else {
-        print('DEBUG: No token found in SharedPreferences either');
-      }
-    } catch (e) {
-      print('DEBUG: SharedPreferences error: $e');
+    final prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('jwt_token');
+    if (token != null && token.isNotEmpty) {
+      print('DEBUG: Token found in SharedPreferences');
+
+      await _secureStorage.saveToken(token);
+    } else {
+      print('DEBUG: No token found in SharedPreferences either');
     }
-    return null;
+    return token;
   }
 
   Future<void> saveFcmTokenLocally(String token) async {
@@ -610,13 +488,6 @@ class AuthService {
         final user = data['user'] ?? data['data'] ?? data;
         await saveProfile(user);
         return {'success': true, 'data': user};
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
-        return {
-          'success': false,
-          'statusCode': response.statusCode,
-          'isAuthError': true,
-          'message': 'Session expired. Please log in again.',
-        };
       } else {
         final cached = await getCachedProfile();
         if (cached != null) return {'success': true, 'data': cached};
@@ -1094,21 +965,17 @@ class AuthService {
         }
 
         if (token != null) {
-          final trimmedToken = token!.trim();
-          if (_isValidJwt(trimmedToken)) {
-            await saveToken(trimmedToken);
-            final user = data['user'] ?? data['data'] ?? data;
-            await saveProfile(user);
-            return {'success': true, 'data': data};
-          }
+          await saveToken(token!);
+        } else if (tempToken != null) {
+          print(
+              'DEBUG: No new token in 2FA response. Saving tempToken as session token.');
+          await saveToken(tempToken);
+        } else {
+          print('DEBUG: WARNING - No token found anywhere. Update will fail.');
         }
-
-        print('DEBUG: No valid permanent session token returned from 2FA verification.');
-        return {
-          'success': false,
-          'isAuthError': true,
-          'message': 'Session expired. Please log in again.',
-        };
+        final user = data['user'] ?? data['data'] ?? data;
+        await saveProfile(user);
+        return {'success': true, 'data': data};
       } else {
         return {
           'success': false,
