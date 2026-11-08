@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -22,6 +22,7 @@ import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
 import 'library_service_guide_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'borrow_request_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -2488,6 +2489,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
+    } else if (tx.isVoided) {
+      statusColor = const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
@@ -2874,6 +2877,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
+    } else if (tx.isVoided) {
+      statusColor = const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
@@ -3012,7 +3017,118 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        if (tx.isVoided) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1A2A40)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF4A6080)
+                                    : const Color(0xFFCBD5E1),
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  color: isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : const Color(0xFF475569),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Why is this request voided?',
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : _textColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'This ticket was automatically voided because:\n\n• The book was not picked up within the allowed pickup window, or\n• The request was submitted on a Sunday or holiday when the library is closed, or\n• The scheduled hours or return window has passed.\n\nLibrary Hours: Mon – Sat, 8:00 AM – 5:00 PM (Closed on Sundays & Holidays)\n\nNo penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
+                                        style: TextStyle(
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.85)
+                                              : _textColor.withOpacity(0.75),
+                                          fontSize: 12,
+                                          height: 1.45,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (tx.isRejected) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.red.shade900.withOpacity(0.15)
+                                  : Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.red.shade800
+                                    : Colors.red.shade200,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.cancel_outlined,
+                                  color: isDark
+                                      ? const Color(0xFFFF6B6B)
+                                      : Colors.red.shade700,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Request Rejected',
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white : _textColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'This borrow request was declined by the library staff. Please check with the library service desk for assistance.',
+                                        style: TextStyle(
+                                          color: _textColor.withOpacity(0.75),
+                                          fontSize: 12,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
                         _buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,
@@ -3412,6 +3528,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14)),
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (tx.isVoided) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => BorrowRequestScreen(
+                                      bookId: tx.bookId,
+                                      bookTitle: tx.bookTitle,
+                                      author: '',
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text(
+                                'Request Again',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _accentColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
                             ),
                           ),
@@ -4010,6 +4161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ],
+
                         const SizedBox(height: 24),
                       ],
                     ),

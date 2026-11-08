@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/pc_service.dart';
+import 'services/auth_service.dart';
 import 'services/notification_cache_service.dart';
 import 'profile_screen.dart';
 
@@ -30,6 +31,7 @@ class _PcSelectionScreenState extends State<PcSelectionScreen> {
 
   bool _isSubmitting = false;
   String? _submitError;
+  bool _isAuthError = false;
 
   @override
   void initState() {
@@ -81,6 +83,7 @@ final computers = await _pcService.fetchComputers();
     setState(() {
       _isSubmitting = true;
       _submitError = null;
+      _isAuthError = false;
     });
 
     final res = await _pcService.submitReservation(
@@ -98,10 +101,22 @@ final computers = await _pcService.fetchComputers();
       }
       _showSuccessSheet(session);
     } else {
+      final rawMsg = res['message']?.toString() ?? 'Something went wrong.';
+      final isAuth = res['isAuthError'] == true ||
+          AuthService.isAuthError(rawMsg);
+      final displayMsg = isAuth
+          ? 'Session expired. Please log in again.'
+          : rawMsg;
+
       setState(() {
         _isSubmitting = false;
-        _submitError = res['message'] ?? 'Something went wrong.';
+        _isAuthError = isAuth;
+        _submitError = displayMsg;
       });
+
+      if (isAuth && mounted) {
+        AuthService().showSessionExpiredDialog(context);
+      }
     }
   }
 
@@ -648,36 +663,72 @@ Text('Session Duration',
             }).toList(),
           ),
 
-if (_submitError != null) ...[
+          if (_submitError != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF800000).withOpacity(0.05)
-                    : Colors.red.withOpacity(0.05),
+                    ? const Color(0xFF800000).withOpacity(0.12)
+                    : Colors.red.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF800000).withOpacity(0.2)
+                        ? const Color(0xFF800000).withOpacity(0.3)
                         : Colors.red.withOpacity(0.2)),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.error_outline,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF800000)
-                          : Colors.red.shade700,
-                      size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_submitError!,
-                        style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? const Color(0xFF800000)
-                                : Colors.red.shade700,
-                            fontSize: 12)),
+                  Row(
+                    children: [
+                      Icon(
+                          _isAuthError
+                              ? Icons.lock_clock_outlined
+                              : Icons.error_outline,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFFF6B6B)
+                              : Colors.red.shade700,
+                          size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_submitError!,
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12)),
+                      ),
+                    ],
                   ),
+                  if (_isAuthError) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () =>
+                            AuthService().handleSessionExpired(context),
+                        icon: const Icon(Icons.login_rounded, size: 16),
+                        label: const Text(
+                          'Log In Again',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF800000),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -40,6 +40,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
 
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _isAuthError = false;
   BorrowTransaction? _resultTransaction;
 
   final BorrowService _borrowService = BorrowService();
@@ -301,6 +302,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
+      _isAuthError = false;
     });
 
     final calculatedDue = _calculateDueDateTime();
@@ -358,10 +360,22 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         _resultTransaction = res['transaction'];
       });
     } else {
+      final rawMsg = res['message']?.toString() ?? 'Something went wrong.';
+      final isAuth = res['isAuthError'] == true ||
+          AuthService.isAuthError(rawMsg);
+      final displayMsg = isAuth
+          ? 'Session expired. Please log in again.'
+          : rawMsg;
+
       setState(() {
         _isSubmitting = false;
-        _errorMessage = res['message'] ?? 'Something went wrong.';
+        _isAuthError = isAuth;
+        _errorMessage = displayMsg;
       });
+
+      if (isAuth && mounted) {
+        _authService.showSessionExpiredDialog(context);
+      }
     }
   }
 
@@ -425,33 +439,69 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFF800000).withOpacity(0.05)
+                        ? const Color(0xFF800000).withOpacity(0.12)
                         : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF800000).withOpacity(0.2)
+                            ? const Color(0xFF800000).withOpacity(0.3)
                             : Colors.red.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error_outline,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF800000)
-                              : Colors.red.shade700,
-                          size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
+                      Row(
+                        children: [
+                          Icon(
+                              _isAuthError
+                                  ? Icons.lock_clock_outlined
+                                  : Icons.error_outline,
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? const Color(0xFF800000)
+                                  ? const Color(0xFFFF6B6B)
                                   : Colors.red.shade700,
-                              fontSize: 13),
-                        ),
+                              size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.red.shade700,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (_isAuthError) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () =>
+                                _authService.handleSessionExpired(context),
+                            icon: const Icon(Icons.login_rounded, size: 16),
+                            label: const Text(
+                              'Log In Again',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF800000),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

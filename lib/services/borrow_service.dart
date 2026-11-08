@@ -67,6 +67,7 @@ class BorrowTransaction {
   bool get isReturned => status.toLowerCase().contains('returned');
   bool get isRejected => status.toLowerCase().contains('rejected');
   bool get isCancelled => status.toLowerCase().contains('cancelled');
+  bool get isVoided => status.toLowerCase().contains('void');
 }
 
 class BorrowService {
@@ -171,7 +172,7 @@ _cachedTransactions = results;
     }
   }
 
-Future<Map<String, dynamic>> submitBorrowRequest({
+  Future<Map<String, dynamic>> submitBorrowRequest({
     required String bookId,
     DateTime? dueDate,
     String? borrowType,
@@ -181,10 +182,21 @@ Future<Map<String, dynamic>> submitBorrowRequest({
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
-      return {'success': false, 'message': 'You are not logged in.'};
+      return {
+        'success': false,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.'
+      };
     }
 
-final profileRes = await authService.getProfile();
+    final profileRes = await authService.getProfile();
+    if (profileRes['isAuthError'] == true) {
+      return {
+        'success': false,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.'
+      };
+    }
     final userId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         '';
@@ -207,7 +219,7 @@ final profileRes = await authService.getProfile();
       final response = await http.post(
         Uri.parse('$_baseUrl/transactions'),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer ${token.trim()}',
           'Content-Type': 'application/json',
         },
         body: jsonEncode(requestBody),
@@ -226,10 +238,18 @@ final profileRes = await authService.getProfile();
           'message': 'Borrow request submitted successfully!',
         };
       } else {
+        final rawMsg = data is Map ? data['message']?.toString() ?? '' : '';
+        final isAuth = response.statusCode == 401 ||
+            response.statusCode == 403 ||
+            AuthService.isAuthError(rawMsg);
         return {
           'success': false,
-          'message': data['message']?.toString() ??
-              'Failed to submit request (${response.statusCode})',
+          'isAuthError': isAuth,
+          'message': isAuth
+              ? 'Session expired. Please log in again.'
+              : (rawMsg.isNotEmpty
+                  ? rawMsg
+                  : 'Failed to submit request (${response.statusCode})'),
         };
       }
     } catch (e) {
@@ -249,12 +269,16 @@ final profileRes = await authService.getProfile();
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
-      return {'success': false, 'message': 'You are not logged in.'};
+      return {
+        'success': false,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.'
+      };
     }
     try {
       final uri = Uri.parse('$_baseUrl/transactions/$trimmedId/cancel');
       final headers = {
-        'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer ${token.trim()}',
         'Content-Type': 'application/json',
       };
       final body = jsonEncode({'status': 'Cancelled'});
@@ -270,10 +294,15 @@ final profileRes = await authService.getProfile();
         response,
         fallback: 'Failed to cancel request (${response.statusCode})',
       );
-      if (response.statusCode == 401) {
-        errorMsg = 'Session expired. Please log in again.';
-      } else if (response.statusCode == 403) {
-        errorMsg = 'You do not have permission to cancel this request.';
+      final isAuth = response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          AuthService.isAuthError(errorMsg);
+      if (isAuth) {
+        return {
+          'success': false,
+          'isAuthError': true,
+          'message': 'Session expired. Please log in again.',
+        };
       }
       return {'success': false, 'message': errorMsg};
     } catch (e) {
