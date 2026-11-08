@@ -40,3 +40,13 @@ jobs:
           name: flutter-web-build
           path: build/web
           retention-days: 14
+
+      - name: Publish build to web-build branch
+        run: |
+          cd build/web
+          git init -b web-build
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Web build from ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" web-build
