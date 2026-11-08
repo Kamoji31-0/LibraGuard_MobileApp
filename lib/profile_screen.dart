@@ -2868,101 +2868,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildVoidedExplanationBox({required bool isDark}) {
-    final Color bgColor =
-        isDark ? const Color(0xFF262833) : const Color(0xFFF3F4F6);
-    final Color borderColor =
-        isDark ? const Color(0xFF3F4252) : const Color(0xFFE5E7EB);
-    final Color iconColor =
-        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final Color titleColor =
-        isDark ? Colors.white : const Color(0xFF1F2937);
-    final Color textColor =
-        isDark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563);
-    final Color subtextColor =
-        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+  Widget _buildVoidedExplanationBox({BuildContext? context, bool? isDark}) {
+    return Builder(
+      builder: (bctx) {
+        final ctx = context ?? bctx;
+        final bool dark = isDark ??
+            (themeNotifier.value == ThemeMode.dark ||
+                (themeNotifier.value != ThemeMode.light &&
+                    (Theme.of(ctx).brightness == Brightness.dark ||
+                        Theme.of(ctx).cardColor.computeLuminance() < 0.5)));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        final Color bgColor =
+            dark ? const Color(0xFF1E2228) : const Color(0xFFF3F4F6);
+        final Color borderColor =
+            dark ? const Color(0xFF383D45) : const Color(0xFFE5E7EB);
+        final Color iconColor =
+            dark ? const Color(0xFF93C5FD) : const Color(0xFF6B7280);
+        final Color titleColor =
+            dark ? Colors.white : const Color(0xFF1F2937);
+        final Color textColor =
+            dark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563);
+        final Color subtextColor =
+            dark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1.2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.info_outline_rounded,
-                color: iconColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Why is this request voided?',
-                  style: TextStyle(
-                    color: titleColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: iconColor,
+                    size: 20,
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Why is this request voided?',
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'This ticket was automatically voided because:',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 12.5,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildVoidBulletPoint(
+                      'The book was not picked up within the allowed pickup window, or',
+                      textColor,
+                    ),
+                    _buildVoidBulletPoint(
+                      'The request was submitted on a Sunday or holiday when the library is closed, or',
+                      textColor,
+                    ),
+                    _buildVoidBulletPoint(
+                      'The scheduled hours or return window has passed.',
+                      textColor,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Library Hours: Mon \u2013 Sat, 8:00 AM \u2013 5:00 PM (Closed on Sundays & Holidays)',
+                style: TextStyle(
+                  color: subtextColor,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
+                style: TextStyle(
+                  color: subtextColor,
+                  fontSize: 12,
+                  height: 1.4,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            'This ticket was automatically voided because:',
-            style: TextStyle(
-              color: textColor,
-              fontSize: 12.5,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.only(left: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildVoidBulletPoint(
-                  'The book was not picked up within the allowed pickup window, or',
-                  textColor,
-                ),
-                _buildVoidBulletPoint(
-                  'The request was submitted on a Sunday or holiday when the library is closed, or',
-                  textColor,
-                ),
-                _buildVoidBulletPoint(
-                  'The scheduled hours or return window has passed.',
-                  textColor,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Library Hours: Mon \u2013 Sat, 8:00 AM \u2013 5:00 PM (Closed on Sundays & Holidays)',
-            style: TextStyle(
-              color: subtextColor,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
-            style: TextStyle(
-              color: subtextColor,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -3147,7 +3158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         if (isVoided) ...[
                           const SizedBox(height: 16),
-                          _buildVoidedExplanationBox(isDark: isDark),
+                          _buildVoidedExplanationBox(context: ctx),
                         ],
                         const SizedBox(height: 24),
                         _buildDialogSection(
