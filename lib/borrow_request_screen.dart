@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'library_rules_screen.dart';
 import 'library_service_guide_screen.dart';
+import 'login_screen.dart';
 import 'services/borrow_service.dart';
 import 'services/auth_service.dart';
 import 'services/book_service.dart';
@@ -40,7 +41,29 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
 
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _hasAuthError = false;
   BorrowTransaction? _resultTransaction;
+
+  bool get _isAuthError {
+    if (_hasAuthError) return true;
+    if (_errorMessage == null) return false;
+    final msg = _errorMessage!.toLowerCase();
+    return msg.contains('session expired') ||
+        msg.contains('log in') ||
+        msg.contains('token') ||
+        msg.contains('unauthorized') ||
+        msg.contains('not authenticated');
+  }
+
+  Future<void> _handleLogInAgain() async {
+    await _authService.logout();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   final BorrowService _borrowService = BorrowService();
   final AuthService _authService = AuthService();
@@ -285,6 +308,15 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     final result = await _authService.getProfile();
     if (result['success'] == true && result['data'] != null && mounted) {
       _applyProfileData(result['data']);
+    } else if (result['isAuthError'] == true ||
+        result['statusCode'] == 401 ||
+        result['statusCode'] == 403) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Session expired. Please log in again.';
+          _hasAuthError = true;
+        });
+      }
     }
   }
 
@@ -301,6 +333,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
+      _hasAuthError = false;
     });
 
     final calculatedDue = _calculateDueDateTime();
@@ -358,10 +391,29 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
         _resultTransaction = res['transaction'];
       });
     } else {
+      String msg = res['message'] ?? 'Something went wrong.';
+      final isSessionExpired = res['isAuthError'] == true ||
+          res['statusCode'] == 401 ||
+          res['statusCode'] == 403 ||
+          msg.toLowerCase().contains('session expired') ||
+          msg.toLowerCase().contains('token') ||
+          msg.toLowerCase().contains('corrupted') ||
+          msg.toLowerCase().contains('unauthorized') ||
+          msg.toLowerCase().contains('not authenticated');
+
+      if (isSessionExpired) {
+        msg = 'Session expired. Please log in again.';
+      }
+
       setState(() {
         _isSubmitting = false;
-        _errorMessage = res['message'] ?? 'Something went wrong.';
+        _errorMessage = msg;
+        _hasAuthError = isSessionExpired;
       });
+
+      if (isSessionExpired && mounted) {
+        _authService.showSessionExpiredDialog(context);
+      }
     }
   }
 
@@ -433,25 +485,55 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                             ? const Color(0xFF800000).withOpacity(0.2)
                             : Colors.red.shade200),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error_outline,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF800000)
-                              : Colors.red.shade700,
-                          size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
+                      Row(
+                        children: [
+                          Icon(Icons.error_outline,
+                              color: Theme.of(context).brightness == Brightness.dark
                                   ? const Color(0xFF800000)
                                   : Colors.red.shade700,
-                              fontSize: 13),
-                        ),
+                              size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? const Color(0xFF800000)
+                                      : Colors.red.shade700,
+                                  fontSize: 13),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (_isAuthError) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF800000),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: _handleLogInAgain,
+                            icon: const Icon(Icons.login, size: 16),
+                            label: const Text(
+                              'Log In Again',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -460,6 +542,135 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildVoidedExplanationBox() {
+    final isDark = _isDark;
+    final Color bgColor =
+        isDark ? const Color(0xFF262833) : const Color(0xFFF3F4F6);
+    final Color borderColor =
+        isDark ? const Color(0xFF3F4252) : const Color(0xFFE5E7EB);
+    final Color iconColor =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final Color titleColor =
+        isDark ? Colors.white : const Color(0xFF1F2937);
+    final Color textColor =
+        isDark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563);
+    final Color subtextColor =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: iconColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Why is this request voided?',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'This ticket was automatically voided because:',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildVoidBulletRow(
+                  'The book was not picked up within the allowed pickup window, or',
+                  textColor,
+                ),
+                _buildVoidBulletRow(
+                  'The request was submitted on a Sunday or holiday when the library is closed, or',
+                  textColor,
+                ),
+                _buildVoidBulletRow(
+                  'The scheduled hours or return window has passed.',
+                  textColor,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Library Hours: Mon \u2013 Sat, 8:00 AM \u2013 5:00 PM (Closed on Sundays & Holidays)',
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoidBulletRow(String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '\u2022  ',
+            style: TextStyle(
+              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -499,6 +710,10 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                   ),
                 ),
               ),
+              if (tx.isVoided) ...[
+                const SizedBox(height: 16),
+                _buildVoidedExplanationBox(),
+              ],
               const SizedBox(height: 24),
               _buildBorrowerDetails(),
               const SizedBox(height: 24),

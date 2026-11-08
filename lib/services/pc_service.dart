@@ -251,17 +251,33 @@ _saveComputersToCache(list);
     }
   }
 
-Future<Map<String, dynamic>> submitReservation({
+  Future<Map<String, dynamic>> submitReservation({
     required String computerId,
     required int durationMinutes,
   }) async {
     final authService = AuthService();
     final token = await authService.getToken();
     if (token == null) {
-      return {'success': false, 'message': 'You are not logged in.'};
+      return {
+        'success': false,
+        'statusCode': 401,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.',
+      };
     }
 
-final profileRes = await authService.getProfile();
+    final profileRes = await authService.getProfile();
+    if (profileRes['isAuthError'] == true ||
+        profileRes['statusCode'] == 401 ||
+        profileRes['statusCode'] == 403) {
+      return {
+        'success': false,
+        'statusCode': profileRes['statusCode'] ?? 401,
+        'isAuthError': true,
+        'message': 'Session expired. Please log in again.',
+      };
+    }
+
     final userId = profileRes['data']?['id']?.toString() ??
         profileRes['data']?['_id']?.toString() ??
         profileRes['data']?['studentId']?.toString() ??
@@ -283,7 +299,12 @@ final profileRes = await authService.getProfile();
         }),
       );
 
-      final data = jsonDecode(response.body);
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {
+        data = null;
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final raw = data is Map && data['data'] != null ? data['data'] : data;
@@ -294,9 +315,32 @@ final profileRes = await authService.getProfile();
           'message': 'Reservation submitted successfully!',
         };
       } else {
+        final rawMsg = data is Map
+            ? (data['message']?.toString() ?? data['error']?.toString())
+            : null;
+        final bool isAuth = response.statusCode == 401 ||
+            response.statusCode == 403 ||
+            (rawMsg != null &&
+                (rawMsg.toLowerCase().contains('token') ||
+                    rawMsg.toLowerCase().contains('jwt') ||
+                    rawMsg.toLowerCase().contains('unauthorized') ||
+                    rawMsg.toLowerCase().contains('expired') ||
+                    rawMsg.toLowerCase().contains('corrupted') ||
+                    rawMsg.toLowerCase().contains('session')));
+
+        if (isAuth) {
+          return {
+            'success': false,
+            'statusCode': response.statusCode,
+            'isAuthError': true,
+            'message': 'Session expired. Please log in again.',
+          };
+        }
+
         return {
           'success': false,
-          'message': data['message']?.toString() ??
+          'statusCode': response.statusCode,
+          'message': rawMsg ??
               'Failed to submit reservation (${response.statusCode})',
         };
       }
@@ -386,10 +430,13 @@ final result = currentUserId.isNotEmpty
               errorMsg;
         }
       } catch (_) {}
-      if (response.statusCode == 401) {
+      if (response.statusCode == 401 ||
+          response.statusCode == 403 ||
+          errorMsg.toLowerCase().contains('unauthorized') ||
+          errorMsg.toLowerCase().contains('token') ||
+          errorMsg.toLowerCase().contains('expired') ||
+          errorMsg.toLowerCase().contains('corrupted')) {
         errorMsg = 'Session expired. Please log in again.';
-      } else if (response.statusCode == 403) {
-        errorMsg = 'You do not have permission to cancel this reservation.';
       }
       return {'success': false, 'message': errorMsg};
     } catch (e) {

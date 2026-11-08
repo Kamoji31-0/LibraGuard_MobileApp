@@ -2479,6 +2479,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBorrowCard(BuildContext context, BorrowTransaction tx) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isVoided = tx.isVoided || tx.status.toLowerCase().contains('void');
+
     Color statusColor;
     if (tx.isPending) {
       statusColor = const Color(0xFFF59E0B);
@@ -2488,6 +2491,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
+    } else if (isVoided) {
+      statusColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
@@ -2864,7 +2869,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildVoidedExplanationBox({required bool isDark}) {
+    final Color bgColor =
+        isDark ? const Color(0xFF262833) : const Color(0xFFF3F4F6);
+    final Color borderColor =
+        isDark ? const Color(0xFF3F4252) : const Color(0xFFE5E7EB);
+    final Color iconColor =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final Color titleColor =
+        isDark ? Colors.white : const Color(0xFF1F2937);
+    final Color textColor =
+        isDark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563);
+    final Color subtextColor =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                color: iconColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Why is this request voided?',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'This ticket was automatically voided because:',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildVoidBulletPoint(
+                  'The book was not picked up within the allowed pickup window, or',
+                  textColor,
+                ),
+                _buildVoidBulletPoint(
+                  'The request was submitted on a Sunday or holiday when the library is closed, or',
+                  textColor,
+                ),
+                _buildVoidBulletPoint(
+                  'The scheduled hours or return window has passed.',
+                  textColor,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Library Hours: Mon \u2013 Sat, 8:00 AM \u2013 5:00 PM (Closed on Sundays & Holidays)',
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
+            style: TextStyle(
+              color: subtextColor,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoidBulletPoint(String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '\u2022  ',
+            style: TextStyle(
+              color: color,
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBorrowDetailDialog(BuildContext context, BorrowTransaction tx) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isVoided = tx.isVoided || tx.status.toLowerCase().contains('void');
+
     Color statusColor;
     if (tx.isPending) {
       statusColor = const Color(0xFFF59E0B);
@@ -2874,11 +3010,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       statusColor = Colors.blue;
     } else if (tx.isRejected) {
       statusColor = Colors.redAccent;
+    } else if (isVoided) {
+      statusColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     } else {
       statusColor = Colors.grey;
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     String fmtDate(String raw) {
       try {
@@ -3012,7 +3148,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        if (isVoided) ...[
+                          const SizedBox(height: 16),
+                          _buildVoidedExplanationBox(isDark: isDark),
+                          const SizedBox(height: 16),
+                        ] else
+                          const SizedBox(height: 32),
                         _buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,
