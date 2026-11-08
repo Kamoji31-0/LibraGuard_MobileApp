@@ -3145,7 +3145,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        if (isVoided) ...[
+                          const SizedBox(height: 16),
+                          _buildVoidedExplanationBox(isDark: isDark),
+                        ],
+                        const SizedBox(height: 24),
                         _buildDialogSection(
                           title: "Borrower's Details",
                           showIcon: false,

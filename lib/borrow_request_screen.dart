@@ -41,6 +41,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
 
   bool _isSubmitting = false;
   String? _errorMessage;
+  bool _hasAuthError = false;
   BorrowTransaction? _resultTransaction;
 
   bool get _isAuthError {

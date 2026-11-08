@@ -116,6 +116,12 @@ class AuthService {
     } catch (_) {}
   }
 
+  bool _isValidJwt(String? token) {
+    if (token == null || token.trim().isEmpty) return false;
+    final parts = token.trim().split('.');
+    return parts.length == 3 && parts.every((p) => p.isNotEmpty);
+  }
+
   Future<void> saveFirstName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('first_name', name);
