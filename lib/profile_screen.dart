@@ -3019,17 +3019,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         if (tx.isVoided) ...[
                           const SizedBox(height: 16),
-                          Container(
+                          Builder(builder: (bctx) {
+                            final isCardDark = Theme.of(bctx).brightness == Brightness.dark;
+                            return Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: isDark
+                              color: isCardDark
                                   ? const Color(0xFF1A2A40)
-                                  : const Color(0xFFF1F5F9),
+                                  : Colors.blue.shade50,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: isDark
+                                color: isCardDark
                                     ? const Color(0xFF4A6080)
-                                    : const Color(0xFFCBD5E1),
+                                    : Colors.blue.shade200,
                               ),
                             ),
                             child: Row(
@@ -3037,9 +3039,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 Icon(
                                   Icons.info_outline_rounded,
-                                  color: isDark
+                                  color: isCardDark
                                       ? const Color(0xFF93C5FD)
-                                      : const Color(0xFF475569),
+                                      : Colors.blue.shade700,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 12),
@@ -3051,7 +3053,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       Text(
                                         'Why is this request voided?',
                                         style: TextStyle(
-                                          color: isDark ? Colors.white : _textColor,
+                                          color: isCardDark ? Colors.white : _textColor,
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -3060,7 +3062,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       Text(
                                         'This ticket was automatically voided because:\n\n• The book was not picked up within the allowed pickup window, or\n• The request was submitted on a Sunday or holiday when the library is closed, or\n• The scheduled hours or return window has passed.\n\nLibrary Hours: Mon – Sat, 8:00 AM – 5:00 PM (Closed on Sundays & Holidays)\n\nNo penalty fee is charged for voided tickets. You may submit a new borrow request during library hours.',
                                         style: TextStyle(
-                                          color: isDark
+                                          color: isCardDark
                                               ? Colors.white.withOpacity(0.85)
                                               : _textColor.withOpacity(0.75),
                                           fontSize: 12,
@@ -3072,7 +3074,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ],
                             ),
-                          ),
+                          );
+                          }),
                         ] else if (tx.isRejected) ...[
                           const SizedBox(height: 16),
                           Container(
