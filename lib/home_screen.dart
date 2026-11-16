@@ -227,6 +227,7 @@ final books = await _bookService.fetchBooks();
   void _startOccupancyPolling() {
     _occupancyTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _fetchOccupancy();
+      checkStatusChangesNow();
     });
   }
 
