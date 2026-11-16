@@ -144,6 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       final registeredEmail = _emailController.text.trim();
+      final bool emailWarning = result['emailWarning'] == true;
 
       showDialog(
         context: context,
@@ -161,15 +162,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: _accentColor.withValues(alpha: 0.12),
+                    color: emailWarning
+                        ? Colors.orange.withValues(alpha: 0.12)
+                        : _accentColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.mark_email_read_outlined,
-                      color: _accentColor, size: 48),
+                  child: Icon(
+                    emailWarning
+                        ? Icons.warning_amber_rounded
+                        : Icons.mark_email_read_outlined,
+                    color: emailWarning ? Colors.orange : _accentColor,
+                    size: 48,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Email Sent',
+                  emailWarning ? 'Account Created' : 'Check Your Email',
                   style: TextStyle(
                     color: _textColor,
                     fontSize: 22,
@@ -178,7 +186,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Please verify your account and back in app to re-login.',
+                  emailWarning
+                      ? 'Your account was created successfully, but the verification email could not be sent. Please contact the library administrator to activate your account.'
+                      : 'A verification link has been sent to your email. Please verify your account before logging in.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _textColor.withValues(alpha: 0.8),
@@ -206,52 +216,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.35),
+                if (!emailWarning) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.amber.withValues(alpha: 0.35),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline,
-                          size: 16,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.amber.shade300
-                              : Colors.amber.shade800),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Don\'t see the email? Please check your Spam or Junk folder.',
-                          style: TextStyle(
-                            fontSize: 12,
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 16,
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.amber.shade200
-                                : Colors.amber.shade900,
-                            fontWeight: FontWeight.w500,
+                                ? Colors.amber.shade300
+                                : Colors.amber.shade800),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Don\'t see the email? Please check your Spam or Junk folder.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.amber.shade200
+                                  : Colors.amber.shade900,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.mail_outline_rounded, size: 20),
+                    icon: Icon(
+                      emailWarning
+                          ? Icons.login_rounded
+                          : Icons.mail_outline_rounded,
+                      size: 20,
+                    ),
                     label: Text(
-                      registeredEmail.toLowerCase().endsWith('@yahoo.com')
-                          ? 'OPEN YAHOO MAIL'
-                          : (registeredEmail.toLowerCase().endsWith('@outlook.com') ||
-                                  registeredEmail.toLowerCase().endsWith('@hotmail.com'))
-                              ? 'OPEN OUTLOOK'
-                              : 'OPEN GMAIL',
+                      emailWarning
+                          ? 'BACK TO LOGIN'
+                          : registeredEmail.toLowerCase().endsWith('@yahoo.com')
+                              ? 'OPEN YAHOO MAIL'
+                              : (registeredEmail.toLowerCase().endsWith('@outlook.com') ||
+                                      registeredEmail.toLowerCase().endsWith('@hotmail.com'))
+                                  ? 'OPEN OUTLOOK'
+                                  : 'OPEN GMAIL',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -264,10 +283,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
-                      await _openEmailApp(registeredEmail);
+                      if (!emailWarning) await _openEmailApp(registeredEmail);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _accentColor,
+                      backgroundColor:
+                          emailWarning ? Colors.orange : _accentColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

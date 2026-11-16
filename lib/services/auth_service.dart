@@ -1,15 +1,13 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../login_screen.dart';
 import 'background_task.dart';
 import 'notification_cache_service.dart';
 import 'notification_service.dart';
 import 'secure_storage_service.dart';
 
 class AuthService {
-  static const String baseUrl = 'https://libraguard-api.onrender.com/api';
+  static const String baseUrl = 'https://libraguard-system.onrender.com/api';
 
   final SecureStorageService _secureStorage = SecureStorageService();
 
@@ -390,7 +388,14 @@ class AuthService {
           }
         }
 
-        return {'success': true, 'data': data ?? {}};
+        // Surface emailWarning so the UI can show appropriate messaging
+        final bool emailWarning =
+            data is Map && (data['emailWarning'] == true);
+        return {
+          'success': true,
+          'data': data ?? {},
+          if (emailWarning) 'emailWarning': true,
+        };
       } else {
         String message = 'Registration failed';
         if (data is Map) {
