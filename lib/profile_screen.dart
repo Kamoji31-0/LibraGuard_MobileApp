@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -2480,9 +2480,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBorrowCard(BuildContext context, BorrowTransaction tx) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bool isVoided = tx.isVoided || tx.status.toLowerCase().contains('void');
-
     Color statusColor;
     if (tx.isPending) {
       statusColor = const Color(0xFFF59E0B);
@@ -2871,25 +2868,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildVoidedExplanationBox({BuildContext? context, bool? isDark}) {
     return Builder(
       builder: (bctx) {
-        final ctx = context ?? bctx;
+        // Use themeNotifier as the definitive source; dialogs open in a new
+        // overlay route and may not inherit the correct brightness from Theme.of().
         final bool dark = isDark ??
             (themeNotifier.value == ThemeMode.dark ||
-                (themeNotifier.value != ThemeMode.light &&
-                    (Theme.of(ctx).brightness == Brightness.dark ||
-                        Theme.of(ctx).cardColor.computeLuminance() < 0.5)));
+                (themeNotifier.value == ThemeMode.system &&
+                    MediaQuery.of(bctx).platformBrightness == Brightness.dark));
 
         final Color bgColor =
-            dark ? const Color(0xFF1E2228) : const Color(0xFFF3F4F6);
+            dark ? const Color(0xFF1E2228) : const Color(0xFFEFF6FF);
         final Color borderColor =
-            dark ? const Color(0xFF383D45) : const Color(0xFFE5E7EB);
+            dark ? const Color(0xFF383D45) : const Color(0xFFBFDBFE);
         final Color iconColor =
-            dark ? const Color(0xFF93C5FD) : const Color(0xFF6B7280);
+            dark ? const Color(0xFF93C5FD) : const Color(0xFF3B82F6);
         final Color titleColor =
-            dark ? Colors.white : const Color(0xFF1F2937);
+            dark ? Colors.white : const Color(0xFF1E40AF);
         final Color textColor =
-            dark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563);
+            dark ? const Color(0xFFD1D5DB) : const Color(0xFF1E3A5F);
         final Color subtextColor =
-            dark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+            dark ? const Color(0xFF9CA3AF) : const Color(0xFF374151);
 
         return Container(
           width: double.infinity,
