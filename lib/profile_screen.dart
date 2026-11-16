@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
@@ -22,6 +22,7 @@ import 'main.dart' show themeNotifier;
 import 'widgets/app_bottom_nav.dart';
 import 'library_service_guide_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'widgets/app_dialog.dart';
 import 'borrow_request_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -652,9 +653,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       _showSuccessDialog('Two-Factor Authentication enabled!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message'] ?? 'Failed to enable 2FA')),
-      );
+      showAppNoticeDialog(context: context, title: '2FA Error', message: res['message'] ?? 'Failed to enable 2FA');
     }
   }
 
@@ -686,9 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       _showSuccessDialog('Two-Factor Authentication disabled!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message'] ?? 'Failed to disable 2FA')),
-      );
+      showAppNoticeDialog(context: context, title: '2FA Error', message: res['message'] ?? 'Failed to disable 2FA');
     }
   }
 

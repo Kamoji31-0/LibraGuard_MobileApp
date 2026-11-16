@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'background_task.dart';
@@ -8,6 +8,28 @@ import 'secure_storage_service.dart';
 
 class AuthService {
   static const String baseUrl = 'https://libraguard-system.onrender.com/api';
+
+  static String cleanErrorMessage(dynamic e, [String defaultMsg = 'Unable to connect to the server. Please try again.']) {
+    final str = e.toString();
+    if (str.contains('FormatException') ||
+        str.contains('Unexpected token') ||
+        str.contains('DOCTYPE') ||
+        str.contains('SyntaxError')) {
+      return 'The server is temporarily unavailable. Please try again shortly.';
+    }
+    if (str.contains('SocketException') ||
+        str.contains('Failed host lookup') ||
+        str.contains('ClientException') ||
+        str.contains('Connection refused') ||
+        str.contains('Network is unreachable')) {
+      return 'Unable to reach the server. Please check your internet connection.';
+    }
+    if (str.contains('TimeoutException')) {
+      return 'The connection timed out. Please try again.';
+    }
+    return defaultMsg;
+  }
+
 
   final SecureStorageService _secureStorage = SecureStorageService();
 
@@ -276,7 +298,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -415,7 +437,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -441,7 +463,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -471,7 +493,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -507,7 +529,7 @@ class AuthService {
     } catch (e) {
       final cached = await getCachedProfile();
       if (cached != null) return {'success': true, 'data': cached};
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -556,7 +578,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -767,7 +789,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -833,7 +855,7 @@ class AuthService {
       }
       return {'success': false, 'message': 'Failed to fetch 2FA setup'};
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -877,7 +899,7 @@ class AuthService {
             data['message'] ?? 'Invalid verification code. Please try again.'
       };
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -914,7 +936,7 @@ class AuthService {
         'message': data['message'] ?? 'Invalid password or verification code.'
       };
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 
@@ -994,7 +1016,7 @@ class AuthService {
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': cleanErrorMessage(e)};
     }
   }
 }

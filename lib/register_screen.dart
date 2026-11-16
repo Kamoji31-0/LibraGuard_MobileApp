@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 import 'services/auth_service.dart';
 import 'terms_conditions_screen.dart';
+import 'widgets/app_dialog.dart';
 import 'widgets/glow_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -106,16 +107,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _register() async {
     if (!_formKey.currentState!.validate()) return;
     if (!_agreedToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Please read and agree to the Terms & Conditions to register.',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: Colors.redAccent.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      showAppNoticeDialog(
+        context: context,
+        title: 'Terms & Conditions',
+        message: 'Please read and agree to the Terms & Conditions before registering your account.',
+        buttonText: 'I Understand',
       );
       return;
     }
@@ -331,14 +327,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(result['message'] ?? 'Registration failed'),
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFFB21A2D)
-            : Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+      showAppNoticeDialog(
+        context: context,
+        title: 'Registration Error',
+        message: result['message'] ?? 'Unable to complete registration. Please try again.',
+        buttonText: 'Try Again',
+      );
     }
   }
 

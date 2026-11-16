@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -306,7 +306,7 @@ final profileRes = await authService.getProfile();
         };
       }
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': AuthService.cleanErrorMessage(e)};
     }
   }
 

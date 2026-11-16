@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,6 +7,7 @@ import 'register_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_setup.dart';
 import 'main.dart' show themeNotifier;
+import 'widgets/app_dialog.dart';
 import 'widgets/glow_text_field.dart';
 import 'two_factor_verification_screen.dart';
 
@@ -272,28 +273,32 @@ final bool is2FARequiredByServer = result['require2fa'] == true;
       } else {
         if (!mounted) return;
         final isUnverified = result['isUnverified'] == true;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Login failed'),
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFFB21A2D)
-                : Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            duration: isUnverified
-                ? const Duration(seconds: 6)
-                : const Duration(seconds: 4),
-            action: isUnverified
-                ? SnackBarAction(
-                    label: 'OPEN GMAIL',
-                    textColor: Colors.white,
-                    onPressed: () => _openEmailApp(_emailController.text.trim()),
-                  )
-                : null,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        final email = _emailController.text.trim();
+        final openLabel = email.toLowerCase().endsWith('@yahoo.com')
+            ? 'OPEN YAHOO'
+            : (email.toLowerCase().endsWith('@outlook.com') ||
+                    email.toLowerCase().endsWith('@hotmail.com'))
+                ? 'OPEN OUTLOOK'
+                : 'OPEN GMAIL';
+
+        if (isUnverified) {
+          showAppNoticeDialog(
+            context: context,
+            title: 'Account Not Verified',
+            message: result['message'] ??
+                'Account not verified. Please check your email for the verification link.',
+            buttonText: openLabel,
+            cancelText: 'Cancel',
+            onConfirm: () => _openEmailApp(email),
+          );
+        } else {
+          showAppNoticeDialog(
+            context: context,
+            title: 'Login Failed',
+            message: result['message'] ?? 'Invalid email or password. Please try again.',
+            buttonText: 'Try Again',
+          );
+        }
       }
     }
   }
@@ -740,7 +745,11 @@ void _showForgotPasswordSheet() {
                                     if (res['success'] == true) {
                                       step = 2;
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to send'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent));
+                                      showAppNoticeDialog(
+                                        context: context,
+                                        title: 'Reset Error',
+                                        message: res['message'] ?? 'Failed to send password reset link.',
+                                      );
                                     }
                                   });
                                 }
@@ -789,7 +798,11 @@ void _showForgotPasswordSheet() {
                                       ),
                                     );
                                   } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to reset password'), backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFB21A2D) : Colors.redAccent));
+                                    showAppNoticeDialog(
+                                       context: context,
+                                       title: 'Reset Error',
+                                       message: res['message'] ?? 'Failed to reset password.',
+                                     );
                                   }
                                 }
                               }
